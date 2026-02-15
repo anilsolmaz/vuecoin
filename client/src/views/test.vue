@@ -191,7 +191,8 @@
         ],
         dragging: false,
         elapsedTime: 0,
-        timer: undefined
+        timer: undefined,
+        pollingTimer: undefined
       }
     },
     filters: {
@@ -237,10 +238,15 @@
                   .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
               this.topDeals = x
               //axios.post('http://3.68.109.190:3000/api/addHistoryDB', {coinName:'TEST',roi:3.85})
-              this.updateData()
+              this.pollingTimer = setTimeout(() => {
+                this.updateData()
+              }, 3000)
             })
             .catch(error =>{
               console.log(error)
+              this.pollingTimer = setTimeout(() => {
+                this.updateData()
+              }, 3000)
             })
       },
       formatNumber (value,fraction) {
@@ -276,6 +282,10 @@
     created() {
       this.start()
       this.updateData()
+    },
+    beforeUnmount() {
+      this.stop()
+      if (this.pollingTimer) clearTimeout(this.pollingTimer)
     },
     computed: {
       formattedElapsedTime() {

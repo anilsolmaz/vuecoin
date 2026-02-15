@@ -21,8 +21,7 @@ process.on('uncaughtException', function (err) {
     errorLogStream.write(date + '\n' + err.stack + '\n\n');
 });
 
-let unSuccessfulJobs = []
-let counter = 0
+// Removed global unSuccessfulJobs and counter to prevent race conditions
 let paribuUSDT = 0
 let paribuCHZ = 0
 let paribuMarketsList = []
@@ -36,16 +35,7 @@ const client = redis.createClient({
     "host": process.env.REDIS_HOST
 });
 
-async function getParibuData(coin) {
-    let returnValue = await db.getParibuData(coin, config.ipList[counter % config.ipList.length])
-        .then(function (response) {
-            return response
-        })
-        .catch(function (error) {
-            unSuccessfulJobs.push(coin)
-        })
-    return returnValue
-}
+
 //Program buradan sonra başlıyor
 (async () => {
 
@@ -410,15 +400,15 @@ router.get('/allParibuData/', async (req, res, next) => {
 
     //let allJobs = allParibuMarkets.map((coin, index) => getParibuData(coin))
     let allJobs = []
-    allJobs.push(f.updateBinanceData(requestCount))
-    allJobs.push(f.updateBTCTurkData(requestCount))
+    allJobs.push(f.updateBinanceData(requestCount).catch(e => null))
+    allJobs.push(f.updateBTCTurkData(requestCount).catch(e => null))
     //allJobs.push(f.updateChilizData(requestCount))
-    allJobs.push(f.updateParibuData(requestCount))
+    allJobs.push(f.updateParibuData(requestCount).catch(e => null))
     // allJobs.push(f.updateKrakenData(requestCount))
     // allJobs.push(f.updateKuCoinData(requestCount))
     // allJobs.push(f.updateHuobiData(requestCount))
 
-    let results
+    let results = []
     try {
         results = await Promise.all(allJobs);
     }
@@ -431,18 +421,7 @@ router.get('/allParibuData/', async (req, res, next) => {
             finalResults.push(result)
     })
 
-    // while (unSuccessfulJobs.length != 0) {
-    //     allJobs = unSuccessfulJobs.map((coin, index) => getParibuData(coin))
-    //     unSuccessfulJobs = []
-    //     results = await Promise.all(allJobs);
-    //     //console.log('results Length : ', results.length)
-    //     results.forEach((result, index) => {
-    //         if (result != null) {
-    //             finalResults.push(result)
-    //         }
-    //     })
-    //     counter++
-    // }
+
     // console.log(DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS), '#', requestCount, 'allParibuData successfully worked!')
 
 
