@@ -1,0 +1,58 @@
+openapi: 3.0.0
+info:
+  title: Deneme
+  version: v0.0.1
+  description: API information is below
+servers:
+  - url: http://161.35.194.25:3000/api
+    description: DigitalOcean-001
+
+apis: "./server/routes/*.js"
+
+paths:
+  /test:
+    get:
+      tags:
+        - c Data
+      summary: returns Test Data
+      description: Burası açıklama kısmı
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /configs:
+    get:
+      tags:
+        - Configuration methods
+      summary: returns All configs
+      description: Burası açıklama kısmı
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: json
+                items:
+                  type: string
+  /testWithData/{text}:
+    get:
+      tags:
+        - c Data
+      summary: Yazdığın text'i sana geri yollayan method
+      parameters:
+        - name: text
+          in: path
+          required: true
+          description: Aşağı bi yazı gir. sana yazdığını geri göndersin API
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
