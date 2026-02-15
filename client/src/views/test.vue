@@ -160,14 +160,11 @@
   import coinBox from '../components/coinBox';
   import topCoin from '../components/topCoin';
   import axios from 'axios';
-  import TopCoinExt from "@/components/TopCoinExt";
-
   export default defineComponent({
     components: {
       draggable,
       coinbox: coinBox,
       topcoin: topCoin,
-      topCoinExt: TopCoinExt,
     },
     data() {
       return {
