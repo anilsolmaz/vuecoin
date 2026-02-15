@@ -68,25 +68,21 @@ export default {
   ,
   data() {
     return {
-      isExpanded: false
+      isExpanded: true
     };
   },
   mounted() {
-    this.checkAutoExpand();
   },
   watch: {
-    'coinData.ROI': function() {
-      this.checkAutoExpand();
-    }
   },
   methods: {
     toggleExpand() {
-      this.isExpanded = !this.isExpanded;
+      // this.isExpanded = !this.isExpanded;
     },
     checkAutoExpand() {
-      if (this.coinData.ROI > 1) {
-        this.isExpanded = true;
-      }
+      // if (this.coinData.ROI > 1) {
+      //   this.isExpanded = true;
+      // }
     },
     formatNumber(value, fraction) {
       let answer = Number(value).toFixed(fraction);
