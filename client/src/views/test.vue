@@ -240,13 +240,13 @@
               //axios.post('http://3.68.109.190:3000/api/addHistoryDB', {coinName:'TEST',roi:3.85})
               this.pollingTimer = setTimeout(() => {
                 this.updateData()
-              }, 3000)
+              }, 1000)
             })
             .catch(error =>{
               console.log(error)
               this.pollingTimer = setTimeout(() => {
                 this.updateData()
-              }, 3000)
+              }, 1000)
             })
       },
       formatNumber (value,fraction) {
