@@ -15,6 +15,62 @@ const client = redis.createClient({
 });
 
 
+
+function fetchParibu(resolve, reject, currentTime, requestCount) {
+    request(config.exchangeMarkets.paribu.tickerUrl, function (error, response) {
+        if (error) {
+            console.error(currentTime, requestCount, '\x1b[31mParibu refresh failed', error)
+            return reject('Paribu refresh failed')
+        }
+        console.log(currentTime, requestCount, 'Paribu data refreshed')
+        let paribuData = JSON.parse(response.body)
+        let paribuJSON = { market: "paribu" }
+        Object.keys(paribuData).forEach(coin => {
+            if (coin.toLowerCase().split('_')[1] == 'tl') {
+                let coinName = coin.toLowerCase().split('_')[0]
+                paribuJSON[coinName] = (parseFloat(paribuData[coin]['last']))
+            }
+        })
+        client.setex('paribuData', config.cacheDuration, JSON.stringify(paribuJSON));
+        return resolve(paribuJSON)
+    })
+}
+
+function fetchBinance(resolve, reject, currentTime, requestCount) {
+    request(config.exchangeMarkets.binance.tickerUrl, function (error, response) {
+        if (error) {
+            console.error(currentTime, requestCount, '\x1b[31mbinance refresh failed', error)
+            return reject('binance refresh failed')
+        }
+        console.log(currentTime, requestCount, 'Binance data refreshed')
+        let binanceData = JSON.parse(response.body)
+        let binanceJSON = { market: "binance" }
+        binanceData.forEach(coin => {
+            if (coin.symbol != 'HNTUSDT' & coin.symbol != 'GALUSDT' & coin.symbol != 'REEFUSDT' & coin.symbol != 'BEAMUSDT' & coin.symbol != 'BALUSDT' & coin.symbol != 'OMGUSDT' & coin.symbol != 'RNDRUSDT' & coin.symbol != 'WAVESUSDT' & coin.symbol != 'CLVUSDT' & coin.symbol != 'RDNTUSDT' & coin.symbol != 'FTMUSDT' & coin.symbol != 'MATICUSDT' & coin.symbol != 'EOSUSDT' & coin.symbol != 'MKRUSDT')
+                binanceJSON[coin.symbol] = parseFloat(coin.price)
+        })
+        client.setex('binanceData', config.cacheDuration, JSON.stringify(binanceJSON));
+        return resolve(binanceJSON)
+    })
+}
+
+function fetchBTCTurk(resolve, reject, currentTime, requestCount) {
+    request(config.exchangeMarkets.BTCTurk.tickerUrl, function (error, response) {
+        if (error) {
+            console.error(currentTime, requestCount, '\x1b[31mBTCTurk refresh failed', error)
+            return reject('BTCTurk refresh failed')
+        }
+        console.log(currentTime, requestCount, 'BTCTurk data refreshed')
+        let BTCTurkData = JSON.parse(response.body)
+        let BTCTurkJSON = { market: "BTCTurk" }
+        BTCTurkData.data.forEach(coin => {
+            BTCTurkJSON[coin.pair] = (parseFloat(coin.last))
+        })
+        client.setex('BTCTurkData', config.cacheDuration, JSON.stringify(BTCTurkJSON));
+        return resolve(BTCTurkJSON)
+    })
+}
+
 let totalJobsCompleted = 0;
 module.exports = {
     statusUpdate: function (message) {
@@ -254,66 +310,44 @@ module.exports = {
             items.volume.push(value)
         } return items
     },
-    updateBinanceData: function (requestCount) {
+    updateBinanceData: function (requestCount, force = false) {
         let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
         return new Promise((resolve, reject) => {
-            client.get('binanceData', (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mBinance cache failed', error)
-                    return reject('binance cache failed')
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'Binance data used from cache')
-                    return resolve(JSON.parse(data))
-                } else {
-                    request(config.exchangeMarkets.binance.tickerUrl, function (error, response) {
-                        if (error) {
-                            console.error(currentTime, requestCount, '\x1b[31mbinance refresh failed', error)
-                            return reject('binance refresh failed')
-                        }
-                        console.log(currentTime, requestCount, 'Binance data refreshed')
-                        let binanceData = JSON.parse(response.body)
-                        let binanceJSON = { market: "binance" }
-                        binanceData.forEach(coin => {
-                            if (coin.symbol != 'HNTUSDT' & coin.symbol != 'GALUSDT' & coin.symbol != 'REEFUSDT' & coin.symbol != 'BEAMUSDT' & coin.symbol != 'BALUSDT' & coin.symbol != 'OMGUSDT' & coin.symbol != 'RNDRUSDT' & coin.symbol != 'WAVESUSDT' & coin.symbol != 'CLVUSDT' & coin.symbol != 'RDNTUSDT' & coin.symbol != 'FTMUSDT' & coin.symbol != 'MATICUSDT' & coin.symbol != 'EOSUSDT' & coin.symbol != 'MKRUSDT')
-                                binanceJSON[coin.symbol] = parseFloat(coin.price)
-                        })
-                        client.setex('binanceData', config.cacheDuration, JSON.stringify(binanceJSON));
-                        return resolve(binanceJSON)
-                    })
-                }
-            })
+            if (!force) {
+                client.get('binanceData', (error, data) => {
+                    if (error) {
+                        console.error(currentTime, requestCount, '\x1b[31mBinance cache failed', error)
+                        return reject('binance cache failed')
+                    } else if (data !== null) {
+                        console.log(currentTime, requestCount, 'Binance data used from cache')
+                        return resolve(JSON.parse(data))
+                    } else {
+                        fetchBinance(resolve, reject, currentTime, requestCount)
+                    }
+                })
+            } else {
+                fetchBinance(resolve, reject, currentTime, requestCount)
+            }
         })
     },
-    updateParibuData: function (requestCount) {
+    updateParibuData: function (requestCount, force = false) {
         let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
         return new Promise((resolve, reject) => {
-            client.get('paribuData', (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mParibu cache failed', error)
-                    return reject('paribu cache failed')
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'Paribu data used from cache')
-                    return resolve(JSON.parse(data))
-                } else {
-                    request(config.exchangeMarkets.paribu.tickerUrl, function (error, response) {
-                        if (error) {
-                            console.error(currentTime, requestCount, '\x1b[31mParibu refresh failed', error)
-                            return reject('Paribu refresh failed')
-                        }
-                        console.log(currentTime, requestCount, 'Paribu data refreshed')
-                        let paribuData = JSON.parse(response.body)
-                        let paribuJSON = { market: "paribu" }
-                        Object.keys(paribuData).forEach(coin => {
-                            if (coin.toLowerCase().split('_')[1] == 'tl') {
-                                let coinName = coin.toLowerCase().split('_')[0]
-                                paribuJSON[coinName] = (parseFloat(paribuData[coin]['last']))
-                            }
-                        })
-                        client.setex('paribuData', config.cacheDuration, JSON.stringify(paribuJSON));
-                        return resolve(paribuJSON)
-                    })
-                }
-            })
+            if (!force) {
+                client.get('paribuData', (error, data) => {
+                    if (error) {
+                        console.error(currentTime, requestCount, '\x1b[31mParibu cache failed', error)
+                        return reject('paribu cache failed')
+                    } else if (data !== null) {
+                        console.log(currentTime, requestCount, 'Paribu data used from cache')
+                        return resolve(JSON.parse(data))
+                    } else {
+                        fetchParibu(resolve, reject, currentTime, requestCount)
+                    }
+                })
+            } else {
+                fetchParibu(resolve, reject, currentTime, requestCount)
+            }
         })
     },
     updateHuobiData: function (requestCount) {
@@ -440,33 +474,24 @@ module.exports = {
             })
         })
     },
-    updateBTCTurkData: async function (requestCount) {
+    updateBTCTurkData: async function (requestCount, force = false) {
         let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
         return new Promise((resolve, reject) => {
-            client.get('BTCTurkData', (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mBTCTurk cache failed', error)
-                    return reject('BTCTurk cache failed')
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'BTCTurk data used from cache')
-                    return resolve(JSON.parse(data))
-                } else {
-                    request(config.exchangeMarkets.BTCTurk.tickerUrl, function (error, response) {
-                        if (error) {
-                            console.error(currentTime, requestCount, '\x1b[31mBTCTurk refresh failed', error)
-                            return reject('BTCTurk refresh failed')
-                        }
-                        console.log(currentTime, requestCount, 'BTCTurk data refreshed')
-                        let BTCTurkData = JSON.parse(response.body)
-                        let BTCTurkJSON = { market: "BTCTurk" }
-                        BTCTurkData.data.forEach(coin => {
-                            BTCTurkJSON[coin.pair] = (parseFloat(coin.last))
-                        })
-                        client.setex('BTCTurkData', config.cacheDuration, JSON.stringify(BTCTurkJSON));
-                        return resolve(BTCTurkJSON)
-                    })
-                }
-            })
+            if (!force) {
+                client.get('BTCTurkData', (error, data) => {
+                    if (error) {
+                        console.error(currentTime, requestCount, '\x1b[31mBTCTurk cache failed', error)
+                        return reject('BTCTurk cache failed')
+                    } else if (data !== null) {
+                        console.log(currentTime, requestCount, 'BTCTurk data used from cache')
+                        return resolve(JSON.parse(data))
+                    } else {
+                        fetchBTCTurk(resolve, reject, currentTime, requestCount)
+                    }
+                })
+            } else {
+                fetchBTCTurk(resolve, reject, currentTime, requestCount)
+            }
         })
     },
     updateChilizData: function (requestCount) {
