@@ -28,7 +28,11 @@ function fetchParibu(resolve, reject, currentTime, requestCount) {
         Object.keys(paribuData).forEach(coin => {
             if (coin.toLowerCase().split('_')[1] == 'tl') {
                 let coinName = coin.toLowerCase().split('_')[0]
-                paribuJSON[coinName] = (parseFloat(paribuData[coin]['last']))
+                paribuJSON[coinName] = {
+                    price: parseFloat(paribuData[coin]['last']),
+                    ask: parseFloat(paribuData[coin]['lowestAsk']),
+                    bid: parseFloat(paribuData[coin]['highestBid'])
+                }
             }
         })
         client.setex('paribuData', config.cacheDuration, JSON.stringify(paribuJSON));
@@ -46,8 +50,13 @@ function fetchBinance(resolve, reject, currentTime, requestCount) {
         let binanceData = JSON.parse(response.body)
         let binanceJSON = { market: "binance" }
         binanceData.forEach(coin => {
+            // Filter logic remains the same
             if (coin.symbol != 'HNTUSDT' & coin.symbol != 'GALUSDT' & coin.symbol != 'REEFUSDT' & coin.symbol != 'BEAMUSDT' & coin.symbol != 'BALUSDT' & coin.symbol != 'OMGUSDT' & coin.symbol != 'RNDRUSDT' & coin.symbol != 'WAVESUSDT' & coin.symbol != 'CLVUSDT' & coin.symbol != 'RDNTUSDT' & coin.symbol != 'FTMUSDT' & coin.symbol != 'MATICUSDT' & coin.symbol != 'EOSUSDT' & coin.symbol != 'MKRUSDT')
-                binanceJSON[coin.symbol] = parseFloat(coin.price)
+                binanceJSON[coin.symbol] = {
+                    price: (parseFloat(coin.bidPrice) + parseFloat(coin.askPrice)) / 2, // Mid price for simple display
+                    bid: parseFloat(coin.bidPrice),
+                    ask: parseFloat(coin.askPrice)
+                }
         })
         client.setex('binanceData', config.cacheDuration, JSON.stringify(binanceJSON));
         return resolve(binanceJSON)
@@ -64,7 +73,11 @@ function fetchBTCTurk(resolve, reject, currentTime, requestCount) {
         let BTCTurkData = JSON.parse(response.body)
         let BTCTurkJSON = { market: "BTCTurk" }
         BTCTurkData.data.forEach(coin => {
-            BTCTurkJSON[coin.pair] = (parseFloat(coin.last))
+            BTCTurkJSON[coin.pair] = {
+                price: parseFloat(coin.last),
+                ask: parseFloat(coin.ask),
+                bid: parseFloat(coin.bid)
+            }
         })
         client.setex('BTCTurkData', config.cacheDuration, JSON.stringify(BTCTurkJSON));
         return resolve(BTCTurkJSON)
@@ -304,7 +317,7 @@ module.exports = {
 
     },
     converter: function (object) {
-        var items = { "price": [], "volume": [] }
+        let items = { "price": [], "volume": [] }
         for (const [key, value] of Object.entries(object)) {
             items.price.push(parseFloat(key))
             items.volume.push(value)
@@ -350,130 +363,7 @@ module.exports = {
             }
         })
     },
-    updateHuobiData: function (requestCount) {
-        let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
-        return new Promise((resolve, reject) => {
-            client.get('huobiData', (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mHuobi cache failed', error)
-                    return reject('huobi cache failed')
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'Huobi data used from cache')
-                    return resolve(JSON.parse(data))
-                } else {
-                    request(config.exchangeMarkets.huobi.tickerUrl, function (error, response) {
-                        if (error) {
-                            console.error(currentTime, requestCount, '\x1b[31mhuobi refresh failed', error)
-                            return reject('Huobi refresh failed')
-                        }
-                        console.log(currentTime, requestCount, 'Huobi data refreshed')
-                        let huobiData = JSON.parse(response.body).data
-                        let huobiJSON = { market: "huobi" }
-                        huobiData.forEach(coin => {
-                            huobiJSON[coin.symbol] = (parseFloat(coin.bid) + parseFloat(coin.ask)) / 2
-                        })
-                        client.setex('huobiData', config.cacheDuration, JSON.stringify(huobiJSON));
-                        console.log(huobiJSON)
-                        return resolve(huobiJSON)
-                    })
-                }
-            })
-        })
-    },
-    updateKrakenData: function (requestCount) {
-        let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
-        return new Promise((resolve, reject) => {
-            client.get('krakenData', (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mKraken cache failed', error)
-                    return reject('kraken cache failed')
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'Kraken data used from cache')
-                    return resolve(JSON.parse(data))
-                } else {
-                    request(config.exchangeMarkets.kraken.tickerUrl, function (error, response) {
-                        if (error) {
-                            console.error(currentTime, requestCount, '\x1b[31mKraken refresh failed', error)
-                            return reject('Kraken refresh failed')
-                        }
-                        console.log(currentTime, requestCount, 'Kraken data refreshed')
-                        let krakenData = JSON.parse(response.body)
-                        let krakenJSON = { market: "kraken" }
-                        krakenData.forEach(coin => {
-                            if (coin.symbol != 'NUBUSD' & coin.symbol != 'KEEPBUSD' & coin.symbol != 'GALBUSD' & coin.symbol != 'POLYBUSD' & coin.symbol != 'RLCBUSD')
-                                krakenJSON[coin.symbol] = parseFloat(coin.price)
-                        })
-                        client.setex('krakenData', config.cacheDuration, JSON.stringify(krakenJSON));
-                        return resolve(krakenJSON)
-                    })
-                }
-            })
-        })
-    },
-    updateKuCoinData: function (requestCount) {
-        let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
-        return new Promise((resolve, reject) => {
-            client.get('kuCoinData', (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mKuCoin cache failed', error)
-                    return reject('KuCoin cache failed')
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'KuCoin data used from cache')
-                    return resolve(JSON.parse(data))
-                } else {
-                    request(config.exchangeMarkets.kuCoin.tickerUrl, function (error, response) {
-                        if (error) {
-                            console.error(currentTime, requestCount, '\x1b[31mKuCoin refresh failed', error)
-                            return reject('KuCoin refresh failed')
-                        }
-                        console.log(currentTime, requestCount, 'KuCoin data refreshed')
-                        let kuCoinData = JSON.parse(response.body)
-                        let kuCoinJSON = { market: "kuCoin" }
-                        kuCoinData.forEach(coin => {
-                            if (coin.symbol != 'NUBUSD' & coin.symbol != 'KEEPBUSD' & coin.symbol != 'GALBUSD' & coin.symbol != 'POLYBUSD' & coin.symbol != 'RLCBUSD')
-                                kuCoinJSON[coin.symbol] = parseFloat(coin.price)
-                        })
-                        client.setex('kuCoinData', config.cacheDuration, JSON.stringify(kuCoinJSON));
-                        return resolve(kuCoinJSON)
-                    })
-                }
-            })
-        })
-    },
-    updateFTXData: function (requestCount) {
-        let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
-        return new Promise((resolve, reject) => {
-            client.get('FTXData', (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mFTX cache failed', error)
-                    return reject('FTX cache failed')
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'FTX data used from cache')
-                    return resolve(JSON.parse(data))
-                } else {
-                    request(config.exchangeMarkets.FTX.tickerUrl, function (error, response) {
-                        console.log(error)
-                        if (error != null && response.statusCode == 200) {
-                            console.log(currentTime, requestCount, 'FTX data refreshed')
-                            let FTXData = JSON.parse(response.body)
 
-                            let FTXJSON = { market: "FTX" }
-                            FTXData.result.forEach(coin => {
-                                if (coin.name != 'FB/USD' & coin.name != 'GAL/USD' & coin.name != 'BTT/USD')
-                                    FTXJSON[coin.name.split('/')[0] + 'USDT'] = (parseFloat(coin.bid) + parseFloat(coin.ask)) / 2
-                            })
-                            client.setex('FTXData', config.cacheDuration, JSON.stringify(FTXJSON));
-                            return resolve(FTXJSON)
-                        } else {
-                            console.error(currentTime, requestCount, '\x1b[31mFTX refresh failed', error)
-                            return reject('FTX refresh failed')
-                        }
-
-                    })
-                }
-            })
-        })
-    },
     updateBTCTurkData: async function (requestCount, force = false) {
         let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)
         return new Promise((resolve, reject) => {
@@ -529,27 +419,6 @@ module.exports = {
         const price1 = Math.max(...priceList)
         const price2 = Math.min(...priceList)
         return price1 / price2 * 100 - 100
-    },
-    increaseValueByOne: function () {
-        console.log('increaseValueByOne worked!');
-        let config2 = $.getJSON("test.json", function (json) {
-            console.log(json); // this will show the info it in firebug console
-        });
-        console.log('Config >>> Total Job : ', config2.totalJob)
-
-        let filepath = process.cwd() + "/server/configs/config.json"
-        fs.readFile(filepath, 'utf8', function readFileCallback(err, data) {
-            if (err) {
-                console.log(err);
-            } else {
-                let newData = JSON.parse(data)
-                newData.totalJob = newData.totalJob + 1
-                console.log('Total Job : ', newData.totalJob)
-                fs.writeFile(filepath, JSON.stringify(newData, null, 2), 'utf8', err => {
-                    if (err) throw err;
-                });
-            }
-        });
     },
     removeDuplicatesFromArray: function (arrayList) {
         return [...new Set(arrayList)];

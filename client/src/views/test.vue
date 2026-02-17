@@ -6,11 +6,13 @@
             v-for="name in topCoins"
             v-bind:coinName="name"
             v-bind:coinData="coinData[name]"
+            v-bind:usdtRate="calculatedUsdtRate"
         ></topcoin>
         <topcoin
             v-bind:coinName="'pda'"
             v-bind:coinData="coinData['pda']"
             v-bind:coinSource="'paribu'"
+            v-bind:usdtRate="calculatedUsdtRate"
         ></topcoin>
       </div>
       <div class="row m-4" style="color: white">
@@ -293,6 +295,18 @@
         date.setSeconds(this.elapsedTime / 1000);
         const utc = date.toUTCString();
         return utc.substr(utc.indexOf(":") - 2, 8);
+      },
+      calculatedUsdtRate() {
+         // Priority: Binance TRY -> Paribu TRY -> Default 36.5
+         if (this.coinData && this.coinData['usdt']) {
+             if (this.coinData['usdt'].binance && this.coinData['usdt'].binance.try && this.coinData['usdt'].binance.try.price) {
+                 return this.coinData['usdt'].binance.try.price;
+             }
+             if (this.coinData['usdt'].paribu && this.coinData['usdt'].paribu.try && this.coinData['usdt'].paribu.try.price) {
+                 return this.coinData['usdt'].paribu.try.price;
+             }
+         }
+         return 36.5; // Fallback
       }
     }
   })
@@ -332,7 +346,7 @@
     font-size: 13px;
   }
 
-  . coinPair {
+  .coinPair {
     font-weight: 900;
     font-size: 14px;
     font-family: Cairo, sans-serif;
