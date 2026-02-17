@@ -1,5 +1,6 @@
 const f = require('./js/functions');
 const config = require('./configs/config.json');
+const CoinDataService = require('./services/CoinDataService');
 
 let intervalId = null;
 let isPolling = false;
@@ -26,7 +27,8 @@ async function runCycle() {
             f.updateBTCTurkData(workerRequestCount, true).catch(e => null)
         ]);
         if (io) {
-            io.emit('data_update', { message: 'Data updated', timestamp: Date.now() });
+            const aggregatedData = await CoinDataService.refreshAllData();
+            io.emit('data_update', aggregatedData);
         }
         // console.log('Worker Cycle Complete');
     } catch (e) {

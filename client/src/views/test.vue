@@ -222,23 +222,26 @@
       mySelectEvent({id, text}){
         console.log({id, text})
       },
+      processData(data) {
+          this.coinData = data;
+          this.reset();
+          const topData = {};
+          let coinList = [];
+          Object.keys(this.coinData).forEach(function(coinName) {
+              topData[coinName] = data[coinName].ROI;
+              coinList.push(coinName);
+          });
+          this.coinList = coinList;
+          let x = Object.entries(topData)
+              .sort(([,a],[,b]) => a-b)
+              .reverse()
+              .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
+          this.topDeals = x;
+      },
       async updateData() {
         try {
             const response = await axios.get('/api/allParibuData');
-            this.coinData = response.data;
-            this.reset();
-            const topData = {};
-            let coinList = [];
-            Object.keys(this.coinData).forEach(function(coinName) {
-                topData[coinName] = response.data[coinName].ROI;
-                coinList.push(coinName);
-            });
-            this.coinList = coinList;
-            let x = Object.entries(topData)
-                .sort(([,a],[,b]) => a-b)
-                .reverse()
-                .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
-            this.topDeals = x;
+            this.processData(response.data);
         } catch (error) {
             console.log(error);
         }
@@ -288,7 +291,12 @@
 
       this.socket.on('data_update', (data) => {
           // console.log('Data update received', data);
-          this.updateData();
+          if (data && data.paribu) {
+              this.processData(data);
+          } else {
+             // Fallback if data format is unexpected (e.g. initial message)
+             this.updateData();
+          }
       });
 
       this.socket.on('disconnect', () => {
