@@ -291,7 +291,7 @@
 
       this.socket.on('data_update', (data) => {
           // console.log('Data update received', data);
-          if (data && data.paribu) {
+          if (data && data.btc) {
               this.processData(data);
           } else {
              // Fallback if data format is unexpected (e.g. initial message)
