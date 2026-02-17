@@ -6,28 +6,28 @@
       <span style="font-size:0.7em">{{ formatNumber(coinData.ROI, 2) > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
     </h6>
     <div v-if="isExpanded">
-      <div v-if="coinData.paribu.try.price > 0">
+      <div v-if="coinData.paribu?.try?.price > 0">
         <a :href="`https://www.paribu.com/markets/${coinName.toLowerCase()}_tl`" target="_blank" @click.stop>
           <img class="marketBoxImage" :src="require(`@/assets/markets/paribu.png`)">
         </a>
         {{ USDTMode ? formatNumber(coinData.paribu.try.inUSDT, coinData.fraction ? coinData.fraction : 5) : formatNumber(coinData.paribu.try.price, coinData.fraction ? coinData.fraction : 6) }}
         {{ USDTMode ? '$' : '₺' }}
       </div>
-      <div v-if="coinData.binance.usdt.price > 0">
+      <div v-if="coinData.binance?.usdt?.price > 0">
         <a :href="`https://www.binance.com/en/trade/${coinName.toUpperCase()}_USDT?layout=pro&theme=dark&type=spot`" target="_blank" @click.stop>
           <img class="marketBoxImage" :src="require(`@/assets/markets/binance.png`)">
         </a>
         {{ USDTMode ? formatNumber(coinData.binance.usdt.price, coinData.fraction ? coinData.fraction : 5) : formatNumber(coinData.binance.usdt.inTRY, coinData.fraction ? coinData.fraction : 6) }}
         {{ USDTMode ? '$' : '₺' }}
       </div>
-      <div v-if="coinData.BTCTurk.try.price > 0">
+      <div v-if="coinData.BTCTurk?.try?.price > 0">
         <a :href="`https://pro.btcturk.com/pro/al-sat/${coinName.toUpperCase()}_TRY`" target="_blank" @click.stop>
           <img class="marketBoxImage" :src="require(`@/assets/markets/BTCTurk.png`)">
         </a>
         {{ USDTMode ? formatNumber(coinData.BTCTurk.try.inUSDT, coinData.fraction ? coinData.fraction : 5) : formatNumber(coinData.BTCTurk.try.price, coinData.fraction ? coinData.fraction : 6) }}
         {{ USDTMode ? '$' : '₺' }}
       </div>
-      <div v-if="coinData.chiliz.chz.inTRY > 0">
+      <div v-if="coinData.chiliz?.chz?.inTRY > 0">
         <a :href="`https://www.chiliz.net/exchange/${coinName.toUpperCase()}/CHZ`" target="_blank" @click.stop>
           <img class="marketBoxImage" :src="require(`@/assets/markets/chiliz.png`)">
         </a>

@@ -81,9 +81,17 @@ export default {
   methods: {
     updateData() {
       axios
-          .get('http://3.66.198.120:3000/paribu/api/deneme/' + this.coinRequest)
+          .get('http://localhost:3000/api/allParibuData')
           .then(response => {
-            this.coinData = response.data
+            // Filter the global data for only the coins in coinRequest
+            let allData = response.data;
+            let filtered = {};
+            this.coinRequest.forEach(coin => {
+                if (allData[coin]) {
+                    filtered[coin] = allData[coin];
+                }
+            });
+            this.coinData = filtered;
           })
           .catch(error =>{
             console.log(error)
