@@ -133,7 +133,7 @@ export default {
     }
   },
   created() {
-    this.updateData()
+    // Initial Fetch Removed - Data comes via WebSocket on connect
 
     axios.get('https://www.paribu.com/ticker')
         .then( (response) => {
