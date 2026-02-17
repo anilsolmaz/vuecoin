@@ -151,9 +151,10 @@ export default {
     this.socket = io();
     
     this.socket.on('data_update', (data) => {
-        if (data && data.paribu) {
+        if (data && data.btc) {
             this.processData(data);
         } else {
+            console.log('Fallback triggered, data missing expected keys:', data);
             this.updateData();
         }
     });
