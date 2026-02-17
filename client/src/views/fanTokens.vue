@@ -62,6 +62,7 @@
 // @ is an alias to /src
 import axios from 'axios'
 import Select2 from 'vue3-select2-component';
+import { io } from "socket.io-client";
 
 
 export default {
@@ -75,23 +76,26 @@ export default {
       myValue: [],
       myOptions: [],
       value:'',
+      socket: null
 
     }
   } ,
   methods: {
+    processData(allData) {
+        // Filter the global data for only the coins in coinRequest
+        let filtered = {};
+        this.coinRequest.forEach(coin => {
+            if (allData[coin]) {
+                filtered[coin] = allData[coin];
+            }
+        });
+        this.coinData = filtered;
+    },
     updateData() {
       axios
           .get('/api/allParibuData')
           .then(response => {
-            // Filter the global data for only the coins in coinRequest
-            let allData = response.data;
-            let filtered = {};
-            this.coinRequest.forEach(coin => {
-                if (allData[coin]) {
-                    filtered[coin] = allData[coin];
-                }
-            });
-            this.coinData = filtered;
+            this.processData(response.data);
           })
           .catch(error =>{
             console.log(error)
@@ -142,7 +146,22 @@ export default {
         .catch( (error) => {
           console.log(error)
         })
-    setInterval(this.updateData, 3000)
+    
+    // WebSocket Connection
+    this.socket = io();
+    
+    this.socket.on('data_update', (data) => {
+        if (data && data.paribu) {
+            this.processData(data);
+        } else {
+            this.updateData();
+        }
+    });
+  },
+  beforeUnmount() {
+      if (this.socket) {
+          this.socket.disconnect();
+      }
   },
   computed: {
 
