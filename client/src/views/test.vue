@@ -279,8 +279,7 @@
     created() {
       this.start();
       
-      // Initial Fetch
-      this.updateData();
+      // Initial Fetch Removed - Data comes via WebSocket on connect
 
       // WebSocket Connection
       this.socket = io();

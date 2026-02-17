@@ -16,10 +16,18 @@ const io = new Server(server, {
     }
 });
 
+const CoinDataService = require('./server/services/CoinDataService');
+
 worker.setSocket(io);
 
 io.on('connection', (socket) => {
     console.log('User connected', socket.id);
+
+    // Send available data immediately upon connection
+    if (CoinDataService.coinList && Object.keys(CoinDataService.coinList).length > 0) {
+        socket.emit('data_update', CoinDataService.coinList);
+    }
+
     socket.on('disconnect', () => {
         console.log('User disconnected', socket.id);
     });
