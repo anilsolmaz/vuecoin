@@ -4,6 +4,7 @@ const config = require('./configs/config.json');
 let intervalId = null;
 let isPolling = false;
 let workerRequestCount = 0;
+let io = null;
 
 function startPolling() {
     if (isPolling) return;
@@ -24,6 +25,9 @@ async function runCycle() {
             f.updateBinanceData(workerRequestCount, true).catch(e => null),
             f.updateBTCTurkData(workerRequestCount, true).catch(e => null)
         ]);
+        if (io) {
+            io.emit('data_update', { message: 'Data updated', timestamp: Date.now() });
+        }
         // console.log('Worker Cycle Complete');
     } catch (e) {
         console.error('Worker Cycle Error', e);
@@ -46,5 +50,8 @@ module.exports = {
         } else {
             stopPolling();
         }
+    },
+    setSocket: function (ioInstance) {
+        io = ioInstance;
     }
 };

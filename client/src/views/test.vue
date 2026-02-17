@@ -162,6 +162,7 @@
   import coinBox from '../components/coinBox';
   import topCoin from '../components/topCoin';
   import axios from 'axios';
+  import { io } from "socket.io-client";
   export default defineComponent({
     components: {
       draggable,
@@ -194,7 +195,7 @@
         dragging: false,
         elapsedTime: 0,
         timer: undefined,
-        pollingTimer: undefined
+        socket: null
       }
     },
     filters: {
@@ -222,34 +223,25 @@
         console.log({id, text})
       },
       async updateData() {
-        await axios
-            .get('http://localhost:3000/api/allParibuData')
-            .then(response => {
-              this.coinData = response.data
-              this.reset()
-              const topData = {}
-              let coinList = []
-                  Object.keys(this.coinData).forEach(function(coinName) {
-                    topData[coinName] = response.data[coinName].ROI
-                    coinList.push(coinName)
-                  })
-              this.coinList = coinList
-              let x = Object.entries(topData)
-                  .sort(([,a],[,b]) => a-b)
-                  .reverse()
-                  .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
-              this.topDeals = x
-              //axios.post('http://3.68.109.190:3000/api/addHistoryDB', {coinName:'TEST',roi:3.85})
-              this.pollingTimer = setTimeout(() => {
-                this.updateData()
-              }, 1000)
-            })
-            .catch(error =>{
-              console.log(error)
-              this.pollingTimer = setTimeout(() => {
-                this.updateData()
-              }, 1000)
-            })
+        try {
+            const response = await axios.get('/api/allParibuData');
+            this.coinData = response.data;
+            this.reset();
+            const topData = {};
+            let coinList = [];
+            Object.keys(this.coinData).forEach(function(coinName) {
+                topData[coinName] = response.data[coinName].ROI;
+                coinList.push(coinName);
+            });
+            this.coinList = coinList;
+            let x = Object.entries(topData)
+                .sort(([,a],[,b]) => a-b)
+                .reverse()
+                .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
+            this.topDeals = x;
+        } catch (error) {
+            console.log(error);
+        }
       },
       formatNumber (value,fraction) {
         let answer = Number(value).toFixed(fraction)
@@ -282,12 +274,32 @@
       }
     },
     created() {
-      this.start()
-      this.updateData()
+      this.start();
+      
+      // Initial Fetch
+      this.updateData();
+
+      // WebSocket Connection
+      this.socket = io();
+      
+      this.socket.on('connect', () => {
+          console.log('Connected to WebSocket server');
+      });
+
+      this.socket.on('data_update', (data) => {
+          // console.log('Data update received', data);
+          this.updateData();
+      });
+
+      this.socket.on('disconnect', () => {
+          console.log('Disconnected from WebSocket server');
+      });
     },
     beforeUnmount() {
-      this.stop()
-      if (this.pollingTimer) clearTimeout(this.pollingTimer)
+      this.stop();
+      if (this.socket) {
+          this.socket.disconnect();
+      }
     },
     computed: {
       formattedElapsedTime() {
