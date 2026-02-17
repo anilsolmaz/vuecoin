@@ -95,20 +95,11 @@ module.exports = {
         return arr1.filter(x => !arr2.includes(x));
     },
     telegramMessage: async function (message) {
-        console.log('Telegram Çağırıldı');
+        // console.log('Telegram Çağırıldı');
+        // Delegating to new TelegramService
         try {
-            await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_BOT_TOKEN_1 + '/sendMessage', {
-                "chat_id": -redacted_chat_id,
-                "text": message,
-                "parse_mode": "MarkdownV2",
-                "disable_web_page_preview": true
-            });
-            await axios.post('https://api.telegram.org/bot' + process.env.TELEGRAM_BOT_TOKEN_2 + '/sendMessage', {
-                "chat_id": -1001558369109,
-                "text": message,
-                "parse_mode": "MarkdownV2",
-                "disable_web_page_preview": true
-            });
+            const TelegramService = require('../services/TelegramService');
+            await TelegramService.broadcast(message);
         } catch (error) {
             console.error('Telegram Error:', error.message);
         }

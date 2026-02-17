@@ -1,0 +1,139 @@
+const axios = require('axios');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+const telegramTokens = [
+    process.env.TELEGRAM_BOT_TOKEN_1,
+    process.env.TELEGRAM_BOT_TOKEN_2
+].filter(token => token); // Filter out undefined tokens
+
+const chatIds = {
+    general: process.env.TELEGRAM_CHAT_ID_GENERAL || '-redacted_chat_id', // Default from user snippet
+    alerts: process.env.TELEGRAM_CHAT_ID_ALERTS || '-1001558369109'   // Default from user snippet
+};
+
+const TelegramService = {
+    /**
+     * Escape characters for MarkdownV2 style
+     */
+    escapeMarkdown(text) {
+        if (!text) return '';
+        return text
+            .replace(/\_/g, '\\_')
+            .replace(/\*/g, '\\*')
+            .replace(/\[/g, '\\[')
+            .replace(/\]/g, '\\]')
+            .replace(/\(/g, '\\(')
+            .replace(/\)/g, '\\)')
+            .replace(/\~/g, '\\~')
+            .replace(/\`/g, '\\`')
+            .replace(/\>/g, '\\>')
+            .replace(/\#/g, '\\#')
+            .replace(/\+/g, '\\+')
+            .replace(/\-/g, '\\-')
+            .replace(/\=/g, '\\=')
+            .replace(/\|/g, '\\|')
+            .replace(/\{/g, '\\{')
+            .replace(/\}/g, '\\}')
+            .replace(/\./g, '\\.')
+            .replace(/\!/g, '\\!');
+    },
+
+    /**
+     * Send a message to specific chat IDs
+     * @param {string|Array} targetChatIds - Single ID or array of IDs
+     * @param {string} message - The message text
+     * @param {boolean} isMarkdown - Whether to use MarkdownV2
+     */
+    async sendMessage(targetChatIds, message, isMarkdown = true) {
+        if (!Array.isArray(targetChatIds)) {
+            targetChatIds = [targetChatIds];
+        }
+
+        const stats = { success: 0, failed: 0 };
+
+        for (const chatId of targetChatIds) {
+            // We iterate over all available bot tokens to ensure delivery? 
+            // Or just use the first one? The original code used different bots for different chats.
+            // For simplicity and robustness, we'll try to send with the first available token for now.
+            // If the user wants specific bots for specific chats, we might need more config.
+            // Based on snippet: 
+            // Bot 1 -> Chat -redacted_chat_id
+            // Bot 2 -> Chat -1001558369109
+
+            // Let's try to infer which token to use or just uses TOKEN_1 as primary.
+            // For now, I will use TOKEN_1 for everything unless specified. 
+            // Actually, the user snippet sent to BOTH bots for the "telegramChange" function? 
+            // No, `telegramMessage` sent to options1 (Bot1 -> Chat1) AND options2 (Bot2 -> Chat2).
+
+            // We will attempt to send to the specified chat ID using the first token.
+            // If that fails, maybe try the second? 
+            // Let's keep it simple: Use TOKEN_1 by default.
+
+            const token = process.env.TELEGRAM_BOT_TOKEN_1;
+            if (!token) {
+                console.error('TELEGRAM_BOT_TOKEN_1 is not defined');
+                continue;
+            }
+
+            try {
+                await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    chat_id: chatId,
+                    text: message,
+                    parse_mode: isMarkdown ? "MarkdownV2" : undefined,
+                    disable_web_page_preview: true
+                });
+                stats.success++;
+                // console.log(`Message sent to ${chatId}`);
+            } catch (error) {
+                console.error(`Failed to send Telegram message to ${chatId}:`, error.message);
+                stats.failed++;
+            }
+        }
+        return stats;
+    },
+
+    /**
+     * Broadcast a message to all configured channels
+     */
+    async broadcast(message) {
+        const targets = Object.values(chatIds);
+        // Also send to both bots if needed, but for now let's assume one bot covers permission for these chats.
+        // User snippet had TWO different bot tokens.
+        // Bot 1: 5021488041...
+        // Bot 2: 2004321935...
+
+        // We need to handle multi-bot scenario if the chats are exclusive to bots.
+        // Let's iterate tokens and try to send to their respective "default" chats if mapped, 
+        // OR just try sending to the target chat with the available token.
+
+        // Strategy: 
+        // 1. Send to General Chat using Bot 1
+        // 2. Send to Alerts Chat using Bot 2 (as per snippet logic implied, though snippet actually sent to both?)
+
+        // Re-reading snippet:
+        // `options2` (Bot 5021...) -> Chat -redacted_chat_id
+        // `options` (Bot 2004...) -> Chat -1001558369109
+
+        const p1 = this.sendToBot(process.env.TELEGRAM_BOT_TOKEN_1, chatIds.general, message);
+        const p2 = this.sendToBot(process.env.TELEGRAM_BOT_TOKEN_2, chatIds.alerts, message); // Assuming Chat 2 uses Bot 2
+
+        await Promise.all([p1, p2]);
+    },
+
+    async sendToBot(token, chatId, message) {
+        if (!token || !chatId) return;
+        try {
+            await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+                chat_id: chatId,
+                text: message,
+                parse_mode: "MarkdownV2",
+                disable_web_page_preview: true
+            });
+        } catch (error) {
+            console.error(`Failed to send to ${chatId} via bot ending in ...${token.slice(-5)}:`, error.message);
+        }
+    }
+};
+
+module.exports = TelegramService;

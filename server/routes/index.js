@@ -242,6 +242,38 @@ router.post('/tester/', async (req, res, next) => {
     res.send('Test successful');
 });
 
+// --- Telegram Routes ---
+
+router.post('/telegram', async (req, res) => {
+    try {
+        const message = req.body.message;
+        if (!message) {
+            return res.status(400).json({ status: 'error', message: 'Message body missing' });
+        }
+
+        const TelegramService = require('../services/TelegramService');
+        await TelegramService.broadcast(message);
+
+        res.status(200).json({ status: 'başarılı' });
+    } catch (error) {
+        console.error('Telegram Route Error', error);
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+router.get('/telegram/:message', async (req, res) => {
+    try {
+        const message = req.params.message;
+        const TelegramService = require('../services/TelegramService');
+        await TelegramService.broadcast(message);
+
+        res.status(200).json({ status: 'başarılı' });
+    } catch (error) {
+        console.error('Telegram Route Error', error);
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
 router.get('/singlecoin/:kur',
     function cache(req, res, next) {
         const { kur } = req.params;
