@@ -23,6 +23,9 @@ worker.setSocket(io);
 io.on('connection', (socket) => {
     console.log('User connected', socket.id);
 
+    // Wake up worker immediately
+    worker.checkActivity(lastRequestTime);
+
     // Send available data immediately upon connection
     if (CoinDataService.coinList && Object.keys(CoinDataService.coinList).length > 0) {
         socket.emit('data_update', CoinDataService.coinList);
@@ -30,6 +33,8 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('User disconnected', socket.id);
+        // Check if we should sleep
+        worker.checkActivity(lastRequestTime);
     });
 });
 
