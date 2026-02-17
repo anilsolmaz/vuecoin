@@ -46,8 +46,14 @@ function stopPolling() {
 module.exports = {
     checkActivity: function (lastRequestTime) {
         let now = Date.now();
-        // If last request was less than 10 seconds ago, BE ACTIVE
-        if (now - lastRequestTime < 10000) {
+        let hasActiveSockets = false;
+
+        if (io && io.engine) {
+            hasActiveSockets = io.engine.clientsCount > 0;
+        }
+
+        // If last request was less than 10 seconds ago OR there are active sockets, BE ACTIVE
+        if ((now - lastRequestTime < 10000) || hasActiveSockets) {
             startPolling();
         } else {
             stopPolling();
