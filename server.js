@@ -17,6 +17,17 @@ const io = new Server(server, {
 });
 
 const CoinDataService = require('./server/services/CoinDataService');
+const ListingMonitorService = require('./server/services/ListingMonitorService');
+
+// Initialize Listing Monitor
+if (process.env.NODE_ENV !== 'test') {
+    ListingMonitorService.init().then(() => {
+        // Run check every 60 seconds
+        setInterval(() => {
+            ListingMonitorService.checkParibuListings();
+        }, 60000);
+    });
+}
 
 worker.setSocket(io);
 
