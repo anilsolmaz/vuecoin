@@ -265,7 +265,7 @@ router.get('/telegram/:message', async (req, res) => {
     try {
         const message = req.params.message;
         const TelegramService = require('../services/TelegramService');
-        await TelegramService.broadcast(message);
+        await TelegramService.sendAzelert(message); // Uses specific Azelert bot
 
         res.status(200).json({ status: 'başarılı' });
     } catch (error) {

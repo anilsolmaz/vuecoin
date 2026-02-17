@@ -69,6 +69,11 @@ app.use('/api', apiRouter);
 const PORT = process.env.PORT || '3000';
 server.listen(PORT, () => {
     console.log(`Server şu portta çalışıyor: ${PORT}`);
+    // Send startup notification
+    if (process.env.NODE_ENV !== 'test') {
+        const TelegramService = require('./server/services/TelegramService');
+        TelegramService.broadcast('🚀 Server Started and Running!');
+    }
 });
 
 

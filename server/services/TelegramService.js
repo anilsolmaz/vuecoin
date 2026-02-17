@@ -133,6 +133,19 @@ const TelegramService = {
         } catch (error) {
             console.error(`Failed to send to ${chatId} via bot ending in ...${token.slice(-5)}:`, error.message);
         }
+    },
+
+    /**
+     * Send a message specifically to the Azelert group
+     */
+    async sendAzelert(message) {
+        const token = process.env.TELEGRAM_BOT_TOKEN_AZELERT;
+        const chatId = process.env.TELEGRAM_CHAT_ID_AZELERT;
+        if (!token || !chatId) {
+            console.error('Azelert configuration missing');
+            return;
+        }
+        await this.sendToBot(token, chatId, message);
     }
 };
 
