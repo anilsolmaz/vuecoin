@@ -81,7 +81,7 @@ export default {
   methods: {
     updateData() {
       axios
-          .get('http://localhost:3000/api/allParibuData')
+          .get('/api/allParibuData')
           .then(response => {
             // Filter the global data for only the coins in coinRequest
             let allData = response.data;
@@ -175,7 +175,7 @@ export default {
   font-size: 13px;
 }
 
-. coinPair {
+.coinPair {
   font-weight: 900;
   font-size: 14px;
   font-family: Cairo, sans-serif;
