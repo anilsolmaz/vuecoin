@@ -154,14 +154,13 @@ class CoinDataService {
 
             client.get('arb_settings', (err, reply) => {
                 if (err) {
-                    console.error('CoinDataService: Redis GET arb_settings error:', err);
                     return resolve();
                 }
                 if (reply) {
                     try {
                         this.settings = JSON.parse(reply);
                     } catch (e) {
-                        console.error('CoinDataService: Failed to parse arb_settings:', e);
+                        // Ignore parse error
                     }
                 }
                 resolve();

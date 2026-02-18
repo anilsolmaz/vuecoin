@@ -334,7 +334,6 @@ router.get('/singlecoin/:kur',
 router.get('/settings', async (req, res) => {
     client.get('arb_settings', (err, reply) => {
         if (err) {
-            console.error('Redis GET arb_settings error:', err);
             return res.status(500).json({ error: err.message });
         }
         if (!reply) {
@@ -361,7 +360,6 @@ router.post('/settings', async (req, res) => {
 
     client.set('arb_settings', JSON.stringify(settings), async (err) => {
         if (err) {
-            console.error('Redis SET arb_settings error:', err);
             return res.status(500).json({ error: err.message });
         }
         console.log('✅ Settings saved to Redis successfully:', settings);

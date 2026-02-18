@@ -12,11 +12,11 @@ if (process.env.NODE_ENV !== 'test') {
     });
 
     client.on('error', (err) => {
-        console.error('❌ Redis Error:', err.message);
+        // Silent error for production, or use a proper logger
     });
 
     client.on('connect', () => {
-        console.log('✅ Connected to Redis successfully');
+        // Connected
     });
 } else {
     // Mock client for tests
