@@ -302,7 +302,7 @@ class CoinDataService {
             this.calculateCoinMetrics(coin);
         });
 
-        // this.logTopOpportunities();
+        this.logTopOpportunities();
 
         return this.coinList;
     }
@@ -497,13 +497,21 @@ class CoinDataService {
         });
 
         // Filter out ROI below threshold from settings
+        let totalRaw = opportunities.length;
         opportunities = opportunities.filter(o => o.roi >= (this.settings.minROI || 0.50));
+        let afterFilter = opportunities.length;
+
+        console.log(`[Arb Check] Total Coins: ${totalRaw}, After ROI Filter (>=${this.settings.minROI}%): ${afterFilter}`);
 
         // Sort by Profit (Descending)
         opportunities.sort((a, b) => b.profit - a.profit);
 
         // Take Top 3
         const top3 = opportunities.slice(0, 3);
+
+        if (top3.length > 0) {
+            console.log(`[Arb Top] Best Deal: ${top3[0].coin} ROI: ${top3[0].roi.toFixed(2)}% Profit: ₺${top3[0].profit.toFixed(2)}`);
+        }
 
         /*
                 if (top3.length > 0) {
@@ -543,14 +551,14 @@ class CoinDataService {
         this.lastAlertTimes[op.coin] = now;
         this.lastAlertProfits[op.coin] = op.profit;
 
-        let msg = `🔥 *HIGH PROFIT ARBITRAGE DETECTED!*\n\n` +
-            `🪙 *Coin:* ${op.coin.toUpperCase()}\n` +
-            `💰 *Potential Gain:* ₺${op.profit.toFixed(2)}\n` +
-            `📈 *ROI:* %${op.roi.toFixed(2)}\n` +
-            `🛒 *Buy:* ${op.buyExchange}\n` +
-            `🤝 *Sell:* ${op.sellExchange}\n` +
-            `📊 *Trade Capacity:* ₺${op.tradeAmountTRY.toFixed(0)}\n\n` +
-            `🚀 _Budget: Unlimited (Market Capacity Based)_`;
+        let msg = `🔥 <b>HIGH PROFIT ARBITRAGE DETECTED!</b>\n\n` +
+            `🪙 <b>Coin:</b> ${op.coin.toUpperCase()}\n` +
+            `💰 <b>Potential Gain:</b> ₺${op.profit.toFixed(2)}\n` +
+            `📈 <b>ROI:</b> %${op.roi.toFixed(2)}\n` +
+            `🛒 <b>Buy:</b> ${op.buyExchange}\n` +
+            `🤝 <b>Sell:</b> ${op.sellExchange}\n` +
+            `📊 <b>Trade Capacity:</b> ₺${op.tradeAmountTRY.toFixed(0)}\n\n` +
+            `🚀 <i>Budget: Unlimited (Market Capacity Based)</i>`;
 
         try {
             await TelegramService.broadcast(msg);

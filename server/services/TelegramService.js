@@ -12,29 +12,14 @@ const chatIds = {
 
 const TelegramService = {
     /**
-     * Escape characters for MarkdownV2 style
+     * Escape characters for HTML
      */
-    escapeMarkdown(text) {
+    escapeHTML(text) {
         if (!text) return '';
         return text
-            .replace(/\_/g, '\\_')
-            .replace(/\*/g, '\\*')
-            .replace(/\[/g, '\\[')
-            .replace(/\]/g, '\\]')
-            .replace(/\(/g, '\\(')
-            .replace(/\)/g, '\\)')
-            .replace(/\~/g, '\\~')
-            .replace(/\`/g, '\\`')
-            .replace(/\>/g, '\\>')
-            .replace(/\#/g, '\\#')
-            .replace(/\+/g, '\\+')
-            .replace(/\-/g, '\\-')
-            .replace(/\=/g, '\\=')
-            .replace(/\|/g, '\\|')
-            .replace(/\{/g, '\\{')
-            .replace(/\}/g, '\\}')
-            .replace(/\./g, '\\.')
-            .replace(/\!/g, '\\!');
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     },
 
     /**
@@ -120,15 +105,19 @@ const TelegramService = {
 
     async sendToBot(token, chatId, message) {
         if (!token || !chatId) return;
+        // console.log(`[Telegram] Sending to ${chatId}: ${message}`); 
         try {
             await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
                 chat_id: chatId,
-                text: this.escapeMarkdown(message),
-                parse_mode: "MarkdownV2",
+                text: message,
+                parse_mode: "HTML",
                 disable_web_page_preview: true
             });
         } catch (error) {
             console.error(`Failed to send to ${chatId} via bot ending in ...${token.slice(-5)}:`, error.message);
+            if (error.response && error.response.data) {
+                console.error('Telegram API Error Data:', JSON.stringify(error.response.data));
+            }
         }
     },
 
