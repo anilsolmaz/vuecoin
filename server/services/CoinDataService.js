@@ -501,7 +501,6 @@ class CoinDataService {
         opportunities = opportunities.filter(o => o.roi >= minROI);
         let afterFilter = opportunities.length;
 
-        console.log(`[Arb Check] Total Coins: ${totalRaw}, After ROI Filter (>=${this.settings.minROI}%): ${afterFilter}`);
 
         // Sort by Profit (Descending)
         opportunities.sort((a, b) => b.profit - a.profit);
@@ -509,9 +508,6 @@ class CoinDataService {
         // Take Top 3
         const top3 = opportunities.slice(0, 3);
 
-        if (top3.length > 0) {
-            console.log(`[Arb Top] Best Deal: ${top3[0].coin} ROI: ${top3[0].roi.toFixed(2)}% Profit: ₺${top3[0].profit.toFixed(2)}`);
-        }
 
         /*
                 if (top3.length > 0) {
