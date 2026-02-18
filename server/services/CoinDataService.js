@@ -497,49 +497,37 @@ class CoinDataService {
                 // BUY SIDE DEPTH CHECK
                 if (this.depthCache[coin] && bestBuy.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
                     let asks = this.depthCache[coin]['Binance'].asks;
-                    if (asks && asks.length > 0) {
-                        let total = 0;
-                        asks.forEach(a => total += parseFloat(a[1]));
-                        buyVolume = total; // Override Ticker Qty with Depth Sum
-                    }
+                    let total = 0;
+                    if (asks) asks.forEach(a => total += parseFloat(a[1]));
+                    buyVolume = total; // Override Ticker Qty with Depth Sum (Even if 0)
                 } else if (this.depthCache[coin] && bestBuy.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
                     let asks = this.depthCache[coin]['BTCTurk'].asks;
-                    if (asks && asks.length > 0) {
-                        let total = 0;
-                        asks.forEach(a => total += parseFloat(a[1]));
-                        buyVolume = total;
-                    }
+                    let total = 0;
+                    if (asks) asks.forEach(a => total += parseFloat(a[1]));
+                    buyVolume = total;
                 } else if (this.depthCache[coin] && bestBuy.exchange.includes('Paribu') && this.depthCache[coin]['Paribu'] && !this.depthCache[coin]['Paribu'].error) {
                     let asks = this.depthCache[coin]['Paribu'].asks;
-                    if (asks && asks.length > 0) {
-                        let total = 0;
-                        asks.forEach(a => total += parseFloat(a[1]));
-                        buyVolume = total;
-                    }
+                    let total = 0;
+                    if (asks) asks.forEach(a => total += parseFloat(a[1]));
+                    buyVolume = total;
                 }
 
                 // SELL SIDE DEPTH CHECK
                 if (this.depthCache[coin] && bestSell.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
                     let bids = this.depthCache[coin]['Binance'].bids;
-                    if (bids && bids.length > 0) {
-                        let total = 0;
-                        bids.forEach(b => total += parseFloat(b[1]));
-                        sellVolume = total; // Override Ticker Qty with Depth Sum
-                    }
+                    let total = 0;
+                    if (bids) bids.forEach(b => total += parseFloat(b[1]));
+                    sellVolume = total; // Override Ticker Qty with Depth Sum (Even if 0)
                 } else if (this.depthCache[coin] && bestSell.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
                     let bids = this.depthCache[coin]['BTCTurk'].bids;
-                    if (bids && bids.length > 0) {
-                        let total = 0;
-                        bids.forEach(b => total += parseFloat(b[1]));
-                        sellVolume = total;
-                    }
+                    let total = 0;
+                    if (bids) bids.forEach(b => total += parseFloat(b[1]));
+                    sellVolume = total;
                 } else if (this.depthCache[coin] && bestSell.exchange.includes('Paribu') && this.depthCache[coin]['Paribu'] && !this.depthCache[coin]['Paribu'].error) {
                     let bids = this.depthCache[coin]['Paribu'].bids;
-                    if (bids && bids.length > 0) {
-                        let total = 0;
-                        bids.forEach(b => total += parseFloat(b[1]));
-                        sellVolume = total;
-                    }
+                    let total = 0;
+                    if (bids) bids.forEach(b => total += parseFloat(b[1]));
+                    sellVolume = total;
                 }
 
                 // FINAL CAPACITY IS THE BOTTLENECK OF THE TWO SIDES
