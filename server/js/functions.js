@@ -7,11 +7,21 @@ const config = require('../configs/config.json');
 
 
 // Redis.io db bilgileri
-const client = redis.createClient({
-    "port": process.env.REDIS_PORT,
-    "password": process.env.REDIS_PASSWORD,
-    "host": process.env.REDIS_HOST
-});
+let client;
+if (process.env.NODE_ENV !== 'test') {
+    client = redis.createClient({
+        "port": process.env.REDIS_PORT,
+        "password": process.env.REDIS_PASSWORD,
+        "host": process.env.REDIS_HOST
+    });
+} else {
+    client = {
+        on: () => { },
+        setex: () => { },
+        get: () => { },
+        quit: () => { }
+    };
+}
 
 
 
@@ -27,7 +37,9 @@ async function fetchParibu(resolve, reject, currentTime, requestCount) {
                 paribuJSON[coinName] = {
                     price: parseFloat(paribuData[coin]['last']),
                     ask: parseFloat(paribuData[coin]['lowestAsk']),
-                    bid: parseFloat(paribuData[coin]['highestBid'])
+                    askQty: null,
+                    bid: parseFloat(paribuData[coin]['highestBid']),
+                    bidQty: null
                 };
             }
         });
@@ -50,7 +62,9 @@ async function fetchBinance(resolve, reject, currentTime, requestCount) {
                 binanceJSON[coin.symbol] = {
                     price: (parseFloat(coin.bidPrice) + parseFloat(coin.askPrice)) / 2,
                     bid: parseFloat(coin.bidPrice),
-                    ask: parseFloat(coin.askPrice)
+                    bidQty: parseFloat(coin.bidQty),
+                    ask: parseFloat(coin.askPrice),
+                    askQty: parseFloat(coin.askQty)
                 };
         });
         client.setex('binanceData', config.cacheDuration, JSON.stringify(binanceJSON));
@@ -71,7 +85,9 @@ async function fetchBTCTurk(resolve, reject, currentTime, requestCount) {
             BTCTurkJSON[coin.pair] = {
                 price: parseFloat(coin.last),
                 ask: parseFloat(coin.ask),
-                bid: parseFloat(coin.bid)
+                askQty: null,
+                bid: parseFloat(coin.bid),
+                bidQty: null
             };
         });
         client.setex('BTCTurkData', config.cacheDuration, JSON.stringify(BTCTurkJSON));
@@ -176,27 +192,28 @@ module.exports = {
             const response = await axios.get(config.exchangeMarkets.paribu.tickerUrl);
             let newParibuMarketsData = Object.keys(response.data);
             let newParibuMarkets = [];
-            let oldParibuMarkets = config.exchangeMarkets.paribu.markets;
             newParibuMarketsData.forEach(coin => {
                 newParibuMarkets.push(coin.toLowerCase().split('_')[0]);
             });
 
-            let paribuMarketsDifference = this.twoArrayDifference(oldParibuMarkets, newParibuMarkets);
-            if (paribuMarketsDifference.length > 0) {
-                let filepath = process.cwd() + "/server/configs/config.json";
-                fs.readFile(filepath, 'utf8', function readFileCallback(err, data) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        let newData = JSON.parse(data);
-                        paribuMarketsDifference.forEach((data, key) => {
-                            newData.exchangeMarkets.paribu.markets.push(data);
-                        });
-                        fs.writeFile(filepath, JSON.stringify(newData, null, 2), 'utf8', err => {
-                            if (err) throw err;
-                        });
-                    }
+            let filepath = process.cwd() + "/server/configs/config.json";
+
+            // Read fresh data from disk
+            let fileData = fs.readFileSync(filepath, 'utf8');
+            let currentConfig = JSON.parse(fileData);
+            let oldParibuMarkets = currentConfig.exchangeMarkets.paribu.markets;
+
+            // Only find strictly NEW markets (present in API but not in Config)
+            let newListings = this.differenceOfFirstArray(newParibuMarkets, oldParibuMarkets);
+
+            if (newListings.length > 0) {
+                console.log('New Paribu Markets Found:', newListings);
+                newListings.forEach((data) => {
+                    currentConfig.exchangeMarkets.paribu.markets.push(data);
                 });
+
+                fs.writeFileSync(filepath, JSON.stringify(currentConfig, null, 2), 'utf8');
+                console.log('Config updated with new Paribu markets.');
             }
         } catch (error) {
             console.error('Paribu Markets Update Failed', error.message);
@@ -207,27 +224,28 @@ module.exports = {
             console.log('BTCTurk Markets update started');
             const response = await axios.get(config.exchangeMarkets.BTCTurk.exchangeInfoURL);
             let newBTCTurkMarkets = [];
-            let oldBTCTurkMarkets = config.exchangeMarkets.BTCTurk.markets;
             response.data.data.currencies.forEach(coin => {
                 newBTCTurkMarkets.push(coin.symbol.toLowerCase());
             });
 
-            let BTCTurkMarketsDifference = this.twoArrayDifference(oldBTCTurkMarkets, newBTCTurkMarkets);
-            if (BTCTurkMarketsDifference.length > 0) {
-                let filepath = process.cwd() + "/server/configs/config.json";
-                fs.readFile(filepath, 'utf8', function readFileCallback(err, data) {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        let newData = JSON.parse(data);
-                        BTCTurkMarketsDifference.forEach((data, key) => {
-                            newData.exchangeMarkets.BTCTurk.markets.push(data);
-                        });
-                        fs.writeFile(filepath, JSON.stringify(newData, null, 2), 'utf8', err => {
-                            if (err) throw err;
-                        });
-                    }
+            let filepath = process.cwd() + "/server/configs/config.json";
+
+            // Read fresh data from disk
+            let fileData = fs.readFileSync(filepath, 'utf8');
+            let currentConfig = JSON.parse(fileData);
+            let oldBTCTurkMarkets = currentConfig.exchangeMarkets.BTCTurk.markets;
+
+            // Only find strictly NEW markets
+            let newListings = this.differenceOfFirstArray(newBTCTurkMarkets, oldBTCTurkMarkets);
+
+            if (newListings.length > 0) {
+                console.log('New BTCTurk Markets Found:', newListings);
+                newListings.forEach((data) => {
+                    currentConfig.exchangeMarkets.BTCTurk.markets.push(data);
                 });
+
+                fs.writeFileSync(filepath, JSON.stringify(currentConfig, null, 2), 'utf8');
+                console.log('Config updated with new BTCTurk markets.');
             }
         } catch (error) {
             console.error('BTCTurk Markets Update Failed', error.message);
@@ -342,6 +360,26 @@ module.exports = {
     },
     removeDuplicatesFromArray: function (arrayList) {
         return [...new Set(arrayList)];
+    },
+    getBinanceOrderBook: async function (symbol) {
+        try {
+            // Limit 5 is enough for immediate depth check usually, or 10
+            const response = await axios.get(`${config.exchangeMarkets.binance.tickerUrl.replace('ticker/bookTicker', 'depth')}?symbol=${symbol}&limit=5`);
+            return response.data;
+        } catch (error) {
+            console.error(`Binance OrderBook Error (${symbol}):`, error.message);
+            return null;
+        }
+    },
+    getBTCTurkOrderBook: async function (pairSymbol) {
+        try {
+            // endpoint: htps://api.btcturk.com/api/v2/orderbook?pairSymbol=BTCTRY
+            const response = await axios.get(`https://api.btcturk.com/api/v2/orderbook?pairSymbol=${pairSymbol}`);
+            return response.data.data;
+        } catch (error) {
+            console.error(`BTCTurk OrderBook Error (${pairSymbol}):`, error.message);
+            return null;
+        }
     }
 
 };

@@ -2,13 +2,25 @@ const f = require('../js/functions');
 const config = require('../configs/config.json');
 const redis = require("redis");
 const { DateTime } = require("luxon");
+const TelegramService = require('./TelegramService');
 require('dotenv').config({ path: __dirname + '/../../server/.env' }); // Adjust path if needed
 
-const client = redis.createClient({
-    "port": process.env.REDIS_PORT,
-    "password": process.env.REDIS_PASSWORD,
-    "host": process.env.REDIS_HOST
-});
+let client;
+if (process.env.NODE_ENV !== 'test') {
+    client = redis.createClient({
+        "port": process.env.REDIS_PORT,
+        "password": process.env.REDIS_PASSWORD,
+        "host": process.env.REDIS_HOST
+    });
+} else {
+    // Mock client for tests
+    client = {
+        on: () => { },
+        setex: () => { },
+        get: () => { },
+        quit: () => { }
+    };
+}
 
 class CoinDataService {
     constructor() {
@@ -18,6 +30,10 @@ class CoinDataService {
         this.paribuCHZ = 0;
         this.requestCount = 0;
         this.initialized = false;
+        this.depthCache = {};
+        this.depthTimestamps = {};
+        this.lastAlertTimes = {}; // For Telegram cooldown
+        this.lastAlertProfits = {}; // To detect profit increases
     }
 
     async initialize() {
@@ -195,7 +211,9 @@ class CoinDataService {
                 this.coinList[coinName]['paribu']['try'] = {
                     price: coinValue.price,
                     bid: coinValue.bid,
-                    ask: coinValue.ask
+                    bidQty: coinValue.bidQty,
+                    ask: coinValue.ask,
+                    askQty: coinValue.askQty
                 };
 
                 if (finalResults.binance) {
@@ -206,12 +224,16 @@ class CoinDataService {
                     this.coinList[coinName]['binance']['usdt'] = {
                         price: binanceUSDT ? binanceUSDT.price : 0,
                         bid: binanceUSDT ? binanceUSDT.bid : 0,
-                        ask: binanceUSDT ? binanceUSDT.ask : 0
+                        bidQty: binanceUSDT ? binanceUSDT.bidQty : 0,
+                        ask: binanceUSDT ? binanceUSDT.ask : 0,
+                        askQty: binanceUSDT ? binanceUSDT.askQty : 0
                     };
                     this.coinList[coinName]['binance']['try'] = {
                         price: binanceTRY ? binanceTRY.price : 0,
                         bid: binanceTRY ? binanceTRY.bid : 0,
-                        ask: binanceTRY ? binanceTRY.ask : 0
+                        bidQty: binanceTRY ? binanceTRY.bidQty : 0,
+                        ask: binanceTRY ? binanceTRY.ask : 0,
+                        askQty: binanceTRY ? binanceTRY.askQty : 0
                     };
                 }
                 if (finalResults.BTCTurk) {
@@ -222,12 +244,17 @@ class CoinDataService {
                     this.coinList[coinName]['BTCTurk']['usdt'] = {
                         price: btcturkUSDT ? btcturkUSDT.price : 0,
                         bid: btcturkUSDT ? btcturkUSDT.bid : 0,
-                        ask: btcturkUSDT ? btcturkUSDT.ask : 0
+                        bidQty: btcturkUSDT ? btcturkUSDT.bidQty : 0,
+                        ask: btcturkUSDT ? btcturkUSDT.ask : 0,
+                        askQty: btcturkUSDT ? btcturkUSDT.askQty : 0
+
                     };
                     this.coinList[coinName]['BTCTurk']['try'] = {
                         price: btcturkTRY ? btcturkTRY.price : 0,
                         bid: btcturkTRY ? btcturkTRY.bid : 0,
-                        ask: btcturkTRY ? btcturkTRY.ask : 0
+                        bidQty: btcturkTRY ? btcturkTRY.bidQty : 0,
+                        ask: btcturkTRY ? btcturkTRY.ask : 0,
+                        askQty: btcturkTRY ? btcturkTRY.askQty : 0
                     };
                 }
             }
@@ -239,9 +266,19 @@ class CoinDataService {
         if (this.coinList['usdt']?.paribu?.try?.price) {
             this.paribuUSDT = this.coinList['usdt'].paribu.try.price;
             client.setex('paribuUSDT', config.cacheDuration, this.paribuUSDT);
+        } else if (process.env.NODE_ENV === 'test') {
+            // Mock value for tests
+            this.paribuUSDT = 10;
         }
+
+        this.paribuCHZ = 0;
         if (this.coinList['chz']?.paribu?.try?.price) {
             this.paribuCHZ = this.coinList['chz'].paribu.try.price;
+        }
+
+        this.btcturkUSDT = 0;
+        if (this.coinList['usdt']?.BTCTurk?.try?.price) {
+            this.btcturkUSDT = this.coinList['usdt'].BTCTurk.try.price;
         }
 
         // Calculate Metrics
@@ -249,7 +286,42 @@ class CoinDataService {
             this.calculateCoinMetrics(coin);
         });
 
+        // this.logTopOpportunities();
+
         return this.coinList;
+    }
+
+    async fetchDepth(coin, exchange) {
+        let now = Date.now();
+        // Prevent frequent fetching (limit to once per 3 seconds per coin/exchange)
+        if (this.depthTimestamps[`${coin}_${exchange}`] && (now - this.depthTimestamps[`${coin}_${exchange}`] < 3000)) {
+            return;
+        }
+
+        this.depthTimestamps[`${coin}_${exchange}`] = now;
+
+        try {
+            if (exchange.includes('Binance')) {
+                // Binance symbol usually like BTCUSDT. We need to know which pair caused the arb.
+                // But simplified: fetch USDT pair depth as it's most liquid/likely.
+                let symbol = coin.toUpperCase() + 'USDT';
+                let data = await f.getBinanceOrderBook(symbol);
+                if (data) {
+                    if (!this.depthCache[coin]) this.depthCache[coin] = {};
+                    this.depthCache[coin]['Binance'] = data;
+                }
+            } else if (exchange.includes('BTCTurk')) {
+                // BTCTurk pair: BTCTRY usually
+                let symbol = coin.toUpperCase() + 'TRY';
+                let data = await f.getBTCTurkOrderBook(symbol);
+                if (data) {
+                    if (!this.depthCache[coin]) this.depthCache[coin] = {};
+                    this.depthCache[coin]['BTCTurk'] = data;
+                }
+            }
+        } catch (e) {
+            console.error(`Depth fetch failed for ${coin} on ${exchange}`);
+        }
     }
 
     calculateCoinMetrics(coin) {
@@ -262,13 +334,10 @@ class CoinDataService {
         if (!item.chiliz) item.chiliz = { chz: {}, usdt: {} };
 
         // Cross Rate Calculations
-        // Cross Rate Calculations (Also convert Bids and Asks)
-        // Helper to convert object safely
         const convert = (obj, rate, op) => {
             if (!obj || !obj.price) return;
             if (op === 'div') {
                 obj.inUSDT = obj.price / rate;
-                // Convert Bid/Ask too if they exist
                 if (obj.bid) obj.bidInUSDT = obj.bid / rate;
                 if (obj.ask) obj.askInUSDT = obj.ask / rate;
             } else {
@@ -284,35 +353,193 @@ class CoinDataService {
         if (item.binance.usdt?.price && this.paribuUSDT) convert(item.binance.usdt, this.paribuUSDT, 'mult');
         if (item.binance.try?.price && this.paribuUSDT) convert(item.binance.try, this.paribuUSDT, 'div');
 
-        if (item.BTCTurk.usdt?.price && this.paribuUSDT) convert(item.BTCTurk.usdt, this.paribuUSDT, 'mult');
-        if (item.BTCTurk.try?.price && this.paribuUSDT) convert(item.BTCTurk.try, this.paribuUSDT, 'div');
+        let btcRate = this.btcturkUSDT || this.paribuUSDT;
+        if (item.BTCTurk.usdt?.price && btcRate) convert(item.BTCTurk.usdt, btcRate, 'mult');
+        if (item.BTCTurk.try?.price && btcRate) convert(item.BTCTurk.try, btcRate, 'div');
 
-        // New ROI Logic: Best Sell (Highest Bid) vs Best Buy (Lowest Ask)
-        let buyOptions = [];
-        let sellOptions = [];
+        // Initialize Arbitrage Data
+        let bestBuy = { price: Infinity, exchange: null, qty: null };
+        let bestSell = { price: 0, exchange: null, qty: null };
 
-        // Collect all valid Asks (Buy Prices) in TRY
-        if (item.paribu.try?.ask) buyOptions.push(item.paribu.try.ask);
-        if (item.binance.usdt?.askInTRY) buyOptions.push(item.binance.usdt.askInTRY);
-        if (item.binance.try?.ask) buyOptions.push(item.binance.try.ask);
-        if (item.BTCTurk.try?.ask) buyOptions.push(item.BTCTurk.try.ask);
-        if (item.BTCTurk.usdt?.askInTRY) buyOptions.push(item.BTCTurk.usdt.askInTRY);
+        const checkBuy = (price, exchange, qty) => {
+            if (price > 0 && price < bestBuy.price) {
+                bestBuy = { price, exchange, qty };
+            }
+        };
 
-        // Collect all valid Bids (Sell Prices) in TRY
-        if (item.paribu.try?.bid) sellOptions.push(item.paribu.try.bid);
-        if (item.binance.usdt?.bidInTRY) sellOptions.push(item.binance.usdt.bidInTRY);
-        if (item.binance.try?.bid) sellOptions.push(item.binance.try.bid);
-        if (item.BTCTurk.try?.bid) sellOptions.push(item.BTCTurk.try.bid);
-        if (item.BTCTurk.usdt?.bidInTRY) sellOptions.push(item.BTCTurk.usdt.bidInTRY);
+        const checkSell = (price, exchange, qty) => {
+            if (price > 0 && price > bestSell.price) {
+                bestSell = { price, exchange, qty };
+            }
+        };
 
-        if (buyOptions.length > 0 && sellOptions.length > 0) {
-            const minAsk = Math.min(...buyOptions); // Best Buy Price
-            const maxBid = Math.max(...sellOptions); // Best Sell Price
+        // Check Paribu
+        if (item.paribu.try?.ask) checkBuy(item.paribu.try.ask, 'Paribu', item.paribu.try.askQty);
+        if (item.paribu.try?.bid) checkSell(item.paribu.try.bid, 'Paribu', item.paribu.try.bidQty);
 
-            // ROI = ((Sell - Buy) / Buy) * 100
-            item.ROI = ((maxBid - minAsk) / minAsk) * 100;
+        // Check Binance
+        if (item.binance.usdt?.askInTRY) checkBuy(item.binance.usdt.askInTRY, 'Binance(USDT)', item.binance.usdt.askQty);
+        if (item.binance.usdt?.bidInTRY) checkSell(item.binance.usdt.bidInTRY, 'Binance(USDT)', item.binance.usdt.bidQty);
+        if (item.binance.try?.ask) checkBuy(item.binance.try.ask, 'Binance(TRY)', item.binance.try.askQty);
+        if (item.binance.try?.bid) checkSell(item.binance.try.bid, 'Binance(TRY)', item.binance.try.bidQty);
+
+        // Check BTCTurk
+        if (item.BTCTurk.try?.ask) checkBuy(item.BTCTurk.try.ask, 'BTCTurk(TRY)', item.BTCTurk.try.askQty);
+        if (item.BTCTurk.try?.bid) checkSell(item.BTCTurk.try.bid, 'BTCTurk(TRY)', item.BTCTurk.try.bidQty);
+        if (item.BTCTurk.usdt?.askInTRY) checkBuy(item.BTCTurk.usdt.askInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.askQty);
+        if (item.BTCTurk.usdt?.bidInTRY) checkSell(item.BTCTurk.usdt.bidInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.bidQty);
+
+
+        if (bestBuy.exchange && bestSell.exchange) {
+            // Initial ROI
+            item.ROI = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
+
+            // DYNAMIC DEPTH CHECK TRIGGER
+            if (item.ROI > 3.0) {
+                if (bestBuy.exchange.includes('Binance')) this.fetchDepth(coin, 'Binance');
+                if (bestBuy.exchange.includes('BTCTurk')) this.fetchDepth(coin, 'BTCTurk');
+                if (bestSell.exchange.includes('Binance')) this.fetchDepth(coin, 'Binance');
+                if (bestSell.exchange.includes('BTCTurk')) this.fetchDepth(coin, 'BTCTurk');
+            }
+
+            // Profit Calculation (UNLIMITED Budget - Based on Market Capacity)
+            let effectiveBuyPrice = bestBuy.price;
+            let effectiveSellPrice = bestSell.price;
+            let maxTradableTRY = Infinity;
+
+            // 1. Determine maximum possible volume in TRY from Best Bid/Ask Qty
+            let buyLimitTRY = bestBuy.qty !== null ? bestBuy.qty * bestBuy.price : Infinity;
+            let sellLimitTRY = bestSell.qty !== null ? bestSell.qty * bestSell.price : Infinity;
+
+            maxTradableTRY = Math.min(buyLimitTRY, sellLimitTRY);
+
+            // 2. Refine with Depth if available (for high ROI coins)
+            if (this.depthCache[coin] && bestBuy.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
+                let asks = this.depthCache[coin]['Binance'].asks;
+                if (bestBuy.exchange.includes('Binance(USDT)')) {
+                    let totalUSDT = 0;
+                    asks.forEach(a => totalUSDT += (parseFloat(a[0]) * parseFloat(a[1])));
+                    let totalTRY = totalUSDT * this.paribuUSDT;
+                    if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+                }
+            } else if (this.depthCache[coin] && bestBuy.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
+                let asks = this.depthCache[coin]['BTCTurk'].asks;
+                let totalTRY = 0;
+                asks.forEach(a => totalTRY += (parseFloat(a[0]) * parseFloat(a[1])));
+                if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+            }
+
+            if (this.depthCache[coin] && bestSell.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
+                let bids = this.depthCache[coin]['Binance'].bids;
+                if (bestSell.exchange.includes('Binance(USDT)')) {
+                    let totalUSDT = 0;
+                    bids.forEach(b => totalUSDT += (parseFloat(b[0]) * parseFloat(b[1])));
+                    let totalTRY = totalUSDT * this.paribuUSDT;
+                    if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+                }
+            } else if (this.depthCache[coin] && bestSell.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
+                let bids = this.depthCache[coin]['BTCTurk'].bids;
+                let totalTRY = 0;
+                bids.forEach(b => totalTRY += (parseFloat(b[0]) * parseFloat(b[1])));
+                if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+            }
+
+            // If volume is still Infinity (e.g. Paribu/BTCTurk ticker without Qty), 
+            // we'll assume a large default or mark it as infinite potential.
+            // Let's use 100,000 as a "soft limit" for display if Qty is unknown, 
+            // or just leave it as Infinity for now to represent "Unlimited".
+            if (maxTradableTRY === Infinity) maxTradableTRY = 100000; // Assume 100k depth if unknown
+
+
+            let cost = maxTradableTRY;
+            let revenue = (maxTradableTRY / effectiveBuyPrice) * effectiveSellPrice;
+            let profit = revenue - cost;
+
+            item.arbitrageDetails = {
+                buyExchange: bestBuy.exchange,
+                sellExchange: bestSell.exchange,
+                tradeAmountTRY: maxTradableTRY,
+                profit: profit,
+                roi: item.ROI
+            };
+
         } else {
-            item.ROI = -100; // No valid data
+            item.ROI = -100;
+            item.arbitrageDetails = null;
+        }
+    }
+
+    logTopOpportunities() {
+        let opportunities = [];
+        Object.keys(this.coinList).forEach(key => {
+            if (this.coinList[key].arbitrageDetails) {
+                opportunities.push({
+                    coin: key,
+                    ...this.coinList[key].arbitrageDetails
+                });
+            }
+        });
+
+        // Filter out ROI below 0.50%
+        opportunities = opportunities.filter(o => o.roi >= 0.50);
+
+        // Sort by Profit (Descending)
+        opportunities.sort((a, b) => b.profit - a.profit);
+
+        // Take Top 3
+        const top3 = opportunities.slice(0, 3);
+
+        /*
+                if (top3.length > 0) {
+                    console.log('\n🏆 Top 3 Arbitrage Opportunities (Potential Gain based on full liquidity):');
+                    top3.forEach((op, index) => {
+                        console.log(`${index + 1}. [${op.coin.toUpperCase()}] Potential Gain: ₺${op.profit.toFixed(2)} | ROI: %${op.roi.toFixed(2)} | Buy: ${op.buyExchange} -> Sell: ${op.sellExchange} | Trade Vol: ₺${op.tradeAmountTRY.toFixed(0)}`);
+                        
+                        // Telegram Alert Trigger (> 1000 TL Profit)
+                        if (op.profit >= 1000) {
+                            this.checkAndSendTelegramAlert(op);
+                        }
+                    });
+                    console.log('--------------------------------------------------');
+                }
+        */
+
+        // Always check for Telegram alerts even if logs are off
+        top3.forEach((op) => {
+            if (op.profit >= 1000) {
+                this.checkAndSendTelegramAlert(op);
+            }
+        });
+    }
+
+    async checkAndSendTelegramAlert(op) {
+        let now = Date.now();
+        let cooldown = 5 * 60 * 1000; // 5 minutes
+
+        let lastProfit = this.lastAlertProfits[op.coin] || 0;
+        let isProfitIncreased = op.profit > lastProfit;
+
+        // Condition: Send if cooldown passed OR profit increased
+        if (this.lastAlertTimes[op.coin] && (now - this.lastAlertTimes[op.coin] < cooldown) && !isProfitIncreased) {
+            return;
+        }
+
+        this.lastAlertTimes[op.coin] = now;
+        this.lastAlertProfits[op.coin] = op.profit;
+
+        let msg = `🔥 *HIGH PROFIT ARBITRAGE DETECTED!*\n\n` +
+            `🪙 *Coin:* ${op.coin.toUpperCase()}\n` +
+            `💰 *Potential Gain:* ₺${op.profit.toFixed(2)}\n` +
+            `📈 *ROI:* %${op.roi.toFixed(2)}\n` +
+            `🛒 *Buy:* ${op.buyExchange}\n` +
+            `🤝 *Sell:* ${op.sellExchange}\n` +
+            `📊 *Trade Capacity:* ₺${op.tradeAmountTRY.toFixed(0)}\n\n` +
+            `🚀 _Budget: Unlimited (Market Capacity Based)_`;
+
+        try {
+            await TelegramService.broadcast(msg);
+        } catch (e) {
+            console.error('Telegram alert failed:', e.message);
         }
     }
 }

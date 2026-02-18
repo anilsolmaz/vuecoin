@@ -3,7 +3,7 @@ const { DateTime } = require("luxon");
 const db = require('../db');
 const router = express.Router();
 const config = require('../configs/config.json');
-const request = require('request');
+
 const redis = require("redis");
 const f = require('../js/functions')
 const DataController = require('../controllers/DataController');

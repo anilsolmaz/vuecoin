@@ -3,13 +3,11 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const telegramTokens = [
-    process.env.TELEGRAM_BOT_TOKEN_1,
-    process.env.TELEGRAM_BOT_TOKEN_2
+    process.env.TELEGRAM_BOT_TOKEN_1
 ].filter(token => token); // Filter out undefined tokens
 
 const chatIds = {
-    general: process.env.TELEGRAM_CHAT_ID_GENERAL || '-redacted_chat_id', // Default from user snippet
-    alerts: process.env.TELEGRAM_CHAT_ID_ALERTS || '-1001558369109'   // Default from user snippet
+    general: process.env.TELEGRAM_CHAT_ID_GENERAL || '-redacted_chat_id' // Default from user snippet
 };
 
 const TelegramService = {
@@ -79,7 +77,7 @@ const TelegramService = {
             try {
                 await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
                     chat_id: chatId,
-                    text: message,
+                    text: isMarkdown ? this.escapeMarkdown(message) : message,
                     parse_mode: isMarkdown ? "MarkdownV2" : undefined,
                     disable_web_page_preview: true
                 });
@@ -116,9 +114,8 @@ const TelegramService = {
         // `options` (Bot 2004...) -> Chat -1001558369109
 
         const p1 = this.sendToBot(process.env.TELEGRAM_BOT_TOKEN_1, chatIds.general, message);
-        const p2 = this.sendToBot(process.env.TELEGRAM_BOT_TOKEN_2, chatIds.alerts, message); // Assuming Chat 2 uses Bot 2
 
-        await Promise.all([p1, p2]);
+        await Promise.all([p1]);
     },
 
     async sendToBot(token, chatId, message) {
@@ -126,7 +123,7 @@ const TelegramService = {
         try {
             await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
                 chat_id: chatId,
-                text: message,
+                text: this.escapeMarkdown(message),
                 parse_mode: "MarkdownV2",
                 disable_web_page_preview: true
             });

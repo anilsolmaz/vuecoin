@@ -25,7 +25,7 @@ if (process.env.NODE_ENV !== 'test') {
         // Run check every 60 seconds
         setInterval(() => {
             ListingMonitorService.checkParibuListings();
-        }, 60000);
+        }, 1000);
     });
 }
 
@@ -64,7 +64,15 @@ app.use(function (req, res, next) {
     worker.checkActivity(lastRequestTime); // Wake up worker if sleeping
     next();
 });
+const path = require('path');
+app.use(express.static(path.join(__dirname, 'client/dist')));
+
 app.use('/api', apiRouter);
+
+// Forward all other requests to the Vue app (for SPA routing)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/dist/index.html'));
+});
 
 const PORT = process.env.PORT || '3000';
 server.listen(PORT, () => {
