@@ -534,11 +534,10 @@ class CoinDataService {
                 maxTradableCoin = Math.min(buyVolume, sellVolume);
             }
 
-            // If volume is still Infinity (e.g. Paribu/BTCTurk ticker without Qty),
-            // assume 100,000 TRY worth of coins as a "soft limit"
+            // If volume is still Infinity (no Ticker Qty AND no Depth),
+            // Set to 0 to prevent false alerts. Do NOT assume 100k.
             if (maxTradableCoin === Infinity) {
-                // Avoid division by zero if price is 0
-                maxTradableCoin = effectiveBuyPrice > 0 ? (100000 / effectiveBuyPrice) : 0;
+                maxTradableCoin = 0;
             }
 
             let cost = maxTradableCoin * effectiveBuyPrice;
