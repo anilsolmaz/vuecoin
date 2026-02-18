@@ -340,10 +340,17 @@ class CoinDataService {
                 if (data && data.bids && data.asks) {
                     if (!this.depthCache[coin]) this.depthCache[coin] = {};
                     this.depthCache[coin]['Paribu'] = data;
+                } else {
+                    // Cache failure/empty to prevent infinite waiting
+                    if (!this.depthCache[coin]) this.depthCache[coin] = {};
+                    this.depthCache[coin]['Paribu'] = { error: true };
                 }
             }
         } catch (e) {
             console.error(`Depth fetch failed for ${coin} on ${exchange}`);
+            // Cache error
+            if (!this.depthCache[coin]) this.depthCache[coin] = {};
+            this.depthCache[coin][exchange] = { error: true };
         }
     }
 
@@ -418,14 +425,48 @@ class CoinDataService {
             item.ROI = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
 
             // DYNAMIC DEPTH CHECK TRIGGER
-            if (item.ROI > 3.0) {
-                if (bestBuy.exchange.includes('Binance')) this.fetchDepth(coin, 'Binance');
-                if (bestBuy.exchange.includes('BTCTurk')) this.fetchDepth(coin, 'BTCTurk');
-                if (bestBuy.exchange.includes('Paribu')) this.fetchDepth(coin, 'Paribu');
+            let waitingForDepth = false;
 
-                if (bestSell.exchange.includes('Binance')) this.fetchDepth(coin, 'Binance');
-                if (bestSell.exchange.includes('BTCTurk')) this.fetchDepth(coin, 'BTCTurk');
-                if (bestSell.exchange.includes('Paribu')) this.fetchDepth(coin, 'Paribu');
+            if (item.ROI > 3.0) {
+                if (bestBuy.exchange.includes('Binance')) {
+                    this.fetchDepth(coin, 'Binance');
+                    if (!this.depthCache[coin]?.['Binance']) waitingForDepth = true;
+                }
+                if (bestBuy.exchange.includes('BTCTurk')) {
+                    this.fetchDepth(coin, 'BTCTurk');
+                    if (!this.depthCache[coin]?.['BTCTurk']) waitingForDepth = true;
+                }
+                if (bestBuy.exchange.includes('Paribu')) {
+                    this.fetchDepth(coin, 'Paribu');
+                    if (!this.depthCache[coin]?.['Paribu']) waitingForDepth = true;
+                }
+
+                if (bestSell.exchange.includes('Binance')) {
+                    this.fetchDepth(coin, 'Binance');
+                    if (!this.depthCache[coin]?.['Binance']) waitingForDepth = true;
+                }
+                if (bestSell.exchange.includes('BTCTurk')) {
+                    this.fetchDepth(coin, 'BTCTurk');
+                    if (!this.depthCache[coin]?.['BTCTurk']) waitingForDepth = true;
+                }
+                if (bestSell.exchange.includes('Paribu')) {
+                    this.fetchDepth(coin, 'Paribu');
+                    if (!this.depthCache[coin]?.['Paribu']) waitingForDepth = true;
+                }
+            }
+
+            // If we are waiting for depth data to populate, SKIP calculation this cycle.
+            // This prevents "Fake" 100k volume alerts before data arrives.
+            // Exception: If cache contains {error:true}, we proceed (will use fallback).
+            if (waitingForDepth) {
+                // Check if the "missing" cache is actually an error? 
+                // Note: !this.depthCache[coin]?.['Paribu'] covers both undefined and null.
+                // But if it's {error:true}, it IS truthy. So waitingForDepth would be FALSE.
+                // So this logic works perfectly:
+                // undefined -> waitingForDepth = true -> Return
+                // {error:true} -> waitingForDepth = false -> Proceed -> Fallback
+                // Data -> waitingForDepth = false -> Proceed -> Real Volume
+                return;
             }
 
             // Profit Calculation (UNLIMITED Budget - Based on Market Capacity)
@@ -453,12 +494,14 @@ class CoinDataService {
                 let totalCoin = 0;
                 asks.forEach(a => totalCoin += parseFloat(a[1]));
                 if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
-            } else if (this.depthCache[coin] && bestBuy.exchange.includes('Paribu') && this.depthCache[coin]['Paribu']) {
+            } else if (this.depthCache[coin] && bestBuy.exchange.includes('Paribu') && this.depthCache[coin]['Paribu'] && !this.depthCache[coin]['Paribu'].error) {
                 let asks = this.depthCache[coin]['Paribu'].asks;
                 let totalCoin = 0;
                 // Paribu format: ["price", "amount"]
-                asks.forEach(a => totalCoin += parseFloat(a[1]));
-                if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
+                if (asks) {
+                    asks.forEach(a => totalCoin += parseFloat(a[1]));
+                    if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
+                }
             }
 
             if (this.depthCache[coin] && bestSell.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
@@ -473,11 +516,13 @@ class CoinDataService {
                 let totalCoin = 0;
                 bids.forEach(b => totalCoin += parseFloat(b[1]));
                 if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
-            } else if (this.depthCache[coin] && bestSell.exchange.includes('Paribu') && this.depthCache[coin]['Paribu']) {
+            } else if (this.depthCache[coin] && bestSell.exchange.includes('Paribu') && this.depthCache[coin]['Paribu'] && !this.depthCache[coin]['Paribu'].error) {
                 let bids = this.depthCache[coin]['Paribu'].bids;
                 let totalCoin = 0;
-                bids.forEach(b => totalCoin += parseFloat(b[1]));
-                if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
+                if (bids) {
+                    bids.forEach(b => totalCoin += parseFloat(b[1]));
+                    if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
+                }
             }
 
             // If volume is still Infinity (e.g. Paribu/BTCTurk ticker without Qty),
@@ -572,14 +617,12 @@ class CoinDataService {
         this.lastAlertTimes[op.coin] = now;
         this.lastAlertProfits[op.coin] = op.profit;
 
-        let msg = `🔥 <b>HIGH PROFIT ARBITRAGE DETECTED!</b>\n\n` +
-            `🪙 <b>Coin:</b> ${op.coin.toUpperCase()}\n` +
+        let msg = `🪙 <b>Coin:</b> ${op.coin.toUpperCase()}\n` +
             `💰 <b>Potential Gain:</b> ₺${op.profit.toFixed(2)}\n` +
             `📈 <b>ROI:</b> %${op.roi.toFixed(2)}\n` +
             `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${op.buyPrice.toFixed(4)})\n` +
             `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${op.sellPrice.toFixed(4)})\n` +
-            `📊 <b>Trade Capacity:</b> ₺${op.tradeAmountTRY.toFixed(0)}\n\n` +
-            `🚀 <i>Budget: Unlimited (Market Capacity Based)</i>`;
+            `📊 <b>Trade Capacity:</b> ₺${op.tradeAmountTRY.toFixed(0)}`;
 
         try {
             await TelegramService.broadcast(msg);

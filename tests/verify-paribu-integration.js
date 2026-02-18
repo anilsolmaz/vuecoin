@@ -18,7 +18,7 @@ f.getParibuOrderBook = async function (symbol) {
 };
 
 async function verifyParibuLogic() {
-    console.log('--- Verifying Paribu Volume Logic ---');
+    console.log('--- Verifying Paribu Volume Logic with Wait ---');
 
     // Setup Mock Coin
     const coin = "PARIBUTEST";
@@ -28,13 +28,34 @@ async function verifyParibuLogic() {
         BTCTurk: {}, chiliz: {}, FTX: {}
     };
 
-    // 1. Prefill Cache to simulate fetch completion
-    await CoinDataService.fetchDepth(coin, 'Paribu');
+    // Reset Cache
+    CoinDataService.depthCache = {};
 
-    // 2. Calculate
+    console.log('1. First Calculation (No Depth Cache)...');
     CoinDataService.calculateCoinMetrics(coin);
 
-    const item = CoinDataService.coinList[coin];
+    let item = CoinDataService.coinList[coin];
+
+    // We expect NO arbitrage details because we are waiting for depth
+    if (!item.arbitrageDetails) {
+        console.log('✅ Correctly WAITING for depth data (No premature alert).');
+    } else {
+        console.error('❌ Failed. Generated alert prematurely without depth:', item.arbitrageDetails);
+    }
+
+    // 2. Mock Cache Population (Simulate fetch completion)
+    console.log('2. Populating Cache...');
+    await CoinDataService.fetchDepth(coin, 'Paribu');
+
+    // Also mock Binance Depth since logic now waits for ALL involved exchanges
+    if (!CoinDataService.depthCache[coin]) CoinDataService.depthCache[coin] = {};
+    CoinDataService.depthCache[coin]['Binance'] = { asks: [], bids: [] }; // Empty is fine, just need it to exist
+
+    // 3. Second Calculation
+    console.log('3. Second Calculation (With Depth Cache)...');
+    CoinDataService.calculateCoinMetrics(coin);
+
+    item = CoinDataService.coinList[coin];
     if (item.arbitrageDetails) {
         console.log('Arb Details:', item.arbitrageDetails);
 
@@ -47,7 +68,7 @@ async function verifyParibuLogic() {
             console.error(`❌ Logic Failed. Expected Cost 2310, got ${item.arbitrageDetails.tradeAmountTRY}`);
         }
     } else {
-        console.error('❌ No arbitrage detected.');
+        console.error('❌ No arbitrage detected in second pass.');
     }
 }
 
