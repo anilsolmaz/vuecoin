@@ -34,10 +34,16 @@ class CoinDataService {
         this.depthTimestamps = {};
         this.lastAlertTimes = {}; // For Telegram cooldown
         this.lastAlertProfits = {}; // To detect profit increases
+        this.settings = {
+            cooldown: 5,
+            minProfit: 1000,
+            minROI: 0.50
+        };
     }
 
     async initialize() {
         if (this.initialized) return;
+        await this.loadSettings();
 
         try {
             const r = await f.getParibuInitialData();
@@ -158,8 +164,29 @@ class CoinDataService {
         });
     }
 
+    async loadSettings() {
+        return new Promise((resolve) => {
+            if (process.env.NODE_ENV === 'test') return resolve();
+            client.get('arb_settings', (err, reply) => {
+                if (!err && reply) {
+                    try {
+                        this.settings = JSON.parse(reply);
+                    } catch (e) {
+                        console.error('Failed to parse arb_settings', e);
+                    }
+                }
+                resolve();
+            });
+        });
+    }
+
     async refreshAllData() {
         if (!this.initialized) await this.initialize();
+
+        // Refresh settings every 10 requests to catch updates from UI
+        if (this.requestCount % 10 === 0) {
+            await this.loadSettings();
+        }
 
         this.requestCount++;
         let finalResults = {};
@@ -480,8 +507,8 @@ class CoinDataService {
             }
         });
 
-        // Filter out ROI below 0.50%
-        opportunities = opportunities.filter(o => o.roi >= 0.50);
+        // Filter out ROI below threshold from settings
+        opportunities = opportunities.filter(o => o.roi >= (this.settings.minROI || 0.50));
 
         // Sort by Profit (Descending)
         opportunities.sort((a, b) => b.profit - a.profit);
@@ -495,18 +522,18 @@ class CoinDataService {
                     top3.forEach((op, index) => {
                         console.log(`${index + 1}. [${op.coin.toUpperCase()}] Potential Gain: ₺${op.profit.toFixed(2)} | ROI: %${op.roi.toFixed(2)} | Buy: ${op.buyExchange} -> Sell: ${op.sellExchange} | Trade Vol: ₺${op.tradeAmountTRY.toFixed(0)}`);
                         
-                        // Telegram Alert Trigger (> 1000 TL Profit)
-                        if (op.profit >= 1000) {
-                            this.checkAndSendTelegramAlert(op);
-                        }
-                    });
-                    console.log('--------------------------------------------------');
+                        // Telegram Alert Trigger (Dynamic Profit threshold)
+                if (op.profit >= (this.settings.minProfit || 1000)) {
+                    this.checkAndSendTelegramAlert(op);
                 }
-        */
+            });
+            console.log('--------------------------------------------------');
+        }
+*/
 
         // Always check for Telegram alerts even if logs are off
         top3.forEach((op) => {
-            if (op.profit >= 1000) {
+            if (op.profit >= (this.settings.minProfit || 1000)) {
                 this.checkAndSendTelegramAlert(op);
             }
         });
@@ -514,7 +541,7 @@ class CoinDataService {
 
     async checkAndSendTelegramAlert(op) {
         let now = Date.now();
-        let cooldown = 5 * 60 * 1000; // 5 minutes
+        let cooldown = (this.settings.cooldown || 5) * 60 * 1000;
 
         let lastProfit = this.lastAlertProfits[op.coin] || 0;
         let isProfitIncreased = op.profit > lastProfit;
