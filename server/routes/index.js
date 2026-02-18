@@ -362,7 +362,6 @@ router.post('/settings', async (req, res) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        console.log('✅ Settings saved to Redis successfully:', settings);
 
         // Trigger immediate refresh in the arbitrage service
         await CoinDataService.loadSettings();
