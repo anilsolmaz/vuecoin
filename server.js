@@ -32,8 +32,6 @@ if (process.env.NODE_ENV !== 'test') {
 worker.setSocket(io);
 
 io.on('connection', (socket) => {
-    console.log('User connected', socket.id);
-
     // Wake up worker immediately
     worker.checkActivity(lastRequestTime);
 
@@ -43,7 +41,6 @@ io.on('connection', (socket) => {
     }
 
     socket.on('disconnect', () => {
-        console.log('User disconnected', socket.id);
         // Check if we should sleep
         worker.checkActivity(lastRequestTime);
     });
