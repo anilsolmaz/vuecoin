@@ -498,7 +498,8 @@ class CoinDataService {
 
         // Filter out ROI below threshold from settings
         let totalRaw = opportunities.length;
-        opportunities = opportunities.filter(o => o.roi >= (this.settings.minROI || 0.50));
+        const minROI = (this.settings.minROI !== undefined && this.settings.minROI !== null) ? this.settings.minROI : 0.50;
+        opportunities = opportunities.filter(o => o.roi >= minROI);
         let afterFilter = opportunities.length;
 
         console.log(`[Arb Check] Total Coins: ${totalRaw}, After ROI Filter (>=${this.settings.minROI}%): ${afterFilter}`);
@@ -530,7 +531,8 @@ class CoinDataService {
 
         // Always check for Telegram alerts even if logs are off
         top3.forEach((op) => {
-            if (op.profit >= (this.settings.minProfit || 1000)) {
+            const minProfit = (this.settings.minProfit !== undefined && this.settings.minProfit !== null) ? this.settings.minProfit : 1000;
+            if (op.profit >= minProfit) {
                 this.checkAndSendTelegramAlert(op);
             }
         });
@@ -538,7 +540,8 @@ class CoinDataService {
 
     async checkAndSendTelegramAlert(op) {
         let now = Date.now();
-        let cooldown = (this.settings.cooldown || 5) * 60 * 1000;
+        const configCooldown = (this.settings.cooldown !== undefined && this.settings.cooldown !== null) ? this.settings.cooldown : 5;
+        let cooldown = configCooldown * 60 * 1000;
 
         let lastProfit = this.lastAlertProfits[op.coin] || 0;
         let isProfitIncreased = op.profit > lastProfit;
