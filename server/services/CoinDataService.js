@@ -11,7 +11,9 @@ class CoinDataService {
         this.coinList = {};
         this.paribuMarketsList = [];
         this.paribuUSDT = 0;
+        this.paribuUSDT = 0;
         this.paribuCHZ = 0;
+        this.paribuSymbolMap = {}; // Map internal coin name to Paribu market key
         this.requestCount = 0;
         this.initialized = false;
         this.depthCache = {};
@@ -36,6 +38,8 @@ class CoinDataService {
             this.paribuMarketsList.forEach((key) => {
                 let coinKey = key.split('_')[0];
                 if (key === 'miota_tl') coinKey = 'iota';
+
+                this.paribuSymbolMap[coinKey] = key;
 
                 // Common structure
                 let coinObj = {
@@ -334,8 +338,8 @@ class CoinDataService {
                     this.depthCache[coin]['BTCTurk'] = data;
                 }
             } else if (exchange.includes('Paribu')) {
-                // Paribu market: btc_tl
-                let symbol = coin.toLowerCase() + '_tl';
+                // Paribu market: use mapped symbol or default to coin_tl
+                let symbol = this.paribuSymbolMap[coin] || (coin.toLowerCase() + '_tl');
                 let data = await f.getParibuOrderBook(symbol);
                 if (data && data.bids && data.asks) {
                     if (!this.depthCache[coin]) this.depthCache[coin] = {};
@@ -481,7 +485,23 @@ class CoinDataService {
             maxTradableCoin = Math.min(buyLimitQty, sellLimitQty);
 
             // 2. Refine with Depth if available (for high ROI coins)
-            if (this.depthCache[coin] && bestBuy.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
+            let depthError = false;
+
+            if (bestBuy.exchange.includes('Binance')) {
+                if (this.depthCache[coin] && this.depthCache[coin]['Binance']) {
+                    // Proceed
+                } else { /* Waiting or Error? */ }
+            }
+
+            // Check for Errors First
+            if ((bestBuy.exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.error) ||
+                (bestSell.exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.error)) {
+                depthError = true;
+            }
+
+            if (depthError) {
+                maxTradableCoin = 0;
+            } else if (this.depthCache[coin] && bestBuy.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
                 let asks = this.depthCache[coin]['Binance'].asks;
                 if (bestBuy.exchange.includes('Binance(USDT)')) {
                     let totalCoin = 0;
