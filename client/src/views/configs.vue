@@ -3,7 +3,7 @@
     <div class="card shadow-sm">
       <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
         <h4 class="mb-0">Arbitrage Alert Settings</h4>
-        <router-link to="/coincompare" class="btn btn-sm btn-light">Back to Dashboard</router-link>
+        <router-link to="/" class="btn btn-sm btn-light">Back to Dashboard</router-link>
       </div>
       <div class="card-body">
         <form @submit.prevent="saveSettings">
