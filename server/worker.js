@@ -18,7 +18,12 @@ function startPolling() {
     intervalId = setInterval(runCycle, 1000); // 1.0s interval
 }
 
+let isProcessing = false;
+
 async function runCycle() {
+    if (isProcessing) return; // Prevent overlapping cycles
+    isProcessing = true;
+
     workerRequestCount++;
     try {
         await Promise.all([
@@ -30,9 +35,10 @@ async function runCycle() {
             const aggregatedData = await CoinDataService.refreshAllData();
             io.emit('data_update', aggregatedData);
         }
-        // console.log('Worker Cycle Complete');
     } catch (e) {
         console.error('Worker Cycle Error', e);
+    } finally {
+        isProcessing = false;
     }
 }
 

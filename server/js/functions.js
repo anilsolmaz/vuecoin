@@ -60,8 +60,14 @@ async function fetchBinance(resolve, reject, currentTime, requestCount) {
         console.log(currentTime, requestCount, 'Binance data refreshed');
         let binanceData = response.data;
         let binanceJSON = { market: "binance" };
+        const excludedSymbols = [
+            'HNTUSDT', 'GALUSDT', 'REEFUSDT', 'BEAMUSDT', 'BALUSDT', 'OMGUSDT',
+            'RNDRUSDT', 'WAVESUSDT', 'CLVUSDT', 'RDNTUSDT', 'FTMUSDT', 'MATICUSDT',
+            'EOSUSDT', 'MKRUSDT'
+        ];
+
         binanceData.forEach(coin => {
-            if (coin.symbol != 'HNTUSDT' & coin.symbol != 'GALUSDT' & coin.symbol != 'REEFUSDT' & coin.symbol != 'BEAMUSDT' & coin.symbol != 'BALUSDT' & coin.symbol != 'OMGUSDT' & coin.symbol != 'RNDRUSDT' & coin.symbol != 'WAVESUSDT' & coin.symbol != 'CLVUSDT' & coin.symbol != 'RDNTUSDT' & coin.symbol != 'FTMUSDT' & coin.symbol != 'MATICUSDT' & coin.symbol != 'EOSUSDT' & coin.symbol != 'MKRUSDT')
+            if (!excludedSymbols.includes(coin.symbol))
                 binanceJSON[coin.symbol] = {
                     price: (parseFloat(coin.bidPrice) + parseFloat(coin.askPrice)) / 2,
                     bid: parseFloat(coin.bidPrice),
@@ -385,6 +391,22 @@ module.exports = {
             return response.data.data;
         } catch (error) {
             console.error(`BTCTurk OrderBook Error (${pairSymbol}):`, error.message);
+            return null;
+        }
+    },
+    getParibuOrderBook: async function (market) {
+        try {
+            // endpoint: https://api.paribu.com/orderbook?market=btc_tl
+            const response = await axios.get(`https://api.paribu.com/orderbook?market=${market}`, {
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                timeout: 3000
+            });
+            return response.data;
+        } catch (error) {
+            // Suppress 404s for coins that might not have this endpoint active or valid market names
+            if (error.response && error.response.status !== 404) {
+                console.error(`Paribu OrderBook Error (${market}):`, error.message);
+            }
             return null;
         }
     }

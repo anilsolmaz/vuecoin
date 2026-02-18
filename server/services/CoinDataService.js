@@ -333,6 +333,14 @@ class CoinDataService {
                     if (!this.depthCache[coin]) this.depthCache[coin] = {};
                     this.depthCache[coin]['BTCTurk'] = data;
                 }
+            } else if (exchange.includes('Paribu')) {
+                // Paribu market: btc_tl
+                let symbol = coin.toLowerCase() + '_tl';
+                let data = await f.getParibuOrderBook(symbol);
+                if (data && data.bids && data.asks) {
+                    if (!this.depthCache[coin]) this.depthCache[coin] = {};
+                    this.depthCache[coin]['Paribu'] = data;
+                }
             }
         } catch (e) {
             console.error(`Depth fetch failed for ${coin} on ${exchange}`);
@@ -413,67 +421,82 @@ class CoinDataService {
             if (item.ROI > 3.0) {
                 if (bestBuy.exchange.includes('Binance')) this.fetchDepth(coin, 'Binance');
                 if (bestBuy.exchange.includes('BTCTurk')) this.fetchDepth(coin, 'BTCTurk');
+                if (bestBuy.exchange.includes('Paribu')) this.fetchDepth(coin, 'Paribu');
+
                 if (bestSell.exchange.includes('Binance')) this.fetchDepth(coin, 'Binance');
                 if (bestSell.exchange.includes('BTCTurk')) this.fetchDepth(coin, 'BTCTurk');
+                if (bestSell.exchange.includes('Paribu')) this.fetchDepth(coin, 'Paribu');
             }
 
             // Profit Calculation (UNLIMITED Budget - Based on Market Capacity)
             let effectiveBuyPrice = bestBuy.price;
             let effectiveSellPrice = bestSell.price;
-            let maxTradableTRY = Infinity;
+            let maxTradableCoin = Infinity;
 
-            // 1. Determine maximum possible volume in TRY from Best Bid/Ask Qty
-            let buyLimitTRY = bestBuy.qty !== null ? bestBuy.qty * bestBuy.price : Infinity;
-            let sellLimitTRY = bestSell.qty !== null ? bestSell.qty * bestSell.price : Infinity;
+            // 1. Determine maximum possible volume in COINS from Best Bid/Ask Qty
+            let buyLimitQty = (bestBuy.qty !== null && bestBuy.qty !== undefined) ? bestBuy.qty : Infinity;
+            let sellLimitQty = (bestSell.qty !== null && bestSell.qty !== undefined) ? bestSell.qty : Infinity;
 
-            maxTradableTRY = Math.min(buyLimitTRY, sellLimitTRY);
+            maxTradableCoin = Math.min(buyLimitQty, sellLimitQty);
 
             // 2. Refine with Depth if available (for high ROI coins)
             if (this.depthCache[coin] && bestBuy.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
                 let asks = this.depthCache[coin]['Binance'].asks;
                 if (bestBuy.exchange.includes('Binance(USDT)')) {
-                    let totalUSDT = 0;
-                    asks.forEach(a => totalUSDT += (parseFloat(a[0]) * parseFloat(a[1])));
-                    let totalTRY = totalUSDT * this.paribuUSDT;
-                    if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+                    let totalCoin = 0;
+                    // Sum up available coin volume in the order book
+                    asks.forEach(a => totalCoin += parseFloat(a[1]));
+                    if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
                 }
             } else if (this.depthCache[coin] && bestBuy.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
                 let asks = this.depthCache[coin]['BTCTurk'].asks;
-                let totalTRY = 0;
-                asks.forEach(a => totalTRY += (parseFloat(a[0]) * parseFloat(a[1])));
-                if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+                let totalCoin = 0;
+                asks.forEach(a => totalCoin += parseFloat(a[1]));
+                if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
+            } else if (this.depthCache[coin] && bestBuy.exchange.includes('Paribu') && this.depthCache[coin]['Paribu']) {
+                let asks = this.depthCache[coin]['Paribu'].asks;
+                let totalCoin = 0;
+                // Paribu format: ["price", "amount"]
+                asks.forEach(a => totalCoin += parseFloat(a[1]));
+                if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
             }
 
             if (this.depthCache[coin] && bestSell.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
                 let bids = this.depthCache[coin]['Binance'].bids;
                 if (bestSell.exchange.includes('Binance(USDT)')) {
-                    let totalUSDT = 0;
-                    bids.forEach(b => totalUSDT += (parseFloat(b[0]) * parseFloat(b[1])));
-                    let totalTRY = totalUSDT * this.paribuUSDT;
-                    if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+                    let totalCoin = 0;
+                    bids.forEach(b => totalCoin += parseFloat(b[1]));
+                    if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
                 }
             } else if (this.depthCache[coin] && bestSell.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
                 let bids = this.depthCache[coin]['BTCTurk'].bids;
-                let totalTRY = 0;
-                bids.forEach(b => totalTRY += (parseFloat(b[0]) * parseFloat(b[1])));
-                if (totalTRY < maxTradableTRY) maxTradableTRY = totalTRY;
+                let totalCoin = 0;
+                bids.forEach(b => totalCoin += parseFloat(b[1]));
+                if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
+            } else if (this.depthCache[coin] && bestSell.exchange.includes('Paribu') && this.depthCache[coin]['Paribu']) {
+                let bids = this.depthCache[coin]['Paribu'].bids;
+                let totalCoin = 0;
+                bids.forEach(b => totalCoin += parseFloat(b[1]));
+                if (totalCoin < maxTradableCoin) maxTradableCoin = totalCoin;
             }
 
-            // If volume is still Infinity (e.g. Paribu/BTCTurk ticker without Qty), 
-            // we'll assume a large default or mark it as infinite potential.
-            // Let's use 100,000 as a "soft limit" for display if Qty is unknown, 
-            // or just leave it as Infinity for now to represent "Unlimited".
-            if (maxTradableTRY === Infinity) maxTradableTRY = 100000; // Assume 100k depth if unknown
+            // If volume is still Infinity (e.g. Paribu/BTCTurk ticker without Qty),
+            // assume 100,000 TRY worth of coins as a "soft limit"
+            if (maxTradableCoin === Infinity) {
+                // Avoid division by zero if price is 0
+                maxTradableCoin = effectiveBuyPrice > 0 ? (100000 / effectiveBuyPrice) : 0;
+            }
 
-
-            let cost = maxTradableTRY;
-            let revenue = (maxTradableTRY / effectiveBuyPrice) * effectiveSellPrice;
+            let cost = maxTradableCoin * effectiveBuyPrice;
+            let revenue = maxTradableCoin * effectiveSellPrice;
             let profit = revenue - cost;
 
             item.arbitrageDetails = {
                 buyExchange: bestBuy.exchange,
                 sellExchange: bestSell.exchange,
-                tradeAmountTRY: maxTradableTRY,
+                buyPrice: effectiveBuyPrice,
+                sellPrice: effectiveSellPrice,
+                tradeAmountTRY: cost, // Reporting Cost as "Trade Capacity"
                 profit: profit,
                 roi: item.ROI
             };
@@ -553,8 +576,8 @@ class CoinDataService {
             `🪙 <b>Coin:</b> ${op.coin.toUpperCase()}\n` +
             `💰 <b>Potential Gain:</b> ₺${op.profit.toFixed(2)}\n` +
             `📈 <b>ROI:</b> %${op.roi.toFixed(2)}\n` +
-            `🛒 <b>Buy:</b> ${op.buyExchange}\n` +
-            `🤝 <b>Sell:</b> ${op.sellExchange}\n` +
+            `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${op.buyPrice.toFixed(4)})\n` +
+            `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${op.sellPrice.toFixed(4)})\n` +
             `📊 <b>Trade Capacity:</b> ₺${op.tradeAmountTRY.toFixed(0)}\n\n` +
             `🚀 <i>Budget: Unlimited (Market Capacity Based)</i>`;
 
