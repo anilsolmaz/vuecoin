@@ -358,6 +358,60 @@ class CoinDataService {
         }
     }
 
+    calculateOrderBookMatch(asks, bids) {
+        // Sort ASKS (Best Buy = Lowest Price First)
+        let sortedAsks = [...asks].map(a => ({ price: parseFloat(a[0]), qty: parseFloat(a[1]) })).sort((a, b) => a.price - b.price);
+        // Sort BIDS (Best Sell = Highest Price First)
+        let sortedBids = [...bids].map(b => ({ price: parseFloat(b[0]), qty: parseFloat(b[1]) })).sort((a, b) => b.price - a.price);
+
+        let totalCost = 0;
+        let totalRevenue = 0;
+        let totalVolume = 0;
+
+        let i = 0; // Ask index
+        let j = 0; // Bid index
+
+        while (i < sortedAsks.length && j < sortedBids.length) {
+            let ask = sortedAsks[i];
+            let bid = sortedBids[j];
+
+            // Arbitrage Condition: Buy Price < Sell Price (Profitable?)
+            // If we buy at 6.07 and sell at 6.03, we lose.
+            // The loop should stop when ask.price >= bid.price (No more gap)
+            if (ask.price >= bid.price) {
+                break;
+            }
+
+            // Determine matchable quantity
+            let tradeQty = Math.min(ask.qty, bid.qty);
+
+            // Accumulate Stats
+            totalCost += tradeQty * ask.price;
+            totalRevenue += tradeQty * bid.price;
+            totalVolume += tradeQty;
+
+            // Update remaining quantities (local copies)
+            ask.qty -= tradeQty;
+            bid.qty -= tradeQty;
+
+            // Move indices if fully consumed
+            if (ask.qty <= 0.00000001) i++;
+            if (bid.qty <= 0.00000001) j++;
+        }
+
+        let totalProfit = totalRevenue - totalCost;
+        let avgBuyPrice = totalVolume > 0 ? (totalCost / totalVolume) : 0;
+        let avgSellPrice = totalVolume > 0 ? (totalRevenue / totalVolume) : 0;
+
+        return {
+            tradeAmountTRY: totalCost, // This is the required capital (Capacity)
+            profit: totalProfit,
+            avgBuyPrice,
+            avgSellPrice,
+            totalVolume
+        };
+    }
+
     calculateCoinMetrics(coin) {
         let item = this.coinList[coin];
         if (!item) return;
@@ -478,79 +532,68 @@ class CoinDataService {
             let effectiveSellPrice = bestSell.price;
             let maxTradableCoin = Infinity;
 
-            // 1. Determine Initial Limits from Ticker (Top of Book)
-            let buyVolume = (bestBuy.qty !== null && bestBuy.qty !== undefined) ? bestBuy.qty : Infinity;
-            let sellVolume = (bestSell.qty !== null && bestSell.qty !== undefined) ? bestSell.qty : Infinity;
+            // -------------------------------------------------------------
+            // ORDER BOOK MATCHING ENGINE (Real Trade Simulation)
+            // -------------------------------------------------------------
 
-            // 2. Override with Depth Volume if available (Unlock potential capacity)
-            let depthError = false;
+            let finalTradeStats = {
+                tradeAmountTRY: 0,
+                profit: 0,
+                avgBuyPrice: bestBuy.price,
+                avgSellPrice: bestSell.price,
+                totalVolume: 0
+            };
+
+            // Helper to get normalized depth
+            const getDepth = (type, exchange) => {
+                // type: 'asks' or 'bids'
+                if (exchange.includes('Binance') && this.depthCache[coin]?.['Binance']?.[type]) return this.depthCache[coin]['Binance'][type];
+                if (exchange.includes('BTCTurk') && this.depthCache[coin]?.['BTCTurk']?.[type]) return this.depthCache[coin]['BTCTurk'][type];
+                if (exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.[type]) return this.depthCache[coin]['Paribu'][type];
+                return null; // Not found in cache
+            };
 
             // Check for Errors First (Kill Switch)
+            let depthError = false;
+            // Note: depthCache[coin]['Paribu'].error checks if the specific exchange key has {error:true}
             if ((bestBuy.exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.error) ||
                 (bestSell.exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.error)) {
                 depthError = true;
             }
 
             if (depthError) {
-                maxTradableCoin = 0;
+                // Kill Switch Active
+                finalTradeStats.tradeAmountTRY = 0;
+                finalTradeStats.profit = 0;
             } else {
-                // BUY SIDE DEPTH CHECK
-                if (this.depthCache[coin] && bestBuy.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
-                    let asks = this.depthCache[coin]['Binance'].asks;
-                    let total = 0;
-                    if (asks) asks.forEach(a => total += parseFloat(a[1]));
-                    buyVolume = total; // Override Ticker Qty with Depth Sum (Even if 0)
-                } else if (this.depthCache[coin] && bestBuy.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
-                    let asks = this.depthCache[coin]['BTCTurk'].asks;
-                    let total = 0;
-                    if (asks) asks.forEach(a => total += parseFloat(a[1]));
-                    buyVolume = total;
-                } else if (this.depthCache[coin] && bestBuy.exchange.includes('Paribu') && this.depthCache[coin]['Paribu'] && !this.depthCache[coin]['Paribu'].error) {
-                    let asks = this.depthCache[coin]['Paribu'].asks;
-                    let total = 0;
-                    if (asks) asks.forEach(a => total += parseFloat(a[1]));
-                    buyVolume = total;
+                // 1. Try to get Real Depth
+                let asks = getDepth('asks', bestBuy.exchange);
+                let bids = getDepth('bids', bestSell.exchange);
+
+                // 2. If missing, Fallback to Ticker (Construct Single-Level Depth)
+                // Only if Ticker Qty exists and is valid
+                if (!asks && bestBuy.qty) {
+                    asks = [[bestBuy.price, bestBuy.qty]];
+                }
+                if (!bids && bestSell.qty) {
+                    bids = [[bestSell.price, bestSell.qty]];
                 }
 
-                // SELL SIDE DEPTH CHECK
-                if (this.depthCache[coin] && bestSell.exchange.includes('Binance') && this.depthCache[coin]['Binance']) {
-                    let bids = this.depthCache[coin]['Binance'].bids;
-                    let total = 0;
-                    if (bids) bids.forEach(b => total += parseFloat(b[1]));
-                    sellVolume = total; // Override Ticker Qty with Depth Sum (Even if 0)
-                } else if (this.depthCache[coin] && bestSell.exchange.includes('BTCTurk') && this.depthCache[coin]['BTCTurk']) {
-                    let bids = this.depthCache[coin]['BTCTurk'].bids;
-                    let total = 0;
-                    if (bids) bids.forEach(b => total += parseFloat(b[1]));
-                    sellVolume = total;
-                } else if (this.depthCache[coin] && bestSell.exchange.includes('Paribu') && this.depthCache[coin]['Paribu'] && !this.depthCache[coin]['Paribu'].error) {
-                    let bids = this.depthCache[coin]['Paribu'].bids;
-                    let total = 0;
-                    if (bids) bids.forEach(b => total += parseFloat(b[1]));
-                    sellVolume = total;
+                // 3. Run Matching Engine if we have data
+                if (asks && bids && asks.length > 0 && bids.length > 0) {
+                    finalTradeStats = this.calculateOrderBookMatch(asks, bids);
                 }
-
-                // FINAL CAPACITY IS THE BOTTLENECK OF THE TWO SIDES
-                maxTradableCoin = Math.min(buyVolume, sellVolume);
+                // If still no stats (e.g. empty depth or no ticker qty), explicit 0 is maintained.
             }
 
-            // If volume is still Infinity (no Ticker Qty AND no Depth),
-            // Set to 0 to prevent false alerts. Do NOT assume 100k.
-            if (maxTradableCoin === Infinity) {
-                maxTradableCoin = 0;
-            }
-
-            let cost = maxTradableCoin * effectiveBuyPrice;
-            let revenue = maxTradableCoin * effectiveSellPrice;
-            let profit = revenue - cost;
-
+            // Reporting
             item.arbitrageDetails = {
                 buyExchange: bestBuy.exchange,
                 sellExchange: bestSell.exchange,
-                buyPrice: effectiveBuyPrice,
-                sellPrice: effectiveSellPrice,
-                tradeAmountTRY: cost, // Reporting Cost as "Trade Capacity"
-                profit: profit,
+                buyPrice: finalTradeStats.avgBuyPrice || effectiveBuyPrice,
+                sellPrice: finalTradeStats.avgSellPrice || effectiveSellPrice,
+                tradeAmountTRY: finalTradeStats.tradeAmountTRY, // Exact Capital Required
+                profit: finalTradeStats.profit,                 // Realized Profit
                 roi: item.ROI
             };
 
