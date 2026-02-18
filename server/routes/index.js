@@ -4,16 +4,11 @@ const db = require('../db');
 const router = express.Router();
 const config = require('../configs/config.json');
 
-const redis = require("redis");
-const f = require('../js/functions')
 const DataController = require('../controllers/DataController');
 
-// Redis connection remains for legacy routes (ag list management)
-const client = redis.createClient({
-    "port": process.env.REDIS_PORT,
-    "password": process.env.REDIS_PASSWORD,
-    "host": process.env.REDIS_HOST
-});
+// Unified Redis Service
+const client = require('../services/RedisService');
+const CoinDataService = require('../services/CoinDataService');
 
 // Routes
 router.get('/test/', async (req, res, next) => {
@@ -338,9 +333,11 @@ router.get('/singlecoin/:kur',
 // --- Settings Routes ---
 router.get('/settings', async (req, res) => {
     client.get('arb_settings', (err, reply) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error('Redis GET arb_settings error:', err);
+            return res.status(500).json({ error: err.message });
+        }
         if (!reply) {
-            // Default settings
             const defaults = {
                 cooldown: 5,         // minutes
                 minProfit: 1000,     // TRY
@@ -354,14 +351,24 @@ router.get('/settings', async (req, res) => {
 
 router.post('/settings', async (req, res) => {
     const { cooldown, minProfit, minROI } = req.body;
+
+    // Validate and parse values
     const settings = {
-        cooldown: parseFloat(cooldown) || 5,
-        minProfit: parseFloat(minProfit) || 1000,
-        minROI: parseFloat(minROI) || 0.5
+        cooldown: (cooldown !== undefined && cooldown !== null) ? parseFloat(cooldown) : 5,
+        minProfit: (minProfit !== undefined && minProfit !== null) ? parseFloat(minProfit) : 1000,
+        minROI: (minROI !== undefined && minROI !== null) ? parseFloat(minROI) : 0.5
     };
 
-    client.set('arb_settings', JSON.stringify(settings), (err) => {
-        if (err) return res.status(500).json({ error: err.message });
+    client.set('arb_settings', JSON.stringify(settings), async (err) => {
+        if (err) {
+            console.error('Redis SET arb_settings error:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        console.log('✅ Settings saved to Redis successfully:', settings);
+
+        // Trigger immediate refresh in the arbitrage service
+        await CoinDataService.loadSettings();
+
         res.json({ message: 'Settings saved successfully', settings });
     });
 });
