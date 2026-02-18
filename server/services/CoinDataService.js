@@ -338,16 +338,32 @@ class CoinDataService {
                     this.depthCache[coin]['BTCTurk'] = data;
                 }
             } else if (exchange.includes('Paribu')) {
-                // Paribu market: use mapped symbol or default to coin_tl
-                let symbol = this.paribuSymbolMap[coin] || (coin.toLowerCase() + '_tl');
+                // Paribu(TRY) or Paribu(USDT)
+                let suffix = '_tl';
+                if (exchange.includes('USDT')) suffix = '_usdt';
+
+                // Resolve Symbol
+                // Try to find base from map (e.g. iota -> miota_tl)
+                let mapped = this.paribuSymbolMap[coin];
+                let symbol = '';
+
+                if (mapped) {
+                    // if mapped is miota_tl, and we want usdt => miota_usdt
+                    let base = mapped.split('_')[0];
+                    symbol = base + suffix;
+                } else {
+                    symbol = coin.toLowerCase() + suffix;
+                }
+
                 let data = await f.getParibuOrderBook(symbol);
+
+                if (!this.depthCache[coin]) this.depthCache[coin] = {};
+
                 if (data && data.bids && data.asks) {
-                    if (!this.depthCache[coin]) this.depthCache[coin] = {};
-                    this.depthCache[coin]['Paribu'] = data;
+                    this.depthCache[coin][exchange] = data; // Cache under 'Paribu(TRY)' or 'Paribu(USDT)'
                 } else {
                     // Cache failure/empty to prevent infinite waiting
-                    if (!this.depthCache[coin]) this.depthCache[coin] = {};
-                    this.depthCache[coin]['Paribu'] = { error: true };
+                    this.depthCache[coin][exchange] = { error: true };
                 }
             }
         } catch (e) {
@@ -461,9 +477,12 @@ class CoinDataService {
             }
         };
 
-        // Check Paribu
-        if (item.paribu.try?.ask) checkBuy(item.paribu.try.ask, 'Paribu', item.paribu.try.askQty);
-        if (item.paribu.try?.bid) checkSell(item.paribu.try.bid, 'Paribu', item.paribu.try.bidQty);
+        // Check Paribu (Detect both TRY and USDT pairs)
+        if (item.paribu.try?.ask) checkBuy(item.paribu.try.ask, 'Paribu(TRY)', item.paribu.try.askQty);
+        if (item.paribu.try?.bid) checkSell(item.paribu.try.bid, 'Paribu(TRY)', item.paribu.try.bidQty);
+
+        if (item.paribu.usdt?.askInTRY) checkBuy(item.paribu.usdt.askInTRY, 'Paribu(USDT)', item.paribu.usdt.askQty);
+        if (item.paribu.usdt?.bidInTRY) checkSell(item.paribu.usdt.bidInTRY, 'Paribu(USDT)', item.paribu.usdt.bidQty);
 
         // Check Binance
         if (item.binance.usdt?.askInTRY) checkBuy(item.binance.usdt.askInTRY, 'Binance(USDT)', item.binance.usdt.askQty);
@@ -472,6 +491,8 @@ class CoinDataService {
         if (item.binance.try?.bid) checkSell(item.binance.try.bid, 'Binance(TRY)', item.binance.try.bidQty);
 
         // Check BTCTurk
+        // BTCTurk also has USDT pairs but user specifically asked for Paribu Intra-Arb improvement first.
+        // But keeping it consistent:
         if (item.BTCTurk.try?.ask) checkBuy(item.BTCTurk.try.ask, 'BTCTurk(TRY)', item.BTCTurk.try.askQty);
         if (item.BTCTurk.try?.bid) checkSell(item.BTCTurk.try.bid, 'BTCTurk(TRY)', item.BTCTurk.try.bidQty);
         if (item.BTCTurk.usdt?.askInTRY) checkBuy(item.BTCTurk.usdt.askInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.askQty);
@@ -486,6 +507,7 @@ class CoinDataService {
             let waitingForDepth = false;
 
             if (item.ROI > 3.0) {
+                // Fetch depth for the specific winning exchange/pair
                 if (bestBuy.exchange.includes('Binance')) {
                     this.fetchDepth(coin, 'Binance');
                     if (!this.depthCache[coin]?.['Binance']) waitingForDepth = true;
@@ -495,8 +517,9 @@ class CoinDataService {
                     if (!this.depthCache[coin]?.['BTCTurk']) waitingForDepth = true;
                 }
                 if (bestBuy.exchange.includes('Paribu')) {
-                    this.fetchDepth(coin, 'Paribu');
-                    if (!this.depthCache[coin]?.['Paribu']) waitingForDepth = true;
+                    // Pass specific pair (TRY or USDT)
+                    this.fetchDepth(coin, bestBuy.exchange);
+                    if (!this.depthCache[coin]?.[bestBuy.exchange]) waitingForDepth = true;
                 }
 
                 if (bestSell.exchange.includes('Binance')) {
@@ -508,8 +531,9 @@ class CoinDataService {
                     if (!this.depthCache[coin]?.['BTCTurk']) waitingForDepth = true;
                 }
                 if (bestSell.exchange.includes('Paribu')) {
-                    this.fetchDepth(coin, 'Paribu');
-                    if (!this.depthCache[coin]?.['Paribu']) waitingForDepth = true;
+                    // Pass specific pair (TRY or USDT)
+                    this.fetchDepth(coin, bestSell.exchange);
+                    if (!this.depthCache[coin]?.[bestSell.exchange]) waitingForDepth = true;
                 }
             }
 
@@ -549,15 +573,21 @@ class CoinDataService {
                 // type: 'asks' or 'bids'
                 if (exchange.includes('Binance') && this.depthCache[coin]?.['Binance']?.[type]) return this.depthCache[coin]['Binance'][type];
                 if (exchange.includes('BTCTurk') && this.depthCache[coin]?.['BTCTurk']?.[type]) return this.depthCache[coin]['BTCTurk'][type];
-                if (exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.[type]) return this.depthCache[coin]['Paribu'][type];
+                // For Paribu, we likely have explicit keys depending on pair (TRY/USDT)
+                if (exchange.includes('Paribu')) {
+                    // Try explicit key first (Paribu(TRY), Paribu(USDT))
+                    if (this.depthCache[coin]?.[exchange]?.[type]) return this.depthCache[coin][exchange][type];
+                    // Fallback to legacy 'Paribu' key (just in case)
+                    if (this.depthCache[coin]?.['Paribu']?.[type]) return this.depthCache[coin]['Paribu'][type];
+                }
                 return null; // Not found in cache
             };
 
             // Check for Errors First (Kill Switch)
             let depthError = false;
             // Note: depthCache[coin]['Paribu'].error checks if the specific exchange key has {error:true}
-            if ((bestBuy.exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.error) ||
-                (bestSell.exchange.includes('Paribu') && this.depthCache[coin]?.['Paribu']?.error)) {
+            if ((bestBuy.exchange.includes('Paribu') && this.depthCache[coin]?.[bestBuy.exchange]?.error) ||
+                (bestSell.exchange.includes('Paribu') && this.depthCache[coin]?.[bestSell.exchange]?.error)) {
                 depthError = true;
             }
 
@@ -570,10 +600,41 @@ class CoinDataService {
                 let asks = getDepth('asks', bestBuy.exchange);
                 let bids = getDepth('bids', bestSell.exchange);
 
+                // NORMALIZE CURRENCIES TO TRY
+                // The Matching Engine operates in TRY. If an order book is in USDT, 
+                // we must convert its Price levels to TRY.
+                // Note: Qty is usually in Coin (e.g. BTC), so it stays same.
+                // Exception: Some exchanges might have quote-currency qty? Assuming Base Coin Qty for now.
+
+                const normalize = (book, exchange) => {
+                    if (!book) return null;
+                    // Check if source is USDT
+                    // Paribu(USDT) is definitely USDT.
+                    // Binance is always USDT in our fetchDepth implementation.
+                    let isUSDT = exchange.includes('USDT') || exchange.includes('Binance');
+
+                    // BTCTurk is currently hardcoded to TRY in fetchDepth, so even if bestBuy says BTCTurk(USDT),
+                    // the depth we got is TRY. So we treat BTCTurk as TRY.
+                    if (exchange.includes('BTCTurk')) isUSDT = false;
+
+                    if (isUSDT) {
+                        let rate = this.paribuUSDT || 30; // Fallback if 0
+                        // Deep Copy & Convert Price (index 0)
+                        return book.map(level => [
+                            parseFloat(level[0]) * rate, // Price * Rate
+                            parseFloat(level[1])         // Qty
+                        ]);
+                    }
+                    return book; // Return as is (assuming TRY)
+                };
+
+                asks = normalize(asks, bestBuy.exchange);
+                bids = normalize(bids, bestSell.exchange);
+
                 // 2. If missing, Fallback to Ticker (Construct Single-Level Depth)
                 // Only if Ticker Qty exists and is valid
                 if (!asks && bestBuy.qty) {
-                    asks = [[bestBuy.price, bestBuy.qty]];
+                    asks = [[bestBuy.price, bestBuy.qty]]; // Top level is already converted/normalized in 'bestBuy'
                 }
                 if (!bids && bestSell.qty) {
                     bids = [[bestSell.price, bestSell.qty]];
