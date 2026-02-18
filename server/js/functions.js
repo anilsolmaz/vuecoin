@@ -4,6 +4,7 @@ const fs = require("fs");
 const { DateTime } = require("luxon");
 const redis = require("redis");
 const config = require('../configs/config.json');
+const ExchangeMonitorService = require('../services/ExchangeMonitorService');
 
 
 // Redis.io db bilgileri
@@ -44,9 +45,11 @@ async function fetchParibu(resolve, reject, currentTime, requestCount) {
             }
         });
         client.setex('paribuData', config.cacheDuration, JSON.stringify(paribuJSON));
+        ExchangeMonitorService.reportSuccess('paribu');
         return resolve(paribuJSON);
     } catch (error) {
         console.error(currentTime, requestCount, '\x1b[31mParibu refresh failed', error.message);
+        ExchangeMonitorService.reportFailure('paribu', error);
         return reject('Paribu refresh failed');
     }
 }
@@ -68,9 +71,11 @@ async function fetchBinance(resolve, reject, currentTime, requestCount) {
                 };
         });
         client.setex('binanceData', config.cacheDuration, JSON.stringify(binanceJSON));
+        ExchangeMonitorService.reportSuccess('binance');
         return resolve(binanceJSON);
     } catch (error) {
         console.error(currentTime, requestCount, '\x1b[31mbinance refresh failed', error.message);
+        ExchangeMonitorService.reportFailure('binance', error);
         return reject('binance refresh failed');
     }
 }
@@ -91,9 +96,11 @@ async function fetchBTCTurk(resolve, reject, currentTime, requestCount) {
             };
         });
         client.setex('BTCTurkData', config.cacheDuration, JSON.stringify(BTCTurkJSON));
+        ExchangeMonitorService.reportSuccess('btcturk');
         return resolve(BTCTurkJSON);
     } catch (error) {
         console.error(currentTime, requestCount, '\x1b[31mBTCTurk refresh failed', error.message);
+        ExchangeMonitorService.reportFailure('btcturk', error);
         return reject('BTCTurk refresh failed');
     }
 }
