@@ -1,26 +1,10 @@
 const f = require('../js/functions');
 const config = require('../configs/config.json');
-const redis = require("redis");
 const { DateTime } = require("luxon");
 const TelegramService = require('./TelegramService');
-require('dotenv').config({ path: __dirname + '/../../server/.env' }); // Adjust path if needed
 
-let client;
-if (process.env.NODE_ENV !== 'test') {
-    client = redis.createClient({
-        "port": process.env.REDIS_PORT,
-        "password": process.env.REDIS_PASSWORD,
-        "host": process.env.REDIS_HOST
-    });
-} else {
-    // Mock client for tests
-    client = {
-        on: () => { },
-        setex: () => { },
-        get: () => { },
-        quit: () => { }
-    };
-}
+// Unified Redis Service
+const client = require('./RedisService');
 
 class CoinDataService {
     constructor() {
@@ -167,12 +151,17 @@ class CoinDataService {
     async loadSettings() {
         return new Promise((resolve) => {
             if (process.env.NODE_ENV === 'test') return resolve();
+
             client.get('arb_settings', (err, reply) => {
-                if (!err && reply) {
+                if (err) {
+                    console.error('CoinDataService: Redis GET arb_settings error:', err);
+                    return resolve();
+                }
+                if (reply) {
                     try {
                         this.settings = JSON.parse(reply);
                     } catch (e) {
-                        console.error('Failed to parse arb_settings', e);
+                        console.error('CoinDataService: Failed to parse arb_settings:', e);
                     }
                 }
                 resolve();
