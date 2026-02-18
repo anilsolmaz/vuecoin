@@ -335,4 +335,35 @@ router.get('/singlecoin/:kur',
         }
     });
 
+// --- Settings Routes ---
+router.get('/settings', async (req, res) => {
+    client.get('arb_settings', (err, reply) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!reply) {
+            // Default settings
+            const defaults = {
+                cooldown: 5,         // minutes
+                minProfit: 1000,     // TRY
+                minROI: 0.50          // %
+            };
+            return res.json(defaults);
+        }
+        res.json(JSON.parse(reply));
+    });
+});
+
+router.post('/settings', async (req, res) => {
+    const { cooldown, minProfit, minROI } = req.body;
+    const settings = {
+        cooldown: parseFloat(cooldown) || 5,
+        minProfit: parseFloat(minProfit) || 1000,
+        minROI: parseFloat(minROI) || 0.5
+    };
+
+    client.set('arb_settings', JSON.stringify(settings), (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Settings saved successfully', settings });
+    });
+});
+
 module.exports = router;
