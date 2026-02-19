@@ -505,8 +505,11 @@ class CoinDataService {
 
             // DYNAMIC DEPTH CHECK TRIGGER
             let waitingForDepth = false;
+            // Use user setting or default low threshold to ensure we capture all potential deals
+            let depthTrigger = (this.settings.minROI !== undefined) ? this.settings.minROI : 0.5;
 
-            if (item.ROI > 3.0) {
+            // Allow slightly lower than minROI to catch near-misses
+            if (item.ROI >= depthTrigger) {
                 // Fetch depth for the specific winning exchange/pair
                 if (bestBuy.exchange.includes('Binance')) {
                     this.fetchDepth(coin, 'Binance');
@@ -690,19 +693,14 @@ class CoinDataService {
 
 
         /*
-                if (top3.length > 0) {
-                    console.log('\n🏆 Top 3 Arbitrage Opportunities (Potential Gain based on full liquidity):');
-                    top3.forEach((op, index) => {
-                        console.log(`${index + 1}. [${op.coin.toUpperCase()}] Potential Gain: ₺${op.profit.toFixed(2)} | ROI: %${op.roi.toFixed(2)} | Buy: ${op.buyExchange} -> Sell: ${op.sellExchange} | Trade Vol: ₺${op.tradeAmountTRY.toFixed(0)}`);
-                        
-                        // Telegram Alert Trigger (Dynamic Profit threshold)
-                if (op.profit >= (this.settings.minProfit || 1000)) {
-                    this.checkAndSendTelegramAlert(op);
-                }
+        if (top3.length > 0) {
+            console.log('\n🏆 Top 3 Arbitrage Opportunities (Active Settings: MinROI=' + minROI + ', MinProfit=' + (this.settings.minProfit || 1000) + ')');
+            top3.forEach((op, index) => {
+                console.log(`${index + 1}. [${op.coin.toUpperCase()}] Profit: ₺${op.profit.toFixed(2)} | ROI: %${op.roi.toFixed(2)} | ${op.buyExchange} -> ${op.sellExchange} | Vol: ₺${op.tradeAmountTRY.toFixed(0)}`);
             });
             console.log('--------------------------------------------------');
         }
-*/
+        */
 
         // Always check for Telegram alerts even if logs are off
         top3.forEach((op) => {
@@ -729,12 +727,16 @@ class CoinDataService {
         this.lastAlertTimes[op.coin] = now;
         this.lastAlertProfits[op.coin] = op.profit;
 
-        let msg = `🪙 <b>Coin:</b> ${op.coin.toUpperCase()}\n` +
-            `💰 <b>Potential Gain:</b> ₺${op.profit.toFixed(2)}\n` +
-            `📈 <b>ROI:</b> %${op.roi.toFixed(2)}\n` +
-            `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${op.buyPrice.toFixed(4)})\n` +
-            `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${op.sellPrice.toFixed(4)})\n` +
-            `📊 <b>Trade Capacity:</b> ₺${op.tradeAmountTRY.toFixed(0)}`;
+        // Format helper: 1234.56 -> "1,234.56"
+        const fmt = (n) => n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const fmt4 = (n) => n.toFixed(4).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const fmt0 = (n) => n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+        let msg = `🪙 <b>Coin:</b> ${op.coin.toUpperCase()} | %${op.roi.toFixed(2)}\n` +
+            `� <b>Potential Gain:</b> ₺${op.profit.toFixed(2)}\n` +
+            `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${fmt4(op.buyPrice)})\n` +
+            `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${fmt4(op.sellPrice)})\n` +
+            `📊 <b>Trade Capacity:</b> ₺${fmt0(op.tradeAmountTRY)}`;
 
         try {
             await TelegramService.broadcast(msg);
