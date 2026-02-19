@@ -463,41 +463,40 @@ class CoinDataService {
         if (item.BTCTurk.try?.price && btcRate) convert(item.BTCTurk.try, btcRate, 'div');
 
         // Initialize Arbitrage Data
-        let bestBuy = { price: Infinity, exchange: null, qty: null };
-        let bestSell = { price: 0, exchange: null, qty: null };
+        let bestBuy = { price: Infinity, rawPrice: 0, exchange: null, qty: null };
+        let bestSell = { price: 0, rawPrice: 0, exchange: null, qty: null };
 
-        const checkBuy = (price, exchange, qty) => {
+        const checkBuy = (price, exchange, qty, rawPrice) => {
             if (price > 0 && price < bestBuy.price) {
-                bestBuy = { price, exchange, qty };
+                bestBuy = { price, rawPrice: rawPrice || price, exchange, qty };
             }
         };
 
-        const checkSell = (price, exchange, qty) => {
+        const checkSell = (price, exchange, qty, rawPrice) => {
             if (price > 0 && price > bestSell.price) {
-                bestSell = { price, exchange, qty };
+                bestSell = { price, rawPrice: rawPrice || price, exchange, qty };
             }
         };
 
         // Check Paribu (Detect both TRY and USDT pairs)
-        if (item.paribu.try?.ask) checkBuy(item.paribu.try.ask, 'Paribu(TRY)', item.paribu.try.askQty);
-        if (item.paribu.try?.bid) checkSell(item.paribu.try.bid, 'Paribu(TRY)', item.paribu.try.bidQty);
+        // rawPrice: TRY pairs pass raw TRY, USDT pairs pass raw USDT
+        if (item.paribu.try?.ask) checkBuy(item.paribu.try.ask, 'Paribu(TRY)', item.paribu.try.askQty, item.paribu.try.ask);
+        if (item.paribu.try?.bid) checkSell(item.paribu.try.bid, 'Paribu(TRY)', item.paribu.try.bidQty, item.paribu.try.bid);
 
-        if (item.paribu.usdt?.askInTRY) checkBuy(item.paribu.usdt.askInTRY, 'Paribu(USDT)', item.paribu.usdt.askQty);
-        if (item.paribu.usdt?.bidInTRY) checkSell(item.paribu.usdt.bidInTRY, 'Paribu(USDT)', item.paribu.usdt.bidQty);
+        if (item.paribu.usdt?.askInTRY) checkBuy(item.paribu.usdt.askInTRY, 'Paribu(USDT)', item.paribu.usdt.askQty, item.paribu.usdt.ask);
+        if (item.paribu.usdt?.bidInTRY) checkSell(item.paribu.usdt.bidInTRY, 'Paribu(USDT)', item.paribu.usdt.bidQty, item.paribu.usdt.bid);
 
         // Check Binance
-        if (item.binance.usdt?.askInTRY) checkBuy(item.binance.usdt.askInTRY, 'Binance(USDT)', item.binance.usdt.askQty);
-        if (item.binance.usdt?.bidInTRY) checkSell(item.binance.usdt.bidInTRY, 'Binance(USDT)', item.binance.usdt.bidQty);
-        if (item.binance.try?.ask) checkBuy(item.binance.try.ask, 'Binance(TRY)', item.binance.try.askQty);
-        if (item.binance.try?.bid) checkSell(item.binance.try.bid, 'Binance(TRY)', item.binance.try.bidQty);
+        if (item.binance.usdt?.askInTRY) checkBuy(item.binance.usdt.askInTRY, 'Binance(USDT)', item.binance.usdt.askQty, item.binance.usdt.ask);
+        if (item.binance.usdt?.bidInTRY) checkSell(item.binance.usdt.bidInTRY, 'Binance(USDT)', item.binance.usdt.bidQty, item.binance.usdt.bid);
+        if (item.binance.try?.ask) checkBuy(item.binance.try.ask, 'Binance(TRY)', item.binance.try.askQty, item.binance.try.ask);
+        if (item.binance.try?.bid) checkSell(item.binance.try.bid, 'Binance(TRY)', item.binance.try.bidQty, item.binance.try.bid);
 
         // Check BTCTurk
-        // BTCTurk also has USDT pairs but user specifically asked for Paribu Intra-Arb improvement first.
-        // But keeping it consistent:
-        if (item.BTCTurk.try?.ask) checkBuy(item.BTCTurk.try.ask, 'BTCTurk(TRY)', item.BTCTurk.try.askQty);
-        if (item.BTCTurk.try?.bid) checkSell(item.BTCTurk.try.bid, 'BTCTurk(TRY)', item.BTCTurk.try.bidQty);
-        if (item.BTCTurk.usdt?.askInTRY) checkBuy(item.BTCTurk.usdt.askInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.askQty);
-        if (item.BTCTurk.usdt?.bidInTRY) checkSell(item.BTCTurk.usdt.bidInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.bidQty);
+        if (item.BTCTurk.try?.ask) checkBuy(item.BTCTurk.try.ask, 'BTCTurk(TRY)', item.BTCTurk.try.askQty, item.BTCTurk.try.ask);
+        if (item.BTCTurk.try?.bid) checkSell(item.BTCTurk.try.bid, 'BTCTurk(TRY)', item.BTCTurk.try.bidQty, item.BTCTurk.try.bid);
+        if (item.BTCTurk.usdt?.askInTRY) checkBuy(item.BTCTurk.usdt.askInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.askQty, item.BTCTurk.usdt.ask);
+        if (item.BTCTurk.usdt?.bidInTRY) checkSell(item.BTCTurk.usdt.bidInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.bidQty, item.BTCTurk.usdt.bid);
 
 
         if (bestBuy.exchange && bestSell.exchange) {
@@ -651,8 +650,10 @@ class CoinDataService {
                 sellExchange: bestSell.exchange,
                 buyPrice: finalTradeStats.avgBuyPrice || effectiveBuyPrice,
                 sellPrice: finalTradeStats.avgSellPrice || effectiveSellPrice,
-                tradeAmountTRY: finalTradeStats.tradeAmountTRY, // Exact Capital Required
-                profit: finalTradeStats.profit,                 // Realized Profit
+                buyPriceRaw: bestBuy.rawPrice,   // Original currency price (TRY or USDT)
+                sellPriceRaw: bestSell.rawPrice,  // Original currency price (TRY or USDT)
+                tradeAmountTRY: finalTradeStats.tradeAmountTRY,
+                profit: finalTradeStats.profit,
                 roi: item.ROI
             };
 
@@ -759,10 +760,16 @@ class CoinDataService {
             msg += `<b># ${exchangeName} Deal #</b>\n`;
         }
 
+        // Show prices in their native currency: $ for USDT pairs, ₺ for TRY pairs
+        const buyCurrency = op.buyExchange.includes('USDT') ? '$' : '₺';
+        const sellCurrency = op.sellExchange.includes('USDT') ? '$' : '₺';
+        const buyDisplay = op.buyPriceRaw || op.buyPrice;
+        const sellDisplay = op.sellPriceRaw || op.sellPrice;
+
         msg += `🪙 <b>${op.coin.toUpperCase()}</b> | %${op.roi.toFixed(2)}\n` +
             `💰 <b>Potential Gain:</b> ₺${fmt(op.profit)}\n` +
-            `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${fmt4(op.buyPrice)})\n` +
-            `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${fmt4(op.sellPrice)})\n` +
+            `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ${buyCurrency}${fmt4(buyDisplay)})\n` +
+            `🤝 <b>Sell:</b> ${op.sellExchange} (@ ${sellCurrency}${fmt4(sellDisplay)})\n` +
             `📊 <b>Trade Capacity:</b> ₺${fmt0(op.tradeAmountTRY)}`;
 
         try {
