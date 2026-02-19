@@ -727,13 +727,18 @@ class CoinDataService {
         this.lastAlertTimes[op.coin] = now;
         this.lastAlertProfits[op.coin] = op.profit;
 
-        // Format helper: 1234.56 -> "1,234.56"
-        const fmt = (n) => n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        const fmt4 = (n) => n.toFixed(4).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        const fmt0 = (n) => n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        // Format helper: 1234.56 -> "1,234.56" (only left of dot)
+        const formatParts = (n, d) => {
+            const parts = n.toFixed(d).split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return parts.join('.');
+        };
+        const fmt = (n) => formatParts(n, 2);
+        const fmt4 = (n) => formatParts(n, 4);
+        const fmt0 = (n) => formatParts(n, 0);
 
         let msg = `🪙 <b>Coin:</b> ${op.coin.toUpperCase()} | %${op.roi.toFixed(2)}\n` +
-            `� <b>Potential Gain:</b> ₺${op.profit.toFixed(2)}\n` +
+            `💰 <b>Potential Gain:</b> ₺${fmt(op.profit)}\n` +
             `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${fmt4(op.buyPrice)})\n` +
             `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${fmt4(op.sellPrice)})\n` +
             `📊 <b>Trade Capacity:</b> ₺${fmt0(op.tradeAmountTRY)}`;
