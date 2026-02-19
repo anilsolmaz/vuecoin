@@ -8,21 +8,8 @@ const ExchangeMonitorService = require('../services/ExchangeMonitorService');
 
 
 // Redis.io db bilgileri
-let client;
-if (process.env.NODE_ENV !== 'test') {
-    client = redis.createClient({
-        "port": process.env.REDIS_PORT,
-        "password": process.env.REDIS_PASSWORD,
-        "host": process.env.REDIS_HOST
-    });
-} else {
-    client = {
-        on: () => { },
-        setex: () => { },
-        get: () => { },
-        quit: () => { }
-    };
-}
+// Unified Redis Service
+const client = require('../services/RedisService');
 
 
 
