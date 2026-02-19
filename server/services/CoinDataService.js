@@ -662,6 +662,19 @@ class CoinDataService {
         }
     }
 
+    /**
+     * Helper: extract base exchange name from identifier
+     * e.g. 'Paribu(TRY)' -> 'Paribu', 'Binance(USDT)' -> 'Binance'
+     */
+    getBaseExchange(exchange) {
+        if (!exchange) return '';
+        return exchange.split('(')[0];
+    }
+
+    isSameExchange(op) {
+        return this.getBaseExchange(op.buyExchange) === this.getBaseExchange(op.sellExchange);
+    }
+
     logTopOpportunities() {
         let opportunities = [];
         Object.keys(this.coinList).forEach(key => {
@@ -673,54 +686,52 @@ class CoinDataService {
             }
         });
 
-        // Filter out ROI below threshold from settings
-        let totalRaw = opportunities.length;
+        // Separate same-exchange and cross-exchange opportunities
+        const sameExchange = opportunities.filter(o => this.isSameExchange(o) && o.roi > 0);
+        const crossExchange = opportunities.filter(o => !this.isSameExchange(o));
+
+        // --- SAME-EXCHANGE: No minROI, no minProfit filter ---
+        // Sort by profit descending, send all
+        sameExchange.sort((a, b) => b.profit - a.profit);
+        sameExchange.forEach((op) => {
+            this.checkAndSendTelegramAlert(op, true); // true = same-exchange mode
+        });
+
+        // --- CROSS-EXCHANGE: Apply existing filters ---
         const minROI = (this.settings.minROI !== undefined && this.settings.minROI !== null) ? this.settings.minROI : 0.50;
-        opportunities = opportunities.filter(o => o.roi >= minROI);
-        let afterFilter = opportunities.length;
+        const filteredCross = crossExchange.filter(o => o.roi >= minROI);
 
+        filteredCross.sort((a, b) => b.profit - a.profit);
+        const top3 = filteredCross.slice(0, 3);
 
-        // Sort by Profit (Descending)
-        opportunities.sort((a, b) => b.profit - a.profit);
-
-        // Take Top 3
-        const top3 = opportunities.slice(0, 3);
-
-
-        /*
-        if (top3.length > 0) {
-            console.log('\n🏆 Top 3 Arbitrage Opportunities (Active Settings: MinROI=' + minROI + ', MinProfit=' + (this.settings.minProfit || 1000) + ')');
-            top3.forEach((op, index) => {
-                console.log(`${index + 1}. [${op.coin.toUpperCase()}] Profit: ₺${op.profit.toFixed(2)} | ROI: %${op.roi.toFixed(2)} | ${op.buyExchange} -> ${op.sellExchange} | Vol: ₺${op.tradeAmountTRY.toFixed(0)}`);
-            });
-            console.log('--------------------------------------------------');
-        }
-        */
-
-        // Always check for Telegram alerts even if logs are off
         top3.forEach((op) => {
             const minProfit = (this.settings.minProfit !== undefined && this.settings.minProfit !== null) ? this.settings.minProfit : 1000;
             if (op.profit >= minProfit) {
-                this.checkAndSendTelegramAlert(op);
+                this.checkAndSendTelegramAlert(op, false);
             }
         });
     }
 
-    async checkAndSendTelegramAlert(op) {
+    async checkAndSendTelegramAlert(op, isSameExchange = false) {
         let now = Date.now();
+
+        // Use 5-min cooldown for all alerts
         const configCooldown = (this.settings.cooldown !== undefined && this.settings.cooldown !== null) ? this.settings.cooldown : 5;
         let cooldown = configCooldown * 60 * 1000;
 
-        let lastProfit = this.lastAlertProfits[op.coin] || 0;
+        // Separate cooldown tracking for same-exchange vs cross-exchange
+        const cooldownKey = isSameExchange ? `intra_${op.coin}` : op.coin;
+
+        let lastProfit = this.lastAlertProfits[cooldownKey] || 0;
         let isProfitIncreased = op.profit > lastProfit;
 
-        // Condition: Send if cooldown passed OR profit increased
-        if (this.lastAlertTimes[op.coin] && (now - this.lastAlertTimes[op.coin] < cooldown) && !isProfitIncreased) {
+        // Condition: Send if cooldown passed OR profit increased (better deal)
+        if (this.lastAlertTimes[cooldownKey] && (now - this.lastAlertTimes[cooldownKey] < cooldown) && !isProfitIncreased) {
             return;
         }
 
-        this.lastAlertTimes[op.coin] = now;
-        this.lastAlertProfits[op.coin] = op.profit;
+        this.lastAlertTimes[cooldownKey] = now;
+        this.lastAlertProfits[cooldownKey] = op.profit;
 
         // Format helper: 1234.56 -> "1,234.56" (only left of dot)
         const formatParts = (n, d) => {
@@ -733,17 +744,21 @@ class CoinDataService {
         const fmt0 = (n) => formatParts(n, 0);
 
         // SANITY CHECK: If buy/sell prices don't match ROI, something is wrong with normalization
-        // E.g. buying at ₺23 and selling at ₺1004 should NOT show 1.45% ROI
         if (op.buyPrice > 0 && op.sellPrice > 0) {
             let alertROI = ((op.sellPrice - op.buyPrice) / op.buyPrice) * 100;
-            // If the alert ROI differs from the ticker ROI by more than 10x, skip this alert
             if (Math.abs(alertROI - op.roi) > Math.abs(op.roi) * 10) {
                 console.warn(`⚠️ Skipping bogus alert for ${op.coin}: Alert ROI ${alertROI.toFixed(2)}% vs Ticker ROI ${op.roi.toFixed(2)}%`);
                 return;
             }
         }
 
-        let msg = `🪙 <b>Coin:</b> ${op.coin.toUpperCase()} | %${op.roi.toFixed(2)}\n` +
+        // Header line with deal type
+        const header = isSameExchange
+            ? `<b># Intra Exchange Deal #</b>`
+            : `<b># Cross Exchange Deal #</b>`;
+
+        let msg = `${header}\n` +
+            `🪙 <b>${op.coin.toUpperCase()}</b> | %${op.roi.toFixed(2)}\n` +
             `💰 <b>Potential Gain:</b> ₺${fmt(op.profit)}\n` +
             `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${fmt4(op.buyPrice)})\n` +
             `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${fmt4(op.sellPrice)})\n` +
