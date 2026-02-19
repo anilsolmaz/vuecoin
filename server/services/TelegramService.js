@@ -81,22 +81,12 @@ const TelegramService = {
      */
     async broadcast(message) {
         const targets = Object.values(chatIds);
-        // Also send to both bots if needed, but for now let's assume one bot covers permission for these chats.
-        // User snippet had TWO different bot tokens.
-        // Bot 1: 5021488041...
-        // Bot 2: 2004321935...
-
         // We need to handle multi-bot scenario if the chats are exclusive to bots.
         // Let's iterate tokens and try to send to their respective "default" chats if mapped, 
         // OR just try sending to the target chat with the available token.
 
         // Strategy: 
         // 1. Send to General Chat using Bot 1
-        // 2. Send to Alerts Chat using Bot 2 (as per snippet logic implied, though snippet actually sent to both?)
-
-        // Re-reading snippet:
-        // `options2` (Bot 5021...) -> Chat -redacted_chat_id
-        // `options` (Bot 2004...) -> Chat -1001558369109
 
         const p1 = this.sendToBot(process.env.TELEGRAM_BOT_TOKEN_1, chatIds.general, message);
 
