@@ -22,45 +22,31 @@ const ListingMonitorService = require('./server/services/ListingMonitorService')
 // Initialize Listing Monitor
 if (process.env.NODE_ENV !== 'test') {
     ListingMonitorService.init().then(() => {
-        // Run check every 60 seconds
+        // Run check every 1 second for real-time listing detection
         setInterval(() => {
             ListingMonitorService.checkParibuListings();
         }, 1000);
     });
 }
 
+// Setup Socket.IO and start worker (24/7)
 worker.setSocket(io);
 
 io.on('connection', (socket) => {
-    // Wake up worker immediately
-    worker.checkActivity(lastRequestTime);
-
     // Send available data immediately upon connection
     if (CoinDataService.coinList && Object.keys(CoinDataService.coinList).length > 0) {
         socket.emit('data_update', CoinDataService.coinList);
     }
-
-    socket.on('disconnect', () => {
-        // Check if we should sleep
-        worker.checkActivity(lastRequestTime);
-    });
 });
+
+// Start the worker — runs 24/7 regardless of connected clients
+if (process.env.NODE_ENV !== 'test') {
+    worker.start();
+}
 
 app.use(cors());
-
-let lastRequestTime = Date.now();
-
-// Watchdog: Check activity every 2 seconds
-setInterval(() => {
-    worker.checkActivity(lastRequestTime);
-}, 2000);
-
 app.use(express.json());
-app.use(function (req, res, next) {
-    lastRequestTime = Date.now(); // Update activity
-    worker.checkActivity(lastRequestTime); // Wake up worker if sleeping
-    next();
-});
+
 const path = require('path');
 app.use(express.static(path.join(__dirname, 'client/dist')));
 
@@ -80,5 +66,3 @@ server.listen(PORT, () => {
         TelegramService.broadcast('🚀 Server Started and Running!');
     }
 });
-
-

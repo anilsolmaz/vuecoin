@@ -3,6 +3,7 @@ const { DateTime } = require("luxon");
 const db = require('../db');
 const router = express.Router();
 const config = require('../configs/config.json');
+const f = require('../js/functions');
 
 const DataController = require('../controllers/DataController');
 
@@ -25,7 +26,7 @@ router.get('/test2/', async (req, res, next) => {
 // --- Data Controller Routes ---
 router.get('/allParibuData/', DataController.getAllParibuData);
 router.get('/updateParibuMarkets/', DataController.updateParibuMarkets);
-router.get('/refresh program/', DataController.updateParibuMarkets);
+router.get('/refresh-program/', DataController.updateParibuMarkets);
 
 
 // --- Legacy Coin List Management ---
@@ -221,12 +222,17 @@ router.post('/removeCoinsFromList/', async (req, res, next) => {
             return res.status(400).json({ error: 'Invalid coins: ' + invalidCoins.join(', ') });
         }
 
-        const removedCoins = coinList.filter(coin => !coinsArray.includes(coin));
+        // Actually remove the coins from Redis
+        for (const coin of coinsArray) {
+            await new Promise((resolve, reject) => {
+                client.lrem('ag', 0, coin, (error, count) => {
+                    if (error) reject(error);
+                    else resolve(count);
+                });
+            });
+        }
 
-        // Here you can perform the operation to remove coins from the list in your f module.
-        // For example: await f.removeCoinsFromList(coinsArray);
-
-        res.status(200).json({ message: 'Coins removed successfully.', removedCoins });
+        res.status(200).json({ message: 'Coins removed successfully.', removedCoins: coinsArray });
     } catch (error) {
         next(error); // Pass the error to the error-handling middleware
     }

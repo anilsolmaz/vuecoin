@@ -22,10 +22,12 @@ if (process.env.NODE_ENV !== 'test') {
     // Mock client for tests
     client = {
         on: () => { },
-        set: (k, v, cb) => cb(null),
+        set: (k, v, cb) => cb && cb(null),
+        setex: (k, t, v, cb) => cb && cb(null),
         get: (k, cb) => cb(null, null),
         lrange: (k, s, e, cb) => cb(null, []),
-        lpush: (k, v, cb) => cb(null)
+        lpush: (k, v, cb) => cb && cb(null),
+        lrem: (k, c, v, cb) => cb && cb(null, 0)
     };
 }
 

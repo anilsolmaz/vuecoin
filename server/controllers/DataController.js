@@ -14,7 +14,7 @@ exports.getAllParibuData = async (req, res, next) => {
 
 exports.updateParibuMarkets = async (req, res, next) => {
     try {
-        // f.increaseValueByOne();
+        await f.updateParibuMarkets();
         res.status(200).json('Başarıyla update edildi');
     } catch (e) {
         next(e);
