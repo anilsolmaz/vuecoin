@@ -512,32 +512,21 @@ class CoinDataService {
             // Allow slightly lower than minROI to catch near-misses
             if (item.ROI >= depthTrigger) {
                 // Fetch depth for the specific winning exchange/pair
-                if (bestBuy.exchange.includes('Binance')) {
-                    this.fetchDepth(coin, 'Binance');
-                    if (!this.depthCache[coin]?.['Binance']) waitingForDepth = true;
-                }
-                if (bestBuy.exchange.includes('BTCTurk')) {
-                    this.fetchDepth(coin, 'BTCTurk');
-                    if (!this.depthCache[coin]?.['BTCTurk']) waitingForDepth = true;
-                }
-                if (bestBuy.exchange.includes('Paribu')) {
-                    // Pass specific pair (TRY or USDT)
-                    this.fetchDepth(coin, bestBuy.exchange);
-                    if (!this.depthCache[coin]?.[bestBuy.exchange]) waitingForDepth = true;
-                }
+                // IMPORTANT: Use the full exchange identifier (e.g. 'BTCTurk(USDT)', 'Paribu(TRY)')
+                // so the cache key matches what fetchDepth stores.
+                const triggerDepth = (exchange) => {
+                    this.fetchDepth(coin, exchange);
+                    // Check if depth data is available under the exchange key
+                    if (!this.depthCache[coin]?.[exchange]) {
+                        // For Binance, depth is always stored under 'Binance'
+                        if (exchange.includes('Binance') && this.depthCache[coin]?.['Binance']) return;
+                        waitingForDepth = true;
+                    }
+                };
 
-                if (bestSell.exchange.includes('Binance')) {
-                    this.fetchDepth(coin, 'Binance');
-                    if (!this.depthCache[coin]?.['Binance']) waitingForDepth = true;
-                }
-                if (bestSell.exchange.includes('BTCTurk')) {
-                    this.fetchDepth(coin, 'BTCTurk');
-                    if (!this.depthCache[coin]?.['BTCTurk']) waitingForDepth = true;
-                }
-                if (bestSell.exchange.includes('Paribu')) {
-                    // Pass specific pair (TRY or USDT)
-                    this.fetchDepth(coin, bestSell.exchange);
-                    if (!this.depthCache[coin]?.[bestSell.exchange]) waitingForDepth = true;
+                triggerDepth(bestBuy.exchange);
+                if (bestSell.exchange !== bestBuy.exchange) {
+                    triggerDepth(bestSell.exchange);
                 }
             }
 
@@ -742,6 +731,17 @@ class CoinDataService {
         const fmt = (n) => formatParts(n, 2);
         const fmt4 = (n) => formatParts(n, 4);
         const fmt0 = (n) => formatParts(n, 0);
+
+        // SANITY CHECK: If buy/sell prices don't match ROI, something is wrong with normalization
+        // E.g. buying at ₺23 and selling at ₺1004 should NOT show 1.45% ROI
+        if (op.buyPrice > 0 && op.sellPrice > 0) {
+            let alertROI = ((op.sellPrice - op.buyPrice) / op.buyPrice) * 100;
+            // If the alert ROI differs from the ticker ROI by more than 10x, skip this alert
+            if (Math.abs(alertROI - op.roi) > Math.abs(op.roi) * 10) {
+                console.warn(`⚠️ Skipping bogus alert for ${op.coin}: Alert ROI ${alertROI.toFixed(2)}% vs Ticker ROI ${op.roi.toFixed(2)}%`);
+                return;
+            }
+        }
 
         let msg = `🪙 <b>Coin:</b> ${op.coin.toUpperCase()} | %${op.roi.toFixed(2)}\n` +
             `💰 <b>Potential Gain:</b> ₺${fmt(op.profit)}\n` +
