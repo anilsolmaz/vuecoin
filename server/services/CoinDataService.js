@@ -688,14 +688,17 @@ class CoinDataService {
         });
 
         // Separate same-exchange and cross-exchange opportunities
-        const sameExchange = opportunities.filter(o => this.isSameExchange(o) && o.roi > 0);
+        // Exclude Binance-to-Binance intra deals
+        const sameExchange = opportunities.filter(o =>
+            this.isSameExchange(o) && o.roi > 0 && this.getBaseExchange(o.buyExchange) !== 'Binance'
+        );
         const crossExchange = opportunities.filter(o => !this.isSameExchange(o));
 
         // --- SAME-EXCHANGE: No minROI, no minProfit filter ---
         // Sort by profit descending, send all
         sameExchange.sort((a, b) => b.profit - a.profit);
         sameExchange.forEach((op) => {
-            this.checkAndSendTelegramAlert(op, true); // true = same-exchange mode
+            this.checkAndSendTelegramAlert(op, true);
         });
 
         // --- CROSS-EXCHANGE: Apply existing filters ---
@@ -741,8 +744,17 @@ class CoinDataService {
             return parts.join('.');
         };
         const fmt = (n) => formatParts(n, 2);
-        const fmt4 = (n) => formatParts(n, 4);
         const fmt0 = (n) => formatParts(n, 0);
+
+        // Smart decimal formatting: use appropriate precision based on price magnitude
+        const fmtPrice = (n) => {
+            if (n === 0) return '0';
+            const abs = Math.abs(n);
+            if (abs >= 1000) return formatParts(n, 2);     // ₺1,234.56
+            if (abs >= 1) return formatParts(n, 4);     // ₺23.6361
+            if (abs >= 0.01) return formatParts(n, 6);     // $0.006713
+            return formatParts(n, 8);                       // $0.00007123
+        };
 
         // SANITY CHECK: If buy/sell prices don't match ROI, something is wrong with normalization
         if (op.buyPrice > 0 && op.sellPrice > 0) {
@@ -768,8 +780,8 @@ class CoinDataService {
 
         msg += `🪙 <b>${op.coin.toUpperCase()}</b> | %${op.roi.toFixed(2)}\n` +
             `💰 <b>Potential Gain:</b> ₺${fmt(op.profit)}\n` +
-            `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ${buyCurrency}${fmt4(buyDisplay)})\n` +
-            `🤝 <b>Sell:</b> ${op.sellExchange} (@ ${sellCurrency}${fmt4(sellDisplay)})\n` +
+            `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ${buyCurrency}${fmtPrice(buyDisplay)})\n` +
+            `🤝 <b>Sell:</b> ${op.sellExchange} (@ ${sellCurrency}${fmtPrice(sellDisplay)})\n` +
             `📊 <b>Trade Capacity:</b> ₺${fmt0(op.tradeAmountTRY)}`;
 
         try {
