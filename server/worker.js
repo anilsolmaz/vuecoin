@@ -1,38 +1,32 @@
-const f = require('./js/functions');
-const config = require('./configs/config.json');
+/**
+ * Background Worker
+ * Polls exchange data every 1 second and emits updates via Socket.IO.
+ * Runs 24/7 regardless of connected clients.
+ */
 const CoinDataService = require('./services/CoinDataService');
 
-let intervalId = null;
-let isPolling = false;
-let workerRequestCount = 0;
 let io = null;
+let isProcessing = false;
 
-function startPolling() {
-    if (isPolling) return;
-    isPolling = true;
-    console.log('👷 Background Worker STARTED');
+function start() {
+    console.log('👷 Background Worker STARTED (24/7 mode)');
 
-    // Initial Run immediately
+    // Initial run immediately
     runCycle();
 
-    intervalId = setInterval(runCycle, 1000); // 1.0s interval
+    // Then every 1 second
+    setInterval(runCycle, 1000);
 }
-
-let isProcessing = false;
 
 async function runCycle() {
     if (isProcessing) return; // Prevent overlapping cycles
     isProcessing = true;
 
-    workerRequestCount++;
     try {
-        await Promise.all([
-            f.updateParibuData(workerRequestCount, true).catch(e => null),
-            f.updateBinanceData(workerRequestCount, true).catch(e => null),
-            f.updateBTCTurkData(workerRequestCount, true).catch(e => null)
-        ]);
-        if (io) {
-            const aggregatedData = await CoinDataService.refreshAllData();
+        const aggregatedData = await CoinDataService.refreshAllData();
+
+        // Emit to connected clients if any
+        if (io && io.engine && io.engine.clientsCount > 0) {
             io.emit('data_update', aggregatedData);
         }
     } catch (e) {
@@ -42,29 +36,8 @@ async function runCycle() {
     }
 }
 
-function stopPolling() {
-    if (!isPolling) return;
-    isPolling = false;
-    clearInterval(intervalId);
-    console.log('💤 Background Worker SLEEPING (No active users)');
-}
-
 module.exports = {
-    checkActivity: function (lastRequestTime) {
-        let now = Date.now();
-        let hasActiveSockets = false;
-
-        if (io && io.engine) {
-            hasActiveSockets = io.engine.clientsCount > 0;
-        }
-
-        // If last request was less than 10 seconds ago OR there are active sockets, BE ACTIVE
-        if ((now - lastRequestTime < 10000) || hasActiveSockets) {
-            startPolling();
-        } else {
-            stopPolling();
-        }
-    },
+    start,
     setSocket: function (ioInstance) {
         io = ioInstance;
     }

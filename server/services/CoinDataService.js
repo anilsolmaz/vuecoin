@@ -11,7 +11,7 @@ class CoinDataService {
         this.coinList = {};
         this.paribuMarketsList = [];
         this.paribuUSDT = 0;
-        this.paribuUSDT = 0;
+        this.btcturkUSDT = 0;
         this.paribuCHZ = 0;
         this.paribuSymbolMap = {}; // Map internal coin name to Paribu market key
         this.requestCount = 0;
@@ -330,12 +330,13 @@ class CoinDataService {
                     this.depthCache[coin]['Binance'] = data;
                 }
             } else if (exchange.includes('BTCTurk')) {
-                // BTCTurk pair: BTCTRY usually
-                let symbol = coin.toUpperCase() + 'TRY';
+                // Determine pair based on exchange identifier
+                let suffix = exchange.includes('USDT') ? 'USDT' : 'TRY';
+                let symbol = coin.toUpperCase() + suffix;
                 let data = await f.getBTCTurkOrderBook(symbol);
                 if (data) {
                     if (!this.depthCache[coin]) this.depthCache[coin] = {};
-                    this.depthCache[coin]['BTCTurk'] = data;
+                    this.depthCache[coin][exchange] = data; // Cache under 'BTCTurk(TRY)' or 'BTCTurk(USDT)'
                 }
             } else if (exchange.includes('Paribu')) {
                 // Paribu(TRY) or Paribu(USDT)
@@ -575,7 +576,12 @@ class CoinDataService {
             const getDepth = (type, exchange) => {
                 // type: 'asks' or 'bids'
                 if (exchange.includes('Binance') && this.depthCache[coin]?.['Binance']?.[type]) return this.depthCache[coin]['Binance'][type];
-                if (exchange.includes('BTCTurk') && this.depthCache[coin]?.['BTCTurk']?.[type]) return this.depthCache[coin]['BTCTurk'][type];
+                if (exchange.includes('BTCTurk')) {
+                    // Try explicit key first (BTCTurk(TRY), BTCTurk(USDT))
+                    if (this.depthCache[coin]?.[exchange]?.[type]) return this.depthCache[coin][exchange][type];
+                    // Fallback to legacy 'BTCTurk' key
+                    if (this.depthCache[coin]?.['BTCTurk']?.[type]) return this.depthCache[coin]['BTCTurk'][type];
+                }
                 // For Paribu, we likely have explicit keys depending on pair (TRY/USDT)
                 if (exchange.includes('Paribu')) {
                     // Try explicit key first (Paribu(TRY), Paribu(USDT))
@@ -588,9 +594,9 @@ class CoinDataService {
 
             // Check for Errors First (Kill Switch)
             let depthError = false;
-            // Note: depthCache[coin]['Paribu'].error checks if the specific exchange key has {error:true}
-            if ((bestBuy.exchange.includes('Paribu') && this.depthCache[coin]?.[bestBuy.exchange]?.error) ||
-                (bestSell.exchange.includes('Paribu') && this.depthCache[coin]?.[bestSell.exchange]?.error)) {
+            // Check if depth data fetched with error for any involved exchange
+            if (this.depthCache[coin]?.[bestBuy.exchange]?.error ||
+                this.depthCache[coin]?.[bestSell.exchange]?.error) {
                 depthError = true;
             }
 
@@ -616,9 +622,9 @@ class CoinDataService {
                     // Binance is always USDT in our fetchDepth implementation.
                     let isUSDT = exchange.includes('USDT') || exchange.includes('Binance');
 
-                    // BTCTurk is currently hardcoded to TRY in fetchDepth, so even if bestBuy says BTCTurk(USDT),
-                    // the depth we got is TRY. So we treat BTCTurk as TRY.
-                    if (exchange.includes('BTCTurk')) isUSDT = false;
+                    // Binance depth is always USDT (fetched as coinUSDT).
+                    // BTCTurk and Paribu now fetch the correct pair based on exchange identifier.
+                    // So BTCTurk(USDT) returns USDT depth, BTCTurk(TRY) returns TRY depth.
 
                     if (isUSDT) {
                         let rate = this.paribuUSDT || 30; // Fallback if 0

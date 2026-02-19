@@ -31,8 +31,8 @@
         <a :href="`https://www.chiliz.net/exchange/${coinName.toUpperCase()}/CHZ`" target="_blank" @click.stop>
           <img class="marketBoxImage" :src="require(`@/assets/markets/chiliz.png`)">
         </a>
-        {{ USDTMode ? formatNumber(coinData.chiliz.chz.inTRY, coinData.fraction ? coinData.fraction : 5) : formatNumber(coinData.chiliz.chz.inTRY, coinData.fraction ? coinData.fraction : 6) }}
-        {{ USDTMode ? '₺' : '₺' }}
+        {{ USDTMode ? formatNumber(coinData.chiliz.chz.inTRY / (coinData.paribu?.try?.inUSDT ? coinData.paribu.try.price / coinData.paribu.try.inUSDT : 1), coinData.fraction ? coinData.fraction : 5) : formatNumber(coinData.chiliz.chz.inTRY, coinData.fraction ? coinData.fraction : 6) }}
+        {{ USDTMode ? '$' : '₺' }}
       </div>
     </div>
   </div>

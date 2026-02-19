@@ -23,12 +23,20 @@ const TelegramService = {
     },
 
     /**
+     * Escape characters for Telegram MarkdownV2
+     */
+    escapeMarkdown(text) {
+        if (!text) return '';
+        return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+    },
+
+    /**
      * Send a message to specific chat IDs
      * @param {string|Array} targetChatIds - Single ID or array of IDs
      * @param {string} message - The message text
      * @param {boolean} isMarkdown - Whether to use MarkdownV2
      */
-    async sendMessage(targetChatIds, message, isMarkdown = true) {
+    async sendMessage(targetChatIds, message, isMarkdown = false) {
         if (!Array.isArray(targetChatIds)) {
             targetChatIds = [targetChatIds];
         }
@@ -62,8 +70,8 @@ const TelegramService = {
             try {
                 await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
                     chat_id: chatId,
-                    text: isMarkdown ? this.escapeMarkdown(message) : message,
-                    parse_mode: isMarkdown ? "MarkdownV2" : undefined,
+                    text: message,
+                    parse_mode: isMarkdown ? "MarkdownV2" : "HTML",
                     disable_web_page_preview: true
                 });
                 stats.success++;

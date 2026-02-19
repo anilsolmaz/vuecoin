@@ -157,7 +157,8 @@ module.exports = {
     getBinanceCoinList: async function () {
         try {
             const response = await axios.get(config.exchangeMarkets.binance.initialsUrl);
-            return response.data.payload.currencies;
+            // Binance /exchangeInfo returns { symbols: [{ symbol, baseAsset, ... }] }
+            return response.data.symbols.map(s => s.baseAsset.toLowerCase());
         } catch (error) {
             throw error;
         }
@@ -165,7 +166,8 @@ module.exports = {
     getChilizCoinList: async function () {
         try {
             const response = await axios.get(config.exchangeMarkets.chiliz.tickerUrl);
-            return response.data.payload.currencies;
+            // Chiliz ticker returns an array of { symbol, ... }
+            return response.data.map(item => item.symbol.toLowerCase());
         } catch (error) {
             throw error;
         }
