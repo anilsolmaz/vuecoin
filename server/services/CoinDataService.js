@@ -752,13 +752,14 @@ class CoinDataService {
             }
         }
 
-        // Header line with deal type
-        const header = isSameExchange
-            ? `<b># Intra Exchange Deal #</b>`
-            : `<b># Cross Exchange Deal #</b>`;
+        // Header line only for intra-exchange deals, with the exchange name
+        let msg = '';
+        if (isSameExchange) {
+            const exchangeName = this.getBaseExchange(op.buyExchange);
+            msg += `<b># ${exchangeName} Deal #</b>\n`;
+        }
 
-        let msg = `${header}\n` +
-            `🪙 <b>${op.coin.toUpperCase()}</b> | %${op.roi.toFixed(2)}\n` +
+        msg += `🪙 <b>${op.coin.toUpperCase()}</b> | %${op.roi.toFixed(2)}\n` +
             `💰 <b>Potential Gain:</b> ₺${fmt(op.profit)}\n` +
             `🛒 <b>Buy:</b> ${op.buyExchange}  (@ ₺${fmt4(op.buyPrice)})\n` +
             `🤝 <b>Sell:</b> ${op.sellExchange} (@ ₺${fmt4(op.sellPrice)})\n` +
