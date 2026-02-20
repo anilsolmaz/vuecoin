@@ -7,7 +7,7 @@ const telegramTokens = [
 ].filter(token => token); // Filter out undefined tokens
 
 const chatIds = {
-    general: process.env.TELEGRAM_CHAT_ID_GENERAL || '-redacted_chat_id' // Default from user snippet
+    general: process.env.TELEGRAM_CHAT_ID_GENERAL || '' // Chat ID should be provided via .env
 };
 
 const TelegramService = {
@@ -48,8 +48,8 @@ const TelegramService = {
             // Or just use the first one? The original code used different bots for different chats.
             // For simplicity and robustness, we'll try to send with the first available token for now.
             // If the user wants specific bots for specific chats, we might need more config.
-            // Based on snippet: 
-            // Bot 1 -> Chat -redacted_chat_id
+            // For now, let's keep it simple: 
+            // Bot 1 -> General Chat
             // Bot 2 -> Chat -1001558369109
 
             // Let's try to infer which token to use or just uses TOKEN_1 as primary.
