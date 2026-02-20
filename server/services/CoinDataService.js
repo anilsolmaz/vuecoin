@@ -10,8 +10,9 @@ class CoinDataService {
     constructor() {
         this.coinList = {};
         this.paribuMarketsList = [];
-        this.paribuUSDT = 0;
-        this.btcturkUSDT = 0;
+        this.paribuUSDT = { price: 0, bid: 0, ask: 0 };
+        this.btcturkUSDT = { price: 0, bid: 0, ask: 0 };
+        this.binanceUSDT = { price: 0, bid: 0, ask: 0 }; // We technically get Binance TRY/USDT
         this.paribuCHZ = 0;
         this.paribuSymbolMap = {}; // Map internal coin name to Paribu market key
         this.requestCount = 0;
@@ -283,11 +284,26 @@ class CoinDataService {
 
         // Calculate Rates First
         if (this.coinList['usdt']?.paribu?.try?.price) {
-            this.paribuUSDT = this.coinList['usdt'].paribu.try.price;
-            client.setex('paribuUSDT', config.cacheDuration, this.paribuUSDT);
-        } else if (process.env.NODE_ENV === 'test') {
-            // Mock value for tests
-            this.paribuUSDT = 10;
+            this.paribuUSDT = {
+                price: this.coinList['usdt'].paribu.try.price,
+                bid: this.coinList['usdt'].paribu.try.bid,
+                ask: this.coinList['usdt'].paribu.try.ask
+            };
+            // Default to price if bid/ask are 0 or missing
+            if (!this.paribuUSDT.bid) this.paribuUSDT.bid = this.paribuUSDT.price;
+            if (!this.paribuUSDT.ask) this.paribuUSDT.ask = this.paribuUSDT.price;
+
+            client.setex('paribuUSDT', config.cacheDuration, this.paribuUSDT.price);
+        }
+
+        if (this.coinList['usdt']?.binance?.try?.price) {
+            this.binanceUSDT = {
+                price: this.coinList['usdt'].binance.try.price,
+                bid: this.coinList['usdt'].binance.try.bid,
+                ask: this.coinList['usdt'].binance.try.ask
+            };
+            if (!this.binanceUSDT.bid) this.binanceUSDT.bid = this.binanceUSDT.price;
+            if (!this.binanceUSDT.ask) this.binanceUSDT.ask = this.binanceUSDT.price;
         }
 
         this.paribuCHZ = 0;
@@ -295,9 +311,15 @@ class CoinDataService {
             this.paribuCHZ = this.coinList['chz'].paribu.try.price;
         }
 
-        this.btcturkUSDT = 0;
+        this.btcturkUSDT = { price: 0, bid: 0, ask: 0 };
         if (this.coinList['usdt']?.BTCTurk?.try?.price) {
-            this.btcturkUSDT = this.coinList['usdt'].BTCTurk.try.price;
+            this.btcturkUSDT = {
+                price: this.coinList['usdt'].BTCTurk.try.price,
+                bid: this.coinList['usdt'].BTCTurk.try.bid,
+                ask: this.coinList['usdt'].BTCTurk.try.ask
+            };
+            if (!this.btcturkUSDT.bid) this.btcturkUSDT.bid = this.btcturkUSDT.price;
+            if (!this.btcturkUSDT.ask) this.btcturkUSDT.ask = this.btcturkUSDT.price;
         }
 
         // Calculate Metrics
@@ -438,29 +460,55 @@ class CoinDataService {
         if (!item.BTCTurk) item.BTCTurk = { try: {}, usdt: {} };
         if (!item.chiliz) item.chiliz = { chz: {}, usdt: {} };
 
-        // Cross Rate Calculations
-        const convert = (obj, rate, op) => {
-            if (!obj || !obj.price) return;
+        // Cross Rate Calculations: Bid/Ask aware logic
+        // If converting USDT to TRY (mult): we are selling/buying USDT
+        // If converting TRY to USDT (div): we are selling/buying TRY
+        const convert = (obj, usdtRateObj, op) => {
+            if (!obj || !obj.price || !usdtRateObj || !usdtRateObj.price) return;
+
+            // To be safe, fallback to general price if bid/ask missing
+            let rBid = usdtRateObj.bid || usdtRateObj.price;
+            let rAsk = usdtRateObj.ask || usdtRateObj.price;
+
             if (op === 'div') {
-                obj.inUSDT = obj.price / rate;
-                if (obj.bid) obj.bidInUSDT = obj.bid / rate;
-                if (obj.ask) obj.askInUSDT = obj.ask / rate;
+                // TRY to USDT 
+                // We have TRY.
+                // askInUSDT: we want to BUY the coin. It costs TRY. We must SELL USDT to get that TRY.
+                // How much USDT do we sell? -> TRY Cost / (USDT/TRY Bid)
+                if (obj.ask) obj.askInUSDT = obj.ask / rBid;
+                // bidInUSDT: we want to SELL the coin. We get TRY. We must BUY USDT with that TRY.
+                // How much USDT do we get? -> TRY Rev / (USDT/TRY Ask)
+                if (obj.bid) obj.bidInUSDT = obj.bid / rAsk;
+
+                // Keep .inUSDT for legacy display support
+                obj.inUSDT = obj.price / usdtRateObj.price;
             } else {
-                obj.inTRY = obj.price * rate;
-                if (obj.bid) obj.bidInTRY = obj.bid * rate;
-                if (obj.ask) obj.askInTRY = obj.ask * rate;
+                // USDT to TRY
+                // We have USDT. 
+                // askInTRY: we want to BUY the coin. It costs USDT. We must BUY that USDT with TRY.
+                // How much TRY does it cost? -> USDT Cost * (USDT/TRY Ask)
+                if (obj.ask) obj.askInTRY = obj.ask * rAsk;
+                // bidInTRY: we want to SELL the coin. We get USDT. We must SELL that USDT for TRY.
+                // How much TRY do we get? -> USDT Rev * (USDT/TRY Bid)
+                if (obj.bid) obj.bidInTRY = obj.bid * rBid;
+
+                // Keep .inTRY for legacy display support
+                obj.inTRY = obj.price * usdtRateObj.price;
             }
         };
 
-        if (item.paribu.try?.price && this.paribuUSDT) convert(item.paribu.try, this.paribuUSDT, 'div');
-        if (item.paribu.usdt?.price && this.paribuUSDT) convert(item.paribu.usdt, this.paribuUSDT, 'mult');
+        // Note: use the exchange's own specific USDT/TRY rate if available
+        let prbRate = this.paribuUSDT.price ? this.paribuUSDT : (this.btcturkUSDT.price ? this.btcturkUSDT : this.binanceUSDT);
+        if (item.paribu.try?.price) convert(item.paribu.try, prbRate, 'div');
+        if (item.paribu.usdt?.price) convert(item.paribu.usdt, prbRate, 'mult');
 
-        if (item.binance.usdt?.price && this.paribuUSDT) convert(item.binance.usdt, this.paribuUSDT, 'mult');
-        if (item.binance.try?.price && this.paribuUSDT) convert(item.binance.try, this.paribuUSDT, 'div');
+        let bncRate = this.binanceUSDT.price ? this.binanceUSDT : prbRate;
+        if (item.binance.usdt?.price) convert(item.binance.usdt, bncRate, 'mult');
+        if (item.binance.try?.price) convert(item.binance.try, bncRate, 'div');
 
-        let btcRate = this.btcturkUSDT || this.paribuUSDT;
-        if (item.BTCTurk.usdt?.price && btcRate) convert(item.BTCTurk.usdt, btcRate, 'mult');
-        if (item.BTCTurk.try?.price && btcRate) convert(item.BTCTurk.try, btcRate, 'div');
+        let btcRate = this.btcturkUSDT.price ? this.btcturkUSDT : prbRate;
+        if (item.BTCTurk.usdt?.price) convert(item.BTCTurk.usdt, btcRate, 'mult');
+        if (item.BTCTurk.try?.price) convert(item.BTCTurk.try, btcRate, 'div');
 
         // Initialize Arbitrage Data
         let bestBuy = { price: Infinity, rawPrice: 0, exchange: null, qty: null };
@@ -603,30 +651,40 @@ class CoinDataService {
                 // Note: Qty is usually in Coin (e.g. BTC), so it stays same.
                 // Exception: Some exchanges might have quote-currency qty? Assuming Base Coin Qty for now.
 
-                const normalize = (book, exchange) => {
+                // Updated Normalization with Bid/Ask awareness
+                const normalizeOrderBook = (book, exchange, type) => {
                     if (!book) return null;
-                    // Check if source is USDT
-                    // Paribu(USDT) is definitely USDT.
-                    // Binance is always USDT in our fetchDepth implementation.
                     let isUSDT = exchange.includes('USDT') || exchange.includes('Binance');
 
-                    // Binance depth is always USDT (fetched as coinUSDT).
-                    // BTCTurk and Paribu now fetch the correct pair based on exchange identifier.
-                    // So BTCTurk(USDT) returns USDT depth, BTCTurk(TRY) returns TRY depth.
-
                     if (isUSDT) {
-                        let rate = this.paribuUSDT || 30; // Fallback if 0
-                        // Deep Copy & Convert Price (index 0)
+                        let rateObj = null;
+                        if (exchange.includes('Binance')) rateObj = this.binanceUSDT;
+                        else if (exchange.includes('BTCTurk')) rateObj = this.btcturkUSDT;
+                        else if (exchange.includes('Paribu')) rateObj = this.paribuUSDT;
+
+                        if (!rateObj || !rateObj.price) {
+                            rateObj = this.binanceUSDT.price ? this.binanceUSDT : (this.btcturkUSDT.price ? this.btcturkUSDT : this.paribuUSDT);
+                        }
+
+                        // If we are looking at 'asks', we are going to BUY. We need USDT.
+                        // We must BUY USDT with TRY -> use USDT Ask
+                        // If we are looking at 'bids', we are going to SELL. We get USDT.
+                        // We must SELL USDT into TRY -> use USDT Bid
+                        let rate = type === 'asks' ? (rateObj.ask || rateObj.price) : (rateObj.bid || rateObj.price);
+
+                        // Fallback completely just in case rate is 0 or NaN
+                        if (!rate || rate === 0) rate = 30;
+
                         return book.map(level => [
                             parseFloat(level[0]) * rate, // Price * Rate
                             parseFloat(level[1])         // Qty
                         ]);
                     }
-                    return book; // Return as is (assuming TRY)
+                    return book;
                 };
 
-                asks = normalize(asks, bestBuy.exchange);
-                bids = normalize(bids, bestSell.exchange);
+                asks = normalizeOrderBook(asks, bestBuy.exchange, 'asks');
+                bids = normalizeOrderBook(bids, bestSell.exchange, 'bids');
 
                 // 2. If missing, Fallback to Ticker (Construct Single-Level Depth)
                 // Only if Ticker Qty exists and is valid
@@ -695,10 +753,12 @@ class CoinDataService {
         const crossExchange = opportunities.filter(o => !this.isSameExchange(o));
 
         // --- SAME-EXCHANGE: No minROI, no minProfit filter ---
-        // Sort by profit descending, send all
+        // Sort by profit descending. ONLY send if > 0. 
         sameExchange.sort((a, b) => b.profit - a.profit);
         sameExchange.forEach((op) => {
-            this.checkAndSendTelegramAlert(op, true);
+            if (op.profit > 0) {
+                this.checkAndSendTelegramAlert(op, true);
+            }
         });
 
         // --- CROSS-EXCHANGE: Apply existing filters ---
@@ -756,14 +816,7 @@ class CoinDataService {
             return formatParts(n, 8);                       // $0.00007123
         };
 
-        // SANITY CHECK: If buy/sell prices don't match ROI, something is wrong with normalization
-        if (op.buyPrice > 0 && op.sellPrice > 0) {
-            let alertROI = ((op.sellPrice - op.buyPrice) / op.buyPrice) * 100;
-            if (Math.abs(alertROI - op.roi) > Math.abs(op.roi) * 10) {
-                console.warn(`⚠️ Skipping bogus alert for ${op.coin}: Alert ROI ${alertROI.toFixed(2)}% vs Ticker ROI ${op.roi.toFixed(2)}%`);
-                return;
-            }
-        }
+        // Removing Sanity Check entirely as requested.
 
         // Header line only for intra-exchange deals, with the exchange name
         let msg = '';
