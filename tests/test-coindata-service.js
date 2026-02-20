@@ -86,9 +86,9 @@ test('should initialize btcturkUSDT (not duplicate paribuUSDT)', () => {
 
 test('should initialize settings with defaults', () => {
     const svc = freshService();
-    assert.strictEqual(svc.settings.cooldown, 5);
-    assert.strictEqual(svc.settings.minProfit, 1000);
-    assert.strictEqual(svc.settings.minROI, 0.50);
+    assert.strictEqual(svc.settings.globalCooldown, 5);
+    assert.strictEqual(svc.settings.crossMinProfit, 1000);
+    assert.strictEqual(svc.settings.crossMinROI, 0.50);
 });
 
 test('should start uninitialized', () => {
@@ -441,18 +441,18 @@ console.log('\n--- Settings ---');
 
 test('should use defaults when settings not loaded', () => {
     const svc = freshService();
-    assert.strictEqual(svc.settings.cooldown, 5);
-    assert.strictEqual(svc.settings.minProfit, 1000);
-    assert.strictEqual(svc.settings.minROI, 0.50);
+    assert.strictEqual(svc.settings.globalCooldown, 5);
+    assert.strictEqual(svc.settings.crossMinProfit, 1000);
+    assert.strictEqual(svc.settings.crossMinROI, 0.50);
 });
 
 test('should accept custom settings', () => {
     const svc = freshService();
-    svc.settings = { cooldown: 10, minProfit: 500, minROI: 1.0 };
+    svc.settings = { globalCooldown: 10, crossMinProfit: 500, crossMinROI: 1.0 };
 
-    assert.strictEqual(svc.settings.cooldown, 10);
-    assert.strictEqual(svc.settings.minProfit, 500);
-    assert.strictEqual(svc.settings.minROI, 1.0);
+    assert.strictEqual(svc.settings.globalCooldown, 10);
+    assert.strictEqual(svc.settings.crossMinProfit, 500);
+    assert.strictEqual(svc.settings.crossMinROI, 1.0);
 });
 
 
@@ -470,7 +470,7 @@ test('should respect cooldown period', async () => {
 
     svc.lastAlertTimes = {};
     svc.lastAlertProfits = {};
-    svc.settings.cooldown = 60; // 60 min cooldown
+    svc.settings.globalCooldown = 60; // 60 min cooldown
 
     const op = { coin: 'test', profit: 1000, roi: 5, buyExchange: 'A', sellExchange: 'B', buyPrice: 100, sellPrice: 105, tradeAmountTRY: 10000 };
 
@@ -487,7 +487,7 @@ test('should respect cooldown period', async () => {
 
 test('should send alert when profit increases despite cooldown', async () => {
     const svc = freshService();
-    svc.settings.cooldown = 60;
+    svc.settings.globalCooldown = 60;
 
     const op1 = { coin: 'x', profit: 1000, roi: 5, buyExchange: 'A', sellExchange: 'B', buyPrice: 100, sellPrice: 105, tradeAmountTRY: 10000 };
     await svc.checkAndSendTelegramAlert(op1);

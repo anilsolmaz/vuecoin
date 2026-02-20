@@ -92,32 +92,16 @@ export default {
       event.target.src = require(`@/assets/coins/noimage.png`);
     },
     cellClass(coinName, coinROI) {
-      if (coinROI) {
-        let red = 0;
-        let green = 0;
-        let blue = 0;
-        if (coinROI > 4) {
-          red = 255;
-          coinROI > 8 ? (green = 0) : (green = 100 - (coinROI - 4) / 4 * 100);
-        } else if (coinROI > 2) {
-          red = 255;
-          green = 180 - 40 * (coinROI - 2) / 2;
-          blue = (coinROI - 2) / 2;
-        } else if (coinROI > 1) {
-          red = 105 + (coinROI - 1) / 2 * 150;
-          green = 179 - (coinROI - 1) / 2 * 30;
-          blue = 76 - (coinROI - 1) / 2 * 55;
-        }
-        return {
-          backgroundColor: `rgba(${Math.round(red)}, ${Math.round(green)}, ${Math.round(blue)}, 0.5) !important`,
-          cursor: 'pointer'
-        };
-      } else {
-        return {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          cursor: 'pointer'
-        };
-      }
+      let bg = 'var(--roi-neutral)';
+      
+      if (coinROI > 4) bg = 'var(--roi-danger)';
+      else if (coinROI > 2) bg = 'var(--roi-warning)';
+      else if (coinROI > 0.5) bg = 'var(--roi-success)';
+
+      return {
+        backgroundColor: bg,
+        cursor: 'pointer'
+      };
     }
   }
 };
@@ -130,33 +114,47 @@ export default {
   margin: 4px auto 4px 4px;
   padding: 4px 4px;
   border-radius: 8px;
-  transition: all 2s;
+  transition: all 0.3s ease;
   font-size: 0.8em;
   text-align: left;
-  color: white;
+  color: inherit;
+  border: 1px solid var(--current-border);
+  background-color: var(--current-card-bg);
 }
 
 .coinbox:hover {
   transition: all 0.2s !important;
-  transform: scale(1.2);
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  z-index: 10;
 }
 
 .header {
   border-radius: 8px 8px 0px 0px;
-  border-bottom: wheat solid 1px;
+  border-bottom: 1px solid var(--current-border);
   font-size: 1.4em;
   margin: 2px auto;
   padding: 2px;
   width: auto;
   height: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .coinBoxImage {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   margin: 1px;
-  border-radius: 10px;
-  background-color: white;
+  border-radius: 50%;
+  background-color: #ffffff;
+  padding: 1px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+body.light-mode .coinBoxImage {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
 }
 
 .marketBoxImage {
