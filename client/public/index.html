@@ -13,6 +13,19 @@
 </head>
 
 <body>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('vuecoin_theme') || 'system';
+        var isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (theme === 'dark' || (theme === 'system' && isSystemDark)) {
+          document.body.classList.add('dark-mode');
+        } else {
+          document.body.classList.add('light-mode');
+        }
+      } catch (e) { }
+    })();
+  </script>
   <noscript>
     <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled.
         Please enable it to continue.</strong>

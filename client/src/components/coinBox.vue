@@ -114,7 +114,7 @@ export default {
   margin: 4px auto 4px 4px;
   padding: 4px 4px;
   border-radius: 8px;
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
   font-size: 0.8em;
   text-align: left;
   color: inherit;
