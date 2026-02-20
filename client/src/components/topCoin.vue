@@ -1,10 +1,10 @@
 <template>
-  <div class="col" :style="boxStyle">
-    <h4>
+  <div class="col">
+    <h4 :style="textColor">
       <a :href="binanceUrl" target="_blank">
         <img
             :src="coinImageUrl"
-            style="height: 32px; width: 32px;"
+            style="height: 32px; width: 32px; border-radius: 50%; opacity: 0.9;"
             @error="noImage"
         >
       </a>
@@ -161,10 +161,7 @@ export default {
       return '';
     },
     textColor() {
-       let roi = this.getROI;
-       if (roi > 0) return 'color: #198754'; // Success Green
-       if (roi < 0) return 'color: #dc3545'; // Danger Red
-       return 'color: white';
+       return ''; // Inherit monochrome colors from theme
     }
   },
   methods: {

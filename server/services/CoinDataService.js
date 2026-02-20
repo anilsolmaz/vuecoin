@@ -22,10 +22,11 @@ class CoinDataService {
         this.lastAlertTimes = {}; // For Telegram cooldown
         this.lastAlertProfits = {}; // To detect profit increases
         this.settings = {
-            cooldown: 5,
-            minProfit: 1000,
-            minROI: 0.50,
-            sameExchangeMinROI: 0
+            globalCooldown: 5,
+            crossMinProfit: 1000,
+            crossMinROI: 0.50,
+            intraMinROI: 0,
+            intraMinProfit: 100
         };
     }
 
@@ -345,12 +346,12 @@ class CoinDataService {
         try {
             if (exchange.includes('Binance')) {
                 // Binance symbol usually like BTCUSDT. We need to know which pair caused the arb.
-                // But simplified: fetch USDT pair depth as it's most liquid/likely.
-                let symbol = coin.toUpperCase() + 'USDT';
+                let suffix = exchange.includes('USDT') ? 'USDT' : 'TRY';
+                let symbol = coin.toUpperCase() + suffix;
                 let data = await f.getBinanceOrderBook(symbol);
                 if (data) {
                     if (!this.depthCache[coin]) this.depthCache[coin] = {};
-                    this.depthCache[coin]['Binance'] = data;
+                    this.depthCache[coin][exchange] = data; // Cache under 'Binance(TRY)' or 'Binance(USDT)'
                 }
             } else if (exchange.includes('BTCTurk')) {
                 // Determine pair based on exchange identifier
@@ -398,7 +399,7 @@ class CoinDataService {
         }
     }
 
-    calculateOrderBookMatch(asks, bids) {
+    calculateOrderBookMatch(asks, bids, maxBudget = Infinity) {
         // Sort ASKS (Best Buy = Lowest Price First)
         let sortedAsks = [...asks].map(a => ({ price: parseFloat(a[0]), qty: parseFloat(a[1]) })).sort((a, b) => a.price - b.price);
         // Sort BIDS (Best Sell = Highest Price First)
@@ -415,15 +416,20 @@ class CoinDataService {
             let ask = sortedAsks[i];
             let bid = sortedBids[j];
 
-            // Arbitrage Condition: Buy Price < Sell Price (Profitable?)
-            // If we buy at 6.07 and sell at 6.03, we lose.
-            // The loop should stop when ask.price >= bid.price (No more gap)
-            if (ask.price >= bid.price) {
-                break;
-            }
+            // 1. Arbitrage Condition: Buy Price < Sell Price
+            if (ask.price >= bid.price) break;
 
-            // Determine matchable quantity
+            // 2. Budget Limit (If applicable)
+            let remainingBudget = maxBudget - totalCost;
+            if (remainingBudget <= 0) break;
+
+            // 3. Determine matchable quantity
             let tradeQty = Math.min(ask.qty, bid.qty);
+
+            // Check if this trade exceeds remaining budget
+            if (tradeQty * ask.price > remainingBudget) {
+                tradeQty = remainingBudget / ask.price;
+            }
 
             // Accumulate Stats
             totalCost += tradeQty * ask.price;
@@ -442,13 +448,15 @@ class CoinDataService {
         let totalProfit = totalRevenue - totalCost;
         let avgBuyPrice = totalVolume > 0 ? (totalCost / totalVolume) : 0;
         let avgSellPrice = totalVolume > 0 ? (totalRevenue / totalVolume) : 0;
+        let effectiveROI = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
 
         return {
-            tradeAmountTRY: totalCost, // This is the required capital (Capacity)
+            tradeAmountTRY: totalCost,
             profit: totalProfit,
             avgBuyPrice,
             avgSellPrice,
-            totalVolume
+            totalVolume,
+            effectiveROI
         };
     }
 
@@ -552,15 +560,13 @@ class CoinDataService {
             let waitingForDepth = false;
 
             // Use user setting or default low threshold to ensure we capture all potential deals
-            let depthTrigger = (this.settings.minROI !== undefined) ? this.settings.minROI : 0.5;
+            let crossTrigger = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.5;
+            let intraTrigger = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
 
             // DYNAMIC DEPTH CHECK TRIGGER
-            // Cross-exchange deals must meet the minROI setting.
-            // Same-exchange deals use their own dedicated sameExchangeMinROI setting.
             let isSame = this.isSameExchange({ buyExchange: bestBuy.exchange, sellExchange: bestSell.exchange });
-            let sameMinROI = (this.settings.sameExchangeMinROI !== undefined) ? this.settings.sameExchangeMinROI : 0;
 
-            if (item.ROI >= depthTrigger || (isSame && item.ROI >= sameMinROI)) {
+            if ((!isSame && item.ROI >= crossTrigger) || (isSame && item.ROI >= intraTrigger)) {
                 // Fetch depth for the specific winning exchange/pair
                 // IMPORTANT: Use the full exchange identifier (e.g. 'BTCTurk(USDT)', 'Paribu(TRY)')
                 // so the cache key matches what fetchDepth stores.
@@ -568,8 +574,6 @@ class CoinDataService {
                     this.fetchDepth(coin, exchange);
                     // Check if depth data is available under the exchange key
                     if (!this.depthCache[coin]?.[exchange]) {
-                        // For Binance, depth is always stored under 'Binance'
-                        if (exchange.includes('Binance') && this.depthCache[coin]?.['Binance']) return;
                         waitingForDepth = true;
                     }
                 };
@@ -611,10 +615,12 @@ class CoinDataService {
                 totalVolume: 0
             };
 
-            // Helper to get normalized depth
             const getDepth = (type, exchange) => {
                 // type: 'asks' or 'bids'
-                if (exchange.includes('Binance') && this.depthCache[coin]?.['Binance']?.[type]) return this.depthCache[coin]['Binance'][type];
+                if (exchange.includes('Binance')) {
+                    if (this.depthCache[coin]?.[exchange]?.[type]) return this.depthCache[coin][exchange][type];
+                    if (this.depthCache[coin]?.['Binance']?.[type]) return this.depthCache[coin]['Binance'][type];
+                }
                 if (exchange.includes('BTCTurk')) {
                     // Try explicit key first (BTCTurk(TRY), BTCTurk(USDT))
                     if (this.depthCache[coin]?.[exchange]?.[type]) return this.depthCache[coin][exchange][type];
@@ -657,7 +663,7 @@ class CoinDataService {
                 // Updated Normalization with Bid/Ask awareness
                 const normalizeOrderBook = (book, exchange, type) => {
                     if (!book) return null;
-                    let isUSDT = exchange.includes('USDT') || exchange.includes('Binance');
+                    let isUSDT = exchange.includes('USDT');
 
                     if (isUSDT) {
                         let rateObj = null;
@@ -701,7 +707,13 @@ class CoinDataService {
 
                 // 3. Run Matching Engine if we have data
                 if (asks && bids && asks.length > 0 && bids.length > 0) {
-                    finalTradeStats = this.calculateOrderBookMatch(asks, bids);
+                    // Use Infinity for same-exchange to calculate total market potential (matching cross-exchange logic)
+                    finalTradeStats = this.calculateOrderBookMatch(asks, bids, Infinity);
+
+                    // Update ROI with the real simulated ROI (considering slippage/depth)
+                    if (finalTradeStats.totalVolume > 0) {
+                        item.ROI = finalTradeStats.effectiveROI;
+                    }
                 }
                 // If still no stats (e.g. empty depth or no ticker qty), explicit 0 is maintained.
             }
@@ -754,41 +766,46 @@ class CoinDataService {
         });
 
         // Separate same-exchange and cross-exchange opportunities
-        // Exclude Binance-to-Binance intra deals
-        // Only alert if the simulated real profit > 0
-        const sameMinROI = (this.settings.sameExchangeMinROI !== undefined) ? this.settings.sameExchangeMinROI : 0;
-        const sameExchange = opportunities.filter(o =>
-            this.isSameExchange(o) && o.roi >= sameMinROI && o.profit > 0 && this.getBaseExchange(o.buyExchange) !== 'Binance'
+        // Separate same-exchange and cross-exchange opportunities
+        const intraMinROI = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
+        const intraMinProfit = (this.settings.intraMinProfit !== undefined) ? this.settings.intraMinProfit : 100;
+
+        const sameExchangeFiltered = opportunities.filter(o =>
+            this.isSameExchange(o) &&
+            o.roi >= intraMinROI &&
+            o.profit >= intraMinProfit &&
+            this.getBaseExchange(o.buyExchange) !== 'Binance'
         );
         const crossExchange = opportunities.filter(o => !this.isSameExchange(o));
 
-        // --- SAME-EXCHANGE: No minROI, no minProfit filter ---
-        // Sort by profit descending. ONLY send if > 0. 
-        sameExchange.sort((a, b) => b.profit - a.profit);
-        sameExchange.forEach((op) => {
+        // --- SAME-EXCHANGE: Apply ROI and Min Profit filters ---
+        sameExchangeFiltered.sort((a, b) => b.profit - a.profit);
+        sameExchangeFiltered.forEach((op) => {
             this.checkAndSendTelegramAlert(op, true);
         });
 
-        // --- CROSS-EXCHANGE: Apply existing filters ---
-        const minROI = (this.settings.minROI !== undefined && this.settings.minROI !== null) ? this.settings.minROI : 0.50;
-        const filteredCross = crossExchange.filter(o => o.roi >= minROI);
+        // --- CROSS-EXCHANGE: Apply ROI and Min Profit filters ---
+        const crossMinROI = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.50;
+        const crossMinProfit = (this.settings.crossMinProfit !== undefined) ? this.settings.crossMinProfit : 1000;
+
+        const filteredCross = crossExchange.filter(o =>
+            o.roi >= crossMinROI &&
+            o.profit >= crossMinProfit
+        );
 
         filteredCross.sort((a, b) => b.profit - a.profit);
         const top3 = filteredCross.slice(0, 3);
 
         top3.forEach((op) => {
-            const minProfit = (this.settings.minProfit !== undefined && this.settings.minProfit !== null) ? this.settings.minProfit : 1000;
-            if (op.profit >= minProfit) {
-                this.checkAndSendTelegramAlert(op, false);
-            }
+            this.checkAndSendTelegramAlert(op, false);
         });
     }
 
     async checkAndSendTelegramAlert(op, isSameExchange = false) {
         let now = Date.now();
 
-        // Use 5-min cooldown for all alerts
-        const configCooldown = (this.settings.cooldown !== undefined && this.settings.cooldown !== null) ? this.settings.cooldown : 5;
+        // Use global cooldown from settings
+        const configCooldown = (this.settings.globalCooldown !== undefined) ? this.settings.globalCooldown : 5;
         let cooldown = configCooldown * 60 * 1000;
 
         // Separate cooldown tracking for same-exchange vs cross-exchange

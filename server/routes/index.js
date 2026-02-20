@@ -344,10 +344,11 @@ router.get('/settings', async (req, res) => {
         }
         if (!reply) {
             const defaults = {
-                cooldown: 5,         // minutes
-                minProfit: 1000,     // TRY
-                minROI: 0.50,        // % (cross-exchange)
-                sameExchangeMinROI: 0 // % (same-exchange)
+                globalCooldown: 5,
+                crossMinProfit: 1000,
+                crossMinROI: 0.50,
+                intraMinROI: 0,
+                intraMinProfit: 100
             };
             return res.json(defaults);
         }
@@ -356,14 +357,21 @@ router.get('/settings', async (req, res) => {
 });
 
 router.post('/settings', async (req, res) => {
-    const { cooldown, minProfit, minROI, sameExchangeMinROI } = req.body;
+    const {
+        globalCooldown,
+        crossMinProfit,
+        crossMinROI,
+        intraMinROI,
+        intraMinProfit
+    } = req.body;
 
     // Validate and parse values
     const settings = {
-        cooldown: (cooldown !== undefined && cooldown !== null) ? parseFloat(cooldown) : 5,
-        minProfit: (minProfit !== undefined && minProfit !== null) ? parseFloat(minProfit) : 1000,
-        minROI: (minROI !== undefined && minROI !== null) ? parseFloat(minROI) : 0.5,
-        sameExchangeMinROI: (sameExchangeMinROI !== undefined && sameExchangeMinROI !== null) ? parseFloat(sameExchangeMinROI) : 0
+        globalCooldown: (globalCooldown !== undefined) ? parseFloat(globalCooldown) : 5,
+        crossMinProfit: (crossMinProfit !== undefined) ? parseFloat(crossMinProfit) : 1000,
+        crossMinROI: (crossMinROI !== undefined) ? parseFloat(crossMinROI) : 0.5,
+        intraMinROI: (intraMinROI !== undefined) ? parseFloat(intraMinROI) : 0,
+        intraMinProfit: (intraMinProfit !== undefined) ? parseFloat(intraMinProfit) : 100
     };
 
     client.set('arb_settings', JSON.stringify(settings), async (err) => {

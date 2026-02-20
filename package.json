@@ -1,12 +1,13 @@
 {
-  "name": "coinDataCollector",
+  "name": "coin-data-collector",
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
   "scripts": {
     "dev": "npx nodemon server.js -w server",
     "start": "node server.js",
-    "test": "NODE_ENV=test node tests/run-all-tests.js"
+    "test": "NODE_ENV=test node tests/run-all-tests.js",
+    "dev:all": "node start-dev.js"
   },
   "keywords": [],
   "author": "",
