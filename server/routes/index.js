@@ -346,7 +346,8 @@ router.get('/settings', async (req, res) => {
             const defaults = {
                 cooldown: 5,         // minutes
                 minProfit: 1000,     // TRY
-                minROI: 0.50          // %
+                minROI: 0.50,        // % (cross-exchange)
+                sameExchangeMinROI: 0 // % (same-exchange)
             };
             return res.json(defaults);
         }
@@ -355,13 +356,14 @@ router.get('/settings', async (req, res) => {
 });
 
 router.post('/settings', async (req, res) => {
-    const { cooldown, minProfit, minROI } = req.body;
+    const { cooldown, minProfit, minROI, sameExchangeMinROI } = req.body;
 
     // Validate and parse values
     const settings = {
         cooldown: (cooldown !== undefined && cooldown !== null) ? parseFloat(cooldown) : 5,
         minProfit: (minProfit !== undefined && minProfit !== null) ? parseFloat(minProfit) : 1000,
-        minROI: (minROI !== undefined && minROI !== null) ? parseFloat(minROI) : 0.5
+        minROI: (minROI !== undefined && minROI !== null) ? parseFloat(minROI) : 0.5,
+        sameExchangeMinROI: (sameExchangeMinROI !== undefined && sameExchangeMinROI !== null) ? parseFloat(sameExchangeMinROI) : 0
     };
 
     client.set('arb_settings', JSON.stringify(settings), async (err) => {

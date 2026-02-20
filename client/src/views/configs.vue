@@ -35,7 +35,19 @@
                 <input type="number" step="0.1" v-model="settings.minROI" class="form-control" required>
                 <span class="input-group-text">%</span>
               </div>
-              <small class="text-muted">Minimum ROI required for deals to be logged/alerted.</small>
+              <small class="text-muted">Minimum ROI required for cross-exchange deals.</small>
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <!-- Same-Exchange Min ROI -->
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Same-Exchange Min ROI (%)</label>
+              <div class="input-group">
+                <input type="number" step="0.1" v-model="settings.sameExchangeMinROI" class="form-control" required>
+                <span class="input-group-text">%</span>
+              </div>
+              <small class="text-muted">Minimum ROI for intra-exchange deals (e.g. Paribu TRY→USDT).</small>
             </div>
           </div>
 
@@ -66,7 +78,8 @@ export default {
       settings: {
         cooldown: 5,
         minProfit: 1000,
-        minROI: 0.5
+        minROI: 0.5,
+        sameExchangeMinROI: 0
       },
       saving: false,
       message: '',
