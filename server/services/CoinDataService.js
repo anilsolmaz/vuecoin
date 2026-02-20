@@ -24,7 +24,8 @@ class CoinDataService {
         this.settings = {
             cooldown: 5,
             minProfit: 1000,
-            minROI: 0.50
+            minROI: 0.50,
+            sameExchangeMinROI: 0
         };
     }
 
@@ -555,10 +556,11 @@ class CoinDataService {
 
             // DYNAMIC DEPTH CHECK TRIGGER
             // Cross-exchange deals must meet the minROI setting.
-            // Same-exchange deals bypass minROI and fetch depth for any > 0% profit so capacity can be evaluated accurately.
+            // Same-exchange deals use their own dedicated sameExchangeMinROI setting.
             let isSame = this.isSameExchange({ buyExchange: bestBuy.exchange, sellExchange: bestSell.exchange });
+            let sameMinROI = (this.settings.sameExchangeMinROI !== undefined) ? this.settings.sameExchangeMinROI : 0;
 
-            if (item.ROI >= depthTrigger || (isSame && item.ROI > 0)) {
+            if (item.ROI >= depthTrigger || (isSame && item.ROI >= sameMinROI)) {
                 // Fetch depth for the specific winning exchange/pair
                 // IMPORTANT: Use the full exchange identifier (e.g. 'BTCTurk(USDT)', 'Paribu(TRY)')
                 // so the cache key matches what fetchDepth stores.
@@ -754,8 +756,9 @@ class CoinDataService {
         // Separate same-exchange and cross-exchange opportunities
         // Exclude Binance-to-Binance intra deals
         // Only alert if the simulated real profit > 0
+        const sameMinROI = (this.settings.sameExchangeMinROI !== undefined) ? this.settings.sameExchangeMinROI : 0;
         const sameExchange = opportunities.filter(o =>
-            this.isSameExchange(o) && o.roi > 0 && o.profit > 0 && this.getBaseExchange(o.buyExchange) !== 'Binance'
+            this.isSameExchange(o) && o.roi >= sameMinROI && o.profit > 0 && this.getBaseExchange(o.buyExchange) !== 'Binance'
         );
         const crossExchange = opportunities.filter(o => !this.isSameExchange(o));
 
