@@ -77,11 +77,11 @@ console.log('--- Constructor ---');
 
 test('should initialize btcturkUSDT (not duplicate paribuUSDT)', () => {
     const svc = freshService();
-    assert.strictEqual(svc.btcturkUSDT, 0, 'btcturkUSDT should be initialized to 0');
-    assert.strictEqual(svc.paribuUSDT, 0, 'paribuUSDT should be 0');
+    assert.strictEqual(svc.btcturkUSDT.price, 0, 'btcturkUSDT should be initialized to 0');
+    assert.strictEqual(svc.paribuUSDT.price, 0, 'paribuUSDT should be 0');
     // Verify they are distinct properties
-    svc.paribuUSDT = 35;
-    assert.strictEqual(svc.btcturkUSDT, 0, 'btcturkUSDT should remain 0 after paribuUSDT change');
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
+    assert.strictEqual(svc.btcturkUSDT.price, 0, 'btcturkUSDT should remain 0 after paribuUSDT change');
 });
 
 test('should initialize settings with defaults', () => {
@@ -106,7 +106,9 @@ console.log('\n--- calculateCoinMetrics ---');
 
 test('should find best buy (lowest ask) and best sell (highest bid)', () => {
     const svc = freshService();
-    svc.paribuUSDT = 10; // 1 USDT = 10 TRY
+    svc.paribuUSDT = { price: 10, bid: 10, ask: 10 }; // 1 USDT = 10 TRY
+    svc.binanceUSDT = { price: 10, bid: 10, ask: 10 };
+    svc.btcturkUSDT = { price: 10, bid: 10, ask: 10 };
     // Use prices that produce a LOW ROI (< 0.5%) to avoid depth trigger
     svc.coinList['test1'] = {
         paribu: { try: { price: 100, ask: 100, bid: 99.5, askQty: 10, bidQty: 10 } },
@@ -133,7 +135,8 @@ test('should find best buy (lowest ask) and best sell (highest bid)', () => {
 
 test('should correctly detect cross-exchange arbitrage Paribu→Binance', () => {
     const svc = freshService();
-    svc.paribuUSDT = 10;
+    svc.paribuUSDT = { price: 10, bid: 10, ask: 10 };
+    svc.binanceUSDT = { price: 10, bid: 10, ask: 10 };
     // Use prices that result in ROI below depth trigger (< 0.5%)
     svc.coinList['arb1'] = {
         paribu: { try: { price: 100, ask: 100, bid: 99, askQty: 100, bidQty: 100 } },
@@ -155,7 +158,7 @@ test('should correctly detect cross-exchange arbitrage Paribu→Binance', () => 
 
 test('should return ROI = -100 when no valid prices exist', () => {
     const svc = freshService();
-    svc.paribuUSDT = 10;
+    svc.paribuUSDT = { price: 10, bid: 10, ask: 10 };
 
     svc.coinList['dead'] = {
         paribu: { try: { price: 0, ask: 0, bid: 0 } },
@@ -171,7 +174,7 @@ test('should return ROI = -100 when no valid prices exist', () => {
 
 test('should not crash on completely empty coin', () => {
     const svc = freshService();
-    svc.paribuUSDT = 10;
+    svc.paribuUSDT = { price: 10, bid: 10, ask: 10 };
     svc.coinList['empty'] = {};
 
     svc.calculateCoinMetrics('empty');
@@ -186,7 +189,7 @@ test('should not crash when coin does not exist', () => {
 
 test('should handle negative ROI (buy higher than sell)', () => {
     const svc = freshService();
-    svc.paribuUSDT = 10;
+    svc.paribuUSDT = { price: 10, bid: 10, ask: 10 };
 
     svc.coinList['neg'] = {
         paribu: { try: { price: 100, ask: 110, bid: 90, askQty: 10, bidQty: 10 } },
@@ -331,7 +334,7 @@ console.log('\n--- Cross-rate Conversions ---');
 
 test('should convert Paribu TRY price to USDT', () => {
     const svc = freshService();
-    svc.paribuUSDT = 35;
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
 
     svc.coinList['conv1'] = {
         paribu: { try: { price: 350, ask: 351, bid: 349 } },
@@ -351,7 +354,7 @@ test('should convert Paribu TRY price to USDT', () => {
 
 test('should convert Binance USDT price to TRY', () => {
     const svc = freshService();
-    svc.paribuUSDT = 35;
+    svc.binanceUSDT = { price: 35, bid: 35, ask: 35 };
 
     svc.coinList['conv2'] = {
         paribu: { try: {} },
@@ -369,8 +372,8 @@ test('should convert Binance USDT price to TRY', () => {
 
 test('should use btcturkUSDT for BTCTurk conversions when available', () => {
     const svc = freshService();
-    svc.paribuUSDT = 35;
-    svc.btcturkUSDT = 34.5;
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.btcturkUSDT = { price: 34.5, bid: 34.5, ask: 34.5 };
 
     svc.coinList['conv3'] = {
         paribu: { try: {} },
@@ -412,7 +415,8 @@ test('should cache depth error correctly', () => {
     svc.depthCache['btc']['Binance'] = { error: true };
 
     // Now run metrics — depth error should trigger kill switch (profit=0)
-    svc.paribuUSDT = 35;
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.binanceUSDT = { price: 35, bid: 35, ask: 35 };
     svc.coinList['btc'] = {
         paribu: { try: { price: 1000000, ask: 999000, bid: 998000, askQty: 1, bidQty: 1 } },
         binance: { usdt: { price: 30000, ask: 29000, bid: 31000, askQty: 1, bidQty: 1 }, try: {} },
@@ -504,7 +508,7 @@ console.log('\n--- Edge Cases ---');
 
 test('should handle Infinity prices gracefully', () => {
     const svc = freshService();
-    svc.paribuUSDT = 10;
+    svc.paribuUSDT = { price: 10, bid: 10, ask: 10 };
 
     svc.coinList['inf'] = {
         paribu: { try: { price: Infinity, ask: Infinity, bid: 100 } },
@@ -520,7 +524,7 @@ test('should handle Infinity prices gracefully', () => {
 
 test('should handle NaN prices gracefully', () => {
     const svc = freshService();
-    svc.paribuUSDT = 10;
+    svc.paribuUSDT = { price: 10, bid: 10, ask: 10 };
 
     svc.coinList['nan'] = {
         paribu: { try: { price: NaN, ask: NaN, bid: NaN } },
@@ -535,7 +539,8 @@ test('should handle NaN prices gracefully', () => {
 
 test('should handle very small prices (precision)', () => {
     const svc = freshService();
-    svc.paribuUSDT = 35;
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.binanceUSDT = { price: 35, bid: 35, ask: 35 };
 
     svc.coinList['tiny'] = {
         paribu: { try: { price: 0.00001, ask: 0.000009, bid: 0.000011, askQty: 1000000, bidQty: 1000000 } },
@@ -551,7 +556,7 @@ test('should handle very small prices (precision)', () => {
 
 test('should handle zero USDT rate without crashing', () => {
     const svc = freshService();
-    svc.paribuUSDT = 0; // Edge case: no USDT data
+    svc.paribuUSDT = { price: 0, bid: 0, ask: 0 }; // Edge case: no USDT data
 
     svc.coinList['noRate'] = {
         paribu: { try: { price: 100, ask: 95, bid: 90, askQty: 10, bidQty: 10 } },
@@ -567,7 +572,8 @@ test('should handle zero USDT rate without crashing', () => {
 
 test('should handle 200+ coins without performance degradation', () => {
     const svc = freshService();
-    svc.paribuUSDT = 35;
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.binanceUSDT = { price: 35, bid: 35, ask: 35 };
 
     for (let i = 0; i < 200; i++) {
         svc.coinList[`coin${i}`] = {
