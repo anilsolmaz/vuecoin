@@ -497,18 +497,15 @@ class CoinDataService {
             }
         };
 
-        // Note: use the exchange's own specific USDT/TRY rate if available
-        let prbRate = this.paribuUSDT.price ? this.paribuUSDT : (this.btcturkUSDT.price ? this.btcturkUSDT : this.binanceUSDT);
-        if (item.paribu.try?.price) convert(item.paribu.try, prbRate, 'div');
-        if (item.paribu.usdt?.price) convert(item.paribu.usdt, prbRate, 'mult');
+        // Note: use the exchange's own specific USDT/TRY rate if available. DO NOT fallback across exchanges.
+        if (item.paribu.try?.price) convert(item.paribu.try, this.paribuUSDT, 'div');
+        if (item.paribu.usdt?.price) convert(item.paribu.usdt, this.paribuUSDT, 'mult');
 
-        let bncRate = this.binanceUSDT.price ? this.binanceUSDT : prbRate;
-        if (item.binance.usdt?.price) convert(item.binance.usdt, bncRate, 'mult');
-        if (item.binance.try?.price) convert(item.binance.try, bncRate, 'div');
+        if (item.binance.usdt?.price) convert(item.binance.usdt, this.binanceUSDT, 'mult');
+        if (item.binance.try?.price) convert(item.binance.try, this.binanceUSDT, 'div');
 
-        let btcRate = this.btcturkUSDT.price ? this.btcturkUSDT : prbRate;
-        if (item.BTCTurk.usdt?.price) convert(item.BTCTurk.usdt, btcRate, 'mult');
-        if (item.BTCTurk.try?.price) convert(item.BTCTurk.try, btcRate, 'div');
+        if (item.BTCTurk.usdt?.price) convert(item.BTCTurk.usdt, this.btcturkUSDT, 'mult');
+        if (item.BTCTurk.try?.price) convert(item.BTCTurk.try, this.btcturkUSDT, 'div');
 
         // Initialize Arbitrage Data
         let bestBuy = { price: Infinity, rawPrice: 0, exchange: null, qty: null };
@@ -551,13 +548,17 @@ class CoinDataService {
             // Initial ROI
             item.ROI = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
 
-            // DYNAMIC DEPTH CHECK TRIGGER
             let waitingForDepth = false;
+
             // Use user setting or default low threshold to ensure we capture all potential deals
             let depthTrigger = (this.settings.minROI !== undefined) ? this.settings.minROI : 0.5;
 
-            // Allow slightly lower than minROI to catch near-misses
-            if (item.ROI >= depthTrigger) {
+            // DYNAMIC DEPTH CHECK TRIGGER
+            // Cross-exchange deals must meet the minROI setting.
+            // Same-exchange deals bypass minROI and fetch depth for any > 0% profit so capacity can be evaluated accurately.
+            let isSame = this.isSameExchange({ buyExchange: bestBuy.exchange, sellExchange: bestSell.exchange });
+
+            if (item.ROI >= depthTrigger || (isSame && item.ROI > 0)) {
                 // Fetch depth for the specific winning exchange/pair
                 // IMPORTANT: Use the full exchange identifier (e.g. 'BTCTurk(USDT)', 'Paribu(TRY)')
                 // so the cache key matches what fetchDepth stores.
@@ -662,8 +663,9 @@ class CoinDataService {
                         else if (exchange.includes('BTCTurk')) rateObj = this.btcturkUSDT;
                         else if (exchange.includes('Paribu')) rateObj = this.paribuUSDT;
 
+                        // DO NOT FALLBACK - If the exchange's own rate is missing, normalization fails safely
                         if (!rateObj || !rateObj.price) {
-                            rateObj = this.binanceUSDT.price ? this.binanceUSDT : (this.btcturkUSDT.price ? this.btcturkUSDT : this.paribuUSDT);
+                            return null;
                         }
 
                         // If we are looking at 'asks', we are going to BUY. We need USDT.
@@ -702,7 +704,6 @@ class CoinDataService {
                 // If still no stats (e.g. empty depth or no ticker qty), explicit 0 is maintained.
             }
 
-            // Reporting
             item.arbitrageDetails = {
                 buyExchange: bestBuy.exchange,
                 sellExchange: bestSell.exchange,
@@ -710,9 +711,14 @@ class CoinDataService {
                 sellPrice: finalTradeStats.avgSellPrice || effectiveSellPrice,
                 buyPriceRaw: bestBuy.rawPrice,   // Original currency price (TRY or USDT)
                 sellPriceRaw: bestSell.rawPrice,  // Original currency price (TRY or USDT)
+                effectiveBuyPriceTRY: effectiveBuyPrice, // The raw TRY cost used for ROI
+                effectiveSellPriceTRY: effectiveSellPrice, // The converted TRY revenue used for ROI
                 tradeAmountTRY: finalTradeStats.tradeAmountTRY,
                 profit: finalTradeStats.profit,
-                roi: item.ROI
+                roi: item.ROI,
+                buyQty: bestBuy.qty,
+                sellQty: bestSell.qty,
+                depthFetched: (this.depthCache[coin] && this.depthCache[coin][bestBuy.exchange]) ? true : false
             };
 
         } else {
@@ -747,8 +753,9 @@ class CoinDataService {
 
         // Separate same-exchange and cross-exchange opportunities
         // Exclude Binance-to-Binance intra deals
+        // Only alert if the simulated real profit > 0
         const sameExchange = opportunities.filter(o =>
-            this.isSameExchange(o) && o.roi > 0 && this.getBaseExchange(o.buyExchange) !== 'Binance'
+            this.isSameExchange(o) && o.roi > 0 && o.profit > 0 && this.getBaseExchange(o.buyExchange) !== 'Binance'
         );
         const crossExchange = opportunities.filter(o => !this.isSameExchange(o));
 
@@ -756,9 +763,7 @@ class CoinDataService {
         // Sort by profit descending. ONLY send if > 0. 
         sameExchange.sort((a, b) => b.profit - a.profit);
         sameExchange.forEach((op) => {
-            if (op.profit > 0) {
-                this.checkAndSendTelegramAlert(op, true);
-            }
+            this.checkAndSendTelegramAlert(op, true);
         });
 
         // --- CROSS-EXCHANGE: Apply existing filters ---
