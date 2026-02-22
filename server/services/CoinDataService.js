@@ -207,6 +207,31 @@ class CoinDataService {
         if (!finalResults.BTCTurk) finalResults.BTCTurk = {};
         if (!finalResults.chiliz) finalResults.chiliz = {};
 
+        // Fix Bug 3: If an exchange API failed (returned null), reset its stale prices
+        // to prevent false arbitrage signals from temporal mismatches.
+        const exchangeKeys = [
+            { resultKey: 'paribu', coinKey: 'paribu' },
+            { resultKey: 'binance', coinKey: 'binance' },
+            { resultKey: 'BTCTurk', coinKey: 'BTCTurk' }
+        ];
+        exchangeKeys.forEach(({ resultKey, coinKey }) => {
+            // Check if exchange returned no coin data (only has 'market' key or is empty)
+            const exData = finalResults[resultKey];
+            const hasCoinData = Object.keys(exData).some(k => k !== 'market');
+            if (!hasCoinData) {
+                Object.keys(this.coinList).forEach(coin => {
+                    if (this.coinList[coin][coinKey]) {
+                        if (this.coinList[coin][coinKey].try) {
+                            this.coinList[coin][coinKey].try = { price: null, bid: 0, ask: 0 };
+                        }
+                        if (this.coinList[coin][coinKey].usdt) {
+                            this.coinList[coin][coinKey].usdt = { price: null, bid: 0, ask: 0 };
+                        }
+                    }
+                });
+            }
+        });
+
         if (finalResults.paribu.miota) { finalResults.paribu.iota = finalResults.paribu.miota; delete finalResults.paribu.miota; }
         // User requested to rename 'a' to 'EOS(A)' for clarity
         if (finalResults.paribu.a) { finalResults.paribu['EOS(A)'] = finalResults.paribu.a; delete finalResults.paribu.a; }
@@ -563,6 +588,22 @@ class CoinDataService {
             let crossTrigger = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.5;
             let intraTrigger = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
 
+            // Fix Bug 1: Expire stale depth cache entries (TTL = 10 seconds)
+            const DEPTH_TTL = 10000;
+            const now = Date.now();
+            if (this.depthCache[coin]) {
+                for (const ex of Object.keys(this.depthCache[coin])) {
+                    const ts = this.depthTimestamps[`${coin}_${ex}`];
+                    if (!ts || (now - ts > DEPTH_TTL)) {
+                        delete this.depthCache[coin][ex];
+                    }
+                }
+                // Clean up empty coin entries
+                if (Object.keys(this.depthCache[coin]).length === 0) {
+                    delete this.depthCache[coin];
+                }
+            }
+
             // DYNAMIC DEPTH CHECK TRIGGER
             let isSame = this.isSameExchange({ buyExchange: bestBuy.exchange, sellExchange: bestSell.exchange });
 
@@ -581,6 +622,12 @@ class CoinDataService {
                 triggerDepth(bestBuy.exchange);
                 if (bestSell.exchange !== bestBuy.exchange) {
                     triggerDepth(bestSell.exchange);
+                }
+            } else {
+                // Fix Bug 2: Opportunity no longer viable — clear stale depth data
+                // This prevents old order book data from being used if ROI briefly spikes again
+                if (this.depthCache[coin]) {
+                    delete this.depthCache[coin];
                 }
             }
 
