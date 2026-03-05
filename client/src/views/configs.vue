@@ -35,7 +35,7 @@
           
           <!-- Sub-navigation for Scanner -->
           <div v-if="activeSection.startsWith('scanner')" class="ps-4 mt-1 d-none d-lg-block">
-            <button v-for="sub in [{id:'scanner-global', label:'Global Rules'}, {id:'scanner-cross', label:'Cross-Exchange'}, {id:'scanner-intra', label:'Same-Exchange'}]"
+            <button v-for="sub in [{id:'scanner-cross', label:'Cross-Exchange Arbitrage'}, {id:'scanner-intra', label:'Same-Exchange Arbitrage'}]"
                     :key="sub.id"
                     @click="scrollToSection(sub.id)"
                     class="btn btn-sm w-100 text-start border-0 py-2 text-muted transition hover-danger small">
@@ -58,7 +58,7 @@
         <header class="mb-5 d-flex justify-content-between align-items-end border-bottom pb-4">
           <div>
             <h1 class="display-5 fw-bold theme-text mb-2">Configuration Hub</h1>
-            <p class="text-muted mb-0">Manage all your arbitrage parameters in one place.</p>
+            <p class="text-muted mb-0">Configure your arbitrage scanner, appearance, and market layout.</p>
           </div>
           <div class="d-none d-md-block sticky-save-btn">
              <transition name="fade">
@@ -116,12 +116,12 @@
                 <div class="row g-4">
                   <div class="col-md-12">
                     <div class="form-group custom-input-group max-w-400">
-                      <label class="form-label fw-bold small text-secondary">MAX TOP DEALS TO SHOW</label>
+                      <label class="form-label fw-bold small text-secondary">MAX EXCLUSIVE DEALS TO DISPLAY</label>
                       <div class="input-group border-bottom">
                         <input type="number" step="1" v-model="settings.topDealsCount" class="form-control border-0 bg-transparent theme-input" required>
                         <span class="input-group-text text-muted border-0 bg-transparent theme-unit">COINS</span>
                       </div>
-                      <p class="form-text mt-2">How many of the best arbitrage deals to dedicate to the top grid row.</p>
+                      <p class="form-text mt-2">Maximum number of high-priority arbitrage deals shown in the distinct top row before moving to regular rows.</p>
                     </div>
                   </div>
                 </div>
@@ -141,7 +141,7 @@
                 <div class="row g-4">
                   <div class="col-md-12">
                      <label class="form-label fw-bold small text-secondary mb-3">PINNED TOP COINS ORDER (DRAG TO REORDER)</label>
-                     <p class="form-text mb-3 mt-0">Drag these cards to change the order of your pinned market prices on the dashboard.</p>
+                     <p class="form-text mb-3 mt-0">Drag these cards to change the order of your pinned market prices on the top of the dashboard.</p>
                      
                      <draggable 
                         v-model="settings.topCoins" 
@@ -190,21 +190,6 @@
               </div>
             </div>
 
-            <!-- Global Engine Section -->
-            <div id="scanner-global" class="mb-5 sub-section-box p-4 rounded-4 shadow-sm">
-              <div class="d-flex align-items-center mb-4">
-                <div class="sub-icon-circle bg-danger-subtle me-3">
-                  <i class="bi bi-gear-wide-connected text-danger fs-5"></i>
-                </div>
-                <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Global Rules</h6>
-              </div>
-              <div class="row g-4 ps-md-3">
-                <div class="col-12">
-                  <p class="text-muted small">Global settings have been deprecated. Please set cooldowns individually in the sections below.</p>
-                </div>
-              </div>
-            </div>
-
             <!-- Cross-Exchange Section -->
             <div id="scanner-cross" class="mb-5 sub-section-box p-4 rounded-4 shadow-sm">
               <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
@@ -213,7 +198,7 @@
                     <i class="bi bi-arrow-left-right text-danger fs-5"></i>
                   </div>
                   <div>
-                    <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Cross-Exchange Market</h6>
+                    <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Cross-Exchange Arbitrage</h6>
                   </div>
                 </div>
                 <div class="form-check form-switch custom-switch">
@@ -226,7 +211,7 @@
               <div class="row g-4 ps-md-3" :class="{'opacity-50 pointer-events-none': !settings.crossEnabled}">
                 <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">MIN ROI %</label>
+                    <label class="form-label fw-bold small text-secondary">MINIMUM ARBITRAGE ROI (%)</label>
                     <div class="input-group border-bottom">
                       <input type="number" step="0.1" v-model="settings.crossMinROI" class="form-control border-0 bg-transparent theme-input" :required="settings.crossEnabled">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">%</span>
@@ -235,7 +220,7 @@
                 </div>
                 <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">MIN PROFIT</label>
+                    <label class="form-label fw-bold small text-secondary">MINIMUM PROFIT YIELD</label>
                     <div class="input-group border-bottom">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">₺</span>
                       <input type="number" step="10" v-model="settings.crossMinProfit" class="form-control border-0 bg-transparent theme-input" :required="settings.crossEnabled">
@@ -244,7 +229,7 @@
                 </div>
                 <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">COOLDOWN</label>
+                    <label class="form-label fw-bold small text-secondary">DEAL COOLDOWN DURATION</label>
                     <div class="input-group border-bottom">
                       <input type="number" step="1" v-model="settings.crossCooldown" class="form-control border-0 bg-transparent theme-input" :required="settings.crossEnabled">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">MIN</span>
@@ -262,7 +247,7 @@
                     <i class="bi bi-arrow-repeat text-danger fs-5"></i>
                   </div>
                   <div>
-                    <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Same-Exchange Market</h6>
+                    <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Same-Exchange Arbitrage</h6>
                   </div>
                 </div>
                 <div class="form-check form-switch custom-switch">
@@ -275,7 +260,7 @@
               <div class="row g-4 ps-md-3" :class="{'opacity-50 pointer-events-none': !settings.intraEnabled}">
                 <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">MIN ROI %</label>
+                    <label class="form-label fw-bold small text-secondary">MINIMUM ARBITRAGE ROI (%)</label>
                     <div class="input-group border-bottom">
                       <input type="number" step="0.1" v-model="settings.intraMinROI" class="form-control border-0 bg-transparent theme-input" :required="settings.intraEnabled">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">%</span>
@@ -284,7 +269,7 @@
                 </div>
                 <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">MIN PROFIT</label>
+                    <label class="form-label fw-bold small text-secondary">MINIMUM PROFIT YIELD</label>
                     <div class="input-group border-bottom">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">₺</span>
                       <input type="number" step="10" v-model="settings.intraMinProfit" class="form-control border-0 bg-transparent theme-input" :required="settings.intraEnabled">
@@ -293,7 +278,7 @@
                 </div>
                 <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">COOLDOWN</label>
+                    <label class="form-label fw-bold small text-secondary">DEAL COOLDOWN DURATION</label>
                     <div class="input-group border-bottom">
                       <input type="number" step="1" v-model="settings.intraCooldown" class="form-control border-0 bg-transparent theme-input" :required="settings.intraEnabled">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">MIN</span>
@@ -391,7 +376,7 @@ export default {
       document.body.classList.toggle('dark-mode', isDark);
     },
     handleScroll(event) {
-      const sections = ['general', 'general-theme', 'general-dashboard', 'general-pinned', 'scanner', 'scanner-global', 'scanner-cross', 'scanner-intra'];
+      const sections = ['general', 'general-theme', 'general-dashboard', 'general-pinned', 'scanner', 'scanner-cross', 'scanner-intra'];
       const scrollPos = event.target.scrollTop + 200;
       
       sections.forEach(section => {
