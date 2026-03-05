@@ -1,5 +1,5 @@
 <template>
-  <div :class="['settings-layout d-flex min-vh-100 transition-colors', themeMode === 'dark' || (themeMode === 'system' && systemDarkMode) ? 'dark-mode bg-dark' : 'bg-light']">
+  <div :class="['settings-layout text-start d-flex min-vh-100 transition-colors', themeMode === 'dark' || (themeMode === 'system' && systemDarkMode) ? 'dark-mode bg-dark' : 'bg-light']">
     <!-- Sidebar Navigation -->
     <aside class="settings-sidebar border-end shadow-sm flex-shrink-0">
       <div class="p-4 border-bottom d-flex align-items-center mb-2">
