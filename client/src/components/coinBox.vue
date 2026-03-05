@@ -17,7 +17,7 @@
                  <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
                    <img class="marketBoxImage" style="width: 14px; height: 14px; margin-right: 4px;" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
                  </a>
-                 <span class="ms-auto fw-medium" style="font-family: monospace;">{{ formatNumber(row.bid.rawPrice, coinData.fraction || 5) }} {{ row.bid.symbol }}</span>
+                 <span class="ms-auto fw-medium">{{ formatNumber(row.bid.rawPrice, coinData.fraction || 5) }} {{ row.bid.symbol }}</span>
                </template>
              </div>
           </div>
@@ -29,7 +29,7 @@
                  <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
                    <img class="marketBoxImage" style="width: 14px; height: 14px; margin-right: 4px;" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
                  </a>
-                 <span class="ms-auto fw-medium" style="font-family: monospace;">{{ formatNumber(row.ask.rawPrice, coinData.fraction || 5) }} {{ row.ask.symbol }}</span>
+                 <span class="ms-auto fw-medium">{{ formatNumber(row.ask.rawPrice, coinData.fraction || 5) }} {{ row.ask.symbol }}</span>
                </template>
              </div>
           </div>
@@ -37,7 +37,7 @@
       </template>
 
       <template v-else>
-         <div class="text-center" style="padding:2px 0; font-size:0.88em">
+         <div class="text-center" style="padding:2px 0; font-size:0.75rem; letter-spacing: 0.5px">
             <span class="fw-bold" style="color: var(--text-main)">
                {{ USDTMode ? formatNumber(singleDisplayPriceUSD, coinData.fraction || 5) : formatNumber(singleDisplayPriceTRY, coinData.fraction || 6) }}
                {{ USDTMode ? '$' : '₺' }}
