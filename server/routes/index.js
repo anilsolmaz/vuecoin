@@ -344,11 +344,16 @@ router.get('/settings', async (req, res) => {
         }
         if (!reply) {
             const defaults = {
-                globalCooldown: 5,
+                crossEnabled: true,
+                intraEnabled: true,
                 crossMinProfit: 1000,
                 crossMinROI: 0.50,
+                crossCooldown: 5,
                 intraMinROI: 0,
-                intraMinProfit: 100
+                intraMinProfit: 100,
+                intraCooldown: 5,
+                topCoins: ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib', 'btt', 'chz'],
+                topDealsCount: 10
             };
             return res.json(defaults);
         }
@@ -358,20 +363,30 @@ router.get('/settings', async (req, res) => {
 
 router.post('/settings', async (req, res) => {
     const {
-        globalCooldown,
+        crossEnabled,
+        intraEnabled,
+        crossCooldown,
         crossMinProfit,
         crossMinROI,
+        intraCooldown,
         intraMinROI,
-        intraMinProfit
+        intraMinProfit,
+        topCoins,
+        topDealsCount
     } = req.body;
 
     // Validate and parse values
     const settings = {
-        globalCooldown: (globalCooldown !== undefined) ? parseFloat(globalCooldown) : 5,
+        crossEnabled: crossEnabled !== false,
+        intraEnabled: intraEnabled !== false,
+        crossCooldown: (crossCooldown !== undefined) ? parseFloat(crossCooldown) : 5,
         crossMinProfit: (crossMinProfit !== undefined) ? parseFloat(crossMinProfit) : 1000,
         crossMinROI: (crossMinROI !== undefined) ? parseFloat(crossMinROI) : 0.5,
+        intraCooldown: (intraCooldown !== undefined) ? parseFloat(intraCooldown) : 5,
         intraMinROI: (intraMinROI !== undefined) ? parseFloat(intraMinROI) : 0,
-        intraMinProfit: (intraMinProfit !== undefined) ? parseFloat(intraMinProfit) : 100
+        intraMinProfit: (intraMinProfit !== undefined) ? parseFloat(intraMinProfit) : 100,
+        topCoins: Array.isArray(topCoins) ? topCoins : ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib', 'btt', 'chz'],
+        topDealsCount: (topDealsCount !== undefined) ? parseInt(topDealsCount) : 10
     };
 
     client.set('arb_settings', JSON.stringify(settings), async (err) => {

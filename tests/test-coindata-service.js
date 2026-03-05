@@ -127,8 +127,8 @@ test('should find best buy (lowest ask) and best sell (highest bid)', () => {
     // Best buy (lowest ask) = Paribu(TRY) at 100
     // Best sell (highest bid) = Binance(USDT) at 100.3
     assert.ok(item.arbitrageDetails, 'Should have arbitrageDetails');
-    assert.strictEqual(item.arbitrageDetails.buyExchange, 'Paribu(TRY)');
-    assert.strictEqual(item.arbitrageDetails.sellExchange, 'Binance(USDT)');
+    assert.strictEqual(item.arbitrageDetails.cross.buyExchange, 'Paribu(TRY)');
+    assert.strictEqual(item.arbitrageDetails.cross.sellExchange, 'Binance(USDT)');
     // ROI = (100.3 - 100) / 100 * 100 = 0.3%
     assert.ok(item.ROI > 0 && item.ROI < 0.5, `ROI should be ~0.3%, got ${item.ROI}`);
 });
@@ -152,8 +152,8 @@ test('should correctly detect cross-exchange arbitrage Paribu→Binance', () => 
     // Binance USDT bid = 10.04 * 10 = 100.4 TRY (sell here)
     // ROI = ((100.4 - 100) / 100) * 100 = 0.4%
     assert.ok(item.ROI > 0 && item.ROI < 0.5, `Expected ROI ~0.4%, got ${item.ROI}`);
-    assert.strictEqual(item.arbitrageDetails.buyExchange, 'Paribu(TRY)');
-    assert.strictEqual(item.arbitrageDetails.sellExchange, 'Binance(USDT)');
+    assert.strictEqual(item.arbitrageDetails.cross.buyExchange, 'Paribu(TRY)');
+    assert.strictEqual(item.arbitrageDetails.cross.sellExchange, 'Binance(USDT)');
 });
 
 test('should return ROI = -100 when no valid prices exist', () => {
@@ -427,8 +427,8 @@ test('should cache depth error correctly', () => {
     svc.calculateCoinMetrics('btc');
     // Should not crash. With depth errors, profit should be 0 (kill switch)
     const item = svc.coinList['btc'];
-    if (item.arbitrageDetails) {
-        assert.strictEqual(item.arbitrageDetails.profit, 0, 'Profit should be 0 with depth errors');
+    if (item.arbitrageDetails && item.arbitrageDetails.cross) {
+        assert.strictEqual(item.arbitrageDetails.cross.profit, 0, 'Profit should be 0 with depth errors');
     }
     // Either way, no crash = pass
 });

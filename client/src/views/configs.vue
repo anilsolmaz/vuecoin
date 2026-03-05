@@ -8,11 +8,22 @@
       </div>
       <nav class="p-2 flex-grow-1 overflow-y-auto">
         <!-- Appearance Section -->
-        <button @click="scrollToSection('general')"
-                :class="['nav-link w-100 text-start border-0 rounded-3 p-3 mb-1 transition', activeSection === 'general' ? 'active-tab shadow-sm' : '']">
-          <i class="bi bi-palette-fill me-3"></i>
-          <span class="fw-semibold">Appearance</span>
-        </button>
+        <div class="mb-1">
+          <button @click="scrollToSection('general')"
+                  :class="['nav-link w-100 text-start border-0 rounded-3 p-3 transition', (activeSection === 'general' || activeSection === 'general-dashboard' || activeSection === 'general-theme') ? 'active-tab shadow-sm' : '']">
+            <i class="bi bi-palette-fill me-3"></i>
+            <span class="fw-semibold">Appearance</span>
+          </button>
+          
+          <div v-if="activeSection.startsWith('general')" class="ps-4 mt-1 d-none d-lg-block">
+            <button v-for="sub in [{id:'general-theme', label:'Theme'}, {id:'general-dashboard', label:'Top Deals Layout'}, {id:'general-pinned', label:'Pinned Markets'}]"
+                    :key="sub.id"
+                    @click="scrollToSection(sub.id)"
+                    class="btn btn-sm w-100 text-start border-0 py-2 text-muted transition hover-danger small">
+              <i class="bi bi-dot me-1"></i>{{ sub.label }}
+            </button>
+          </div>
+        </div>
 
         <!-- Scanner Section -->
         <div class="mb-1">
@@ -76,7 +87,7 @@
               </div>
             </div>
             
-            <div class="row g-4 ps-md-5 ms-md-2">
+            <div id="general-theme" class="row g-4 ps-md-5 ms-md-2 mb-4 pb-4 border-bottom">
               <div class="col-12">
                 <label class="form-label text-uppercase fw-bold small text-secondary mb-3">Color Theme</label>
                 <div class="d-flex gap-2 max-w-400">
@@ -88,6 +99,81 @@
                     <i :class="['bi fs-3', mode === 'light' ? 'bi-sun' : mode === 'dark' ? 'bi-moon-stars' : 'bi-display']"></i>
                     <span class="small fw-bold">{{ mode.charAt(0).toUpperCase() + mode.slice(1) }}</span>
                   </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Top Deals Layout Sub-Section -->
+            <div id="general-dashboard" class="row g-4 ps-md-5 ms-md-2 mb-4 pb-4 border-bottom">
+              <div class="col-12">
+                <div class="d-flex align-items-center mb-3">
+                   <div class="sub-icon-circle bg-danger-subtle me-3" style="width: 32px; height: 32px">
+                     <i class="bi bi-columns-gap text-danger fs-6"></i>
+                   </div>
+                   <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Top Deals Layout</h6>
+                </div>
+                
+                <div class="row g-4">
+                  <div class="col-md-12">
+                    <div class="form-group custom-input-group max-w-400">
+                      <label class="form-label fw-bold small text-secondary">MAX TOP DEALS TO SHOW</label>
+                      <div class="input-group border-bottom">
+                        <input type="number" step="1" v-model="settings.topDealsCount" class="form-control border-0 bg-transparent theme-input" required>
+                        <span class="input-group-text text-muted border-0 bg-transparent theme-unit">COINS</span>
+                      </div>
+                      <p class="form-text mt-2">How many of the best arbitrage deals to dedicate to the top grid row.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pinned Markets Sub-Section -->
+            <div id="general-pinned" class="row g-4 ps-md-5 ms-md-2 mb-4 pb-4 border-bottom">
+              <div class="col-12">
+                <div class="d-flex align-items-center mb-3">
+                   <div class="sub-icon-circle bg-danger-subtle me-3" style="width: 32px; height: 32px">
+                     <i class="bi bi-pin-angle-fill text-danger fs-6"></i>
+                   </div>
+                   <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Pinned Markets</h6>
+                </div>
+                
+                <div class="row g-4">
+                  <div class="col-md-12">
+                     <label class="form-label fw-bold small text-secondary mb-3">PINNED TOP COINS ORDER (DRAG TO REORDER)</label>
+                     <p class="form-text mb-3 mt-0">Drag these cards to change the order of your pinned market prices on the dashboard.</p>
+                     
+                     <draggable 
+                        v-model="settings.topCoins" 
+                        item-key="index"
+                        class="pinned-coins-list"
+                        ghost-class="drag-ghost"
+                        chosen-class="drag-chosen"
+                        drag-class="drag-active"
+                        animation="250"
+                        handle=".drag-handle"
+                      >
+                        <template #item="{ element, index }">
+                          <div class="pinned-coin-row d-flex align-items-center">
+                            <img :src="getIcon(element)" class="rounded-circle bg-white shadow-sm p-1" style="width: 28px; height: 28px; border: 1px solid var(--border-color, #eee)" @error="handleImageError" />
+                            <span class="text-uppercase fw-semibold ms-3 flex-grow-1">{{ element }}</span>
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0 me-3 delete-coin-btn" @click="removeTopCoin(index)">
+                              <i class="bi bi-x-circle-fill fs-6"></i>
+                            </button>
+                            <i class="bi bi-grip-vertical drag-handle fs-5"></i>
+                          </div>
+                        </template>
+                     </draggable>
+                     
+                     <!-- Simple add coin form -->
+                     <div class="mt-4 d-flex gap-2" style="max-width: 400px">
+                       <div class="input-group shadow-sm rounded">
+                         <span class="input-group-text border-end-0" style="background: var(--input-bg, #fff); border-color: var(--border-color, #dee2e6)"><i class="bi bi-search text-muted"></i></span>
+                         <input type="text" v-model="newCoinAdd" class="form-control theme-input border-start-0 ps-0" placeholder="Type coin symbol (e.g. avax)">
+                         <button type="button" class="btn btn-danger fw-bold px-4" @click="addTopCoin">ADD</button>
+                       </div>
+                     </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -114,42 +200,54 @@
               </div>
               <div class="row g-4 ps-md-3">
                 <div class="col-12">
-                  <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">TELEGRAM COOLDOWN</label>
-                    <div class="input-group input-group-lg border-bottom">
-                      <input type="number" step="1" v-model="settings.globalCooldown" class="form-control border-0 bg-transparent theme-input" required>
-                      <span class="input-group-text text-muted border-0 bg-transparent theme-unit">MIN</span>
-                    </div>
-                    <small class="form-text text-muted">Delay before repeating alerts for the same asset.</small>
-                  </div>
+                  <p class="text-muted small">Global settings have been deprecated. Please set cooldowns individually in the sections below.</p>
                 </div>
               </div>
             </div>
 
             <!-- Cross-Exchange Section -->
             <div id="scanner-cross" class="mb-5 sub-section-box p-4 rounded-4 shadow-sm">
-              <div class="d-flex align-items-center mb-4">
-                <div class="sub-icon-circle bg-danger-subtle me-3">
-                  <i class="bi bi-arrow-left-right text-danger fs-5"></i>
+              <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div class="d-flex align-items-center">
+                  <div class="sub-icon-circle bg-danger-subtle me-3">
+                    <i class="bi bi-arrow-left-right text-danger fs-5"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Cross-Exchange Market</h6>
+                  </div>
                 </div>
-                <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Cross-Exchange Market</h6>
+                <div class="form-check form-switch custom-switch">
+                  <input class="form-check-input fs-4" type="checkbox" role="switch" id="crossEnabledSwitch" v-model="settings.crossEnabled">
+                  <label class="form-check-label ms-2 small fw-bold text-secondary mt-1" for="crossEnabledSwitch">
+                    {{ settings.crossEnabled ? 'ENABLED' : 'DISABLED' }}
+                  </label>
+                </div>
               </div>
-              <div class="row g-4 ps-md-3">
-                <div class="col-md-6">
+              <div class="row g-4 ps-md-3" :class="{'opacity-50 pointer-events-none': !settings.crossEnabled}">
+                <div class="col-md-4">
                   <div class="form-group custom-input-group">
                     <label class="form-label fw-bold small text-secondary">MIN ROI %</label>
                     <div class="input-group border-bottom">
-                      <input type="number" step="0.1" v-model="settings.crossMinROI" class="form-control border-0 bg-transparent theme-input" required>
+                      <input type="number" step="0.1" v-model="settings.crossMinROI" class="form-control border-0 bg-transparent theme-input" :required="settings.crossEnabled">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">%</span>
                     </div>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">MIN PROFIT (TRY)</label>
+                    <label class="form-label fw-bold small text-secondary">MIN PROFIT</label>
                     <div class="input-group border-bottom">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">₺</span>
-                      <input type="number" step="10" v-model="settings.crossMinProfit" class="form-control border-0 bg-transparent theme-input" required>
+                      <input type="number" step="10" v-model="settings.crossMinProfit" class="form-control border-0 bg-transparent theme-input" :required="settings.crossEnabled">
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group custom-input-group">
+                    <label class="form-label fw-bold small text-secondary">COOLDOWN</label>
+                    <div class="input-group border-bottom">
+                      <input type="number" step="1" v-model="settings.crossCooldown" class="form-control border-0 bg-transparent theme-input" :required="settings.crossEnabled">
+                      <span class="input-group-text text-muted border-0 bg-transparent theme-unit">MIN</span>
                     </div>
                   </div>
                 </div>
@@ -158,28 +256,47 @@
 
             <!-- Same-Exchange Section -->
             <div id="scanner-intra" class="mb-2 sub-section-box p-4 rounded-4 shadow-sm">
-              <div class="d-flex align-items-center mb-4">
-                <div class="sub-icon-circle bg-danger-subtle me-3">
-                  <i class="bi bi-arrow-repeat text-danger fs-5"></i>
+              <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div class="d-flex align-items-center">
+                  <div class="sub-icon-circle bg-danger-subtle me-3">
+                    <i class="bi bi-arrow-repeat text-danger fs-5"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Same-Exchange Market</h6>
+                  </div>
                 </div>
-                <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Same-Exchange Market</h6>
+                <div class="form-check form-switch custom-switch">
+                  <input class="form-check-input fs-4" type="checkbox" role="switch" id="intraEnabledSwitch" v-model="settings.intraEnabled">
+                  <label class="form-check-label ms-2 small fw-bold text-secondary mt-1" for="intraEnabledSwitch">
+                    {{ settings.intraEnabled ? 'ENABLED' : 'DISABLED' }}
+                  </label>
+                </div>
               </div>
-              <div class="row g-4 ps-md-3">
-                <div class="col-md-6">
+              <div class="row g-4 ps-md-3" :class="{'opacity-50 pointer-events-none': !settings.intraEnabled}">
+                <div class="col-md-4">
                   <div class="form-group custom-input-group">
                     <label class="form-label fw-bold small text-secondary">MIN ROI %</label>
                     <div class="input-group border-bottom">
-                      <input type="number" step="0.1" v-model="settings.intraMinROI" class="form-control border-0 bg-transparent theme-input" required>
+                      <input type="number" step="0.1" v-model="settings.intraMinROI" class="form-control border-0 bg-transparent theme-input" :required="settings.intraEnabled">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">%</span>
                     </div>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <div class="form-group custom-input-group">
-                    <label class="form-label fw-bold small text-secondary">MIN PROFIT (TRY)</label>
+                    <label class="form-label fw-bold small text-secondary">MIN PROFIT</label>
                     <div class="input-group border-bottom">
                       <span class="input-group-text text-muted border-0 bg-transparent theme-unit">₺</span>
-                      <input type="number" step="10" v-model="settings.intraMinProfit" class="form-control border-0 bg-transparent theme-input" required>
+                      <input type="number" step="10" v-model="settings.intraMinProfit" class="form-control border-0 bg-transparent theme-input" :required="settings.intraEnabled">
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group custom-input-group">
+                    <label class="form-label fw-bold small text-secondary">COOLDOWN</label>
+                    <div class="input-group border-bottom">
+                      <input type="number" step="1" v-model="settings.intraCooldown" class="form-control border-0 bg-transparent theme-input" :required="settings.intraEnabled">
+                      <span class="input-group-text text-muted border-0 bg-transparent theme-unit">MIN</span>
                     </div>
                   </div>
                 </div>
@@ -201,18 +318,28 @@
 
 <script>
 import axios from 'axios';
+import draggable from 'vuedraggable';
 
 export default {
   name: "configs",
+  components: {
+    draggable
+  },
   data() {
     return {
       settings: {
-        globalCooldown: 5,
+        crossEnabled: true,
+        intraEnabled: true,
         crossMinProfit: 1000,
         crossMinROI: 0.5,
+        crossCooldown: 5,
         intraMinROI: 0,
-        intraMinProfit: 100
+        intraMinProfit: 100,
+        intraCooldown: 5,
+        topCoins: ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib'],
+        topDealsCount: 10
       },
+      newCoinAdd: '',
       saving: false,
       message: '',
       messageType: 'success',
@@ -264,7 +391,7 @@ export default {
       document.body.classList.toggle('dark-mode', isDark);
     },
     handleScroll(event) {
-      const sections = ['general', 'scanner', 'scanner-global', 'scanner-cross', 'scanner-intra'];
+      const sections = ['general', 'general-theme', 'general-dashboard', 'general-pinned', 'scanner', 'scanner-global', 'scanner-cross', 'scanner-intra'];
       const scrollPos = event.target.scrollTop + 200;
       
       sections.forEach(section => {
@@ -273,6 +400,28 @@ export default {
           this.activeSection = section;
         }
       });
+    },
+    getIcon(coinName) {
+      try {
+        return require(`@/assets/coins/${coinName.toLowerCase()}.png`);
+      } catch (e) {
+        return require(`@/assets/coins/noimage.png`);
+      }
+    },
+    handleImageError(event) {
+      event.target.src = require(`@/assets/coins/noimage.png`);
+    },
+    removeTopCoin(index) {
+      this.settings.topCoins.splice(index, 1);
+    },
+    addTopCoin() {
+      if (this.newCoinAdd && this.newCoinAdd.trim() !== '') {
+        const coin = this.newCoinAdd.trim().toLowerCase();
+        if (!this.settings.topCoins.includes(coin)) {
+          this.settings.topCoins.push(coin);
+        }
+        this.newCoinAdd = '';
+      }
     }
   },
   mounted() {
@@ -561,6 +710,117 @@ hr {
     margin-right: 0 !important;
     font-size: 1.5rem;
   }
+}
+</style>
+
+<style>
+/* Custom Switch Styling */
+.custom-switch .form-check-input {
+  height: 1.5rem;
+  width: 3rem;
+  cursor: pointer;
+}
+.custom-switch .form-check-input:checked {
+  background-color: #198754;
+  border-color: #198754;
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+/* Pinned Coins List */
+.pinned-coins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 450px;
+}
+
+.pinned-coin-row {
+  padding: 10px 16px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #dee2e6);
+  color: var(--text-main, #212529);
+  border-radius: 10px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.pinned-coin-row:hover {
+  border-color: rgba(220, 53, 69, 0.4);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.12);
+}
+
+.drag-handle {
+  cursor: grab;
+  opacity: 0.35;
+  transition: opacity 0.2s, color 0.2s;
+  color: var(--text-muted, #6c757d);
+}
+
+.pinned-coin-row:hover .drag-handle {
+  opacity: 0.7;
+  color: #dc3545;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* The placeholder left behind */
+.drag-ghost {
+  opacity: 0.3;
+  border: 2px dashed #dc3545 !important;
+  background: transparent !important;
+}
+
+/* The item being dragged (while user holds it) */
+.drag-chosen {
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.25) !important;
+  border-color: #dc3545 !important;
+  z-index: 100;
+}
+
+/* The moving clone */
+.drag-active {
+  opacity: 1 !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.2) !important;
+  transform: scale(1.02);
+}
+
+.delete-coin-btn {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.pinned-coin-row:hover .delete-coin-btn {
+  opacity: 1;
+}
+
+/* Mobile: horizontal scroll layout */
+@media (max-width: 768px) {
+  .pinned-coins-list {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    max-width: 100%;
+    padding-bottom: 8px;
+  }
+  .pinned-coin-row {
+    flex-shrink: 0;
+    min-width: 140px;
+  }
+}
+
+/* Dark mode overrides for inputs in configs */
+body.dark-mode .theme-input::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+body.dark-mode .input-group-text i {
+  color: #94a3b8 !important;
 }
 </style>
 

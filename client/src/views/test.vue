@@ -1,7 +1,93 @@
   <template>
-    <div class="container-fluid flex m-10" style="padding: 0 50px" :style="elapsedTime>60000 ? 'filter: blur(3px);transform: scale(0.8);':''">
+    <div class="container-fluid flex mt-2" style="padding: 0 10px" :style="elapsedTime>60000 ? 'filter: blur(3px);transform: scale(0.8);':''">
 
-      <div class="row mt-2 mb-3 theme-text">
+      <!-- Top Navigation Action Bar -->
+      <div class="row mt-1 mb-2 align-items-center justify-content-between">
+         <div class="col-auto">
+            <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">Richmeme Scanner</h4>
+         </div>
+         
+         <!-- Desktop Navigation Actions -->
+         <div class="col-auto d-none d-md-flex gap-3 align-items-center">
+            
+            <!-- Top Deals Limit Stepper -->
+            <div class="d-flex align-items-center shadow-sm rounded-pill px-2 py-1 top-bar-pill border">
+               <span class="small fw-bold section-label me-2 border-end pe-2">Top Deals</span>
+               <button type="button" class="btn btn-sm border-0 p-0 px-1 fw-bold top-bar-btn" @click="decrementTopDeals" :disabled="saving || topDealsCount <= 1">−</button>
+               <span class="fw-bold mx-2" style="min-width: 20px; text-align: center">{{ topDealsCount }}</span>
+               <button type="button" class="btn btn-sm border-0 p-0 px-1 fw-bold top-bar-btn" @click="incrementTopDeals" :disabled="saving || topDealsCount >= 50">+</button>
+            </div>
+
+            <!-- Currency Toggle -->
+            <div class="currency-toggle-container shadow-sm" style="width: 140px; margin-bottom: 0;">
+              <div class="currency-pills">
+                <button class="pill-btn" :class="{ active: !USDTMode }" @click="USDTMode = false">
+                  <span class="pill-label">TRY</span><span class="pill-symbol">₺</span>
+                </button>
+                <button class="pill-btn" :class="{ active: USDTMode }" @click="USDTMode = true">
+                  <span class="pill-label">USD</span><span class="pill-symbol">$</span>
+                </button>
+                <div class="pill-slider" :class="{ 'slide-right': USDTMode }"></div>
+              </div>
+            </div>
+            
+            <!-- Calculator Toggle Button -->
+            <button @click="showCalculatorModal = true" class="btn btn-dark d-flex align-items-center gap-2 shadow-sm rounded-pill px-3">
+              <i class="bi bi-calculator"></i><span class="fw-bold small">Calculator</span>
+            </button>
+            
+            <!-- Settings Link -->
+            <router-link to="/configs" class="btn btn-outline-danger d-flex align-items-center gap-2 shadow-sm rounded-pill px-3">
+              <i class="bi bi-gear-fill"></i><span class="fw-bold small">Settings</span>
+            </router-link>
+         </div>
+         
+         <!-- Mobile Hamburger Menu Button -->
+         <div class="col-auto d-md-none position-relative">
+            <button class="btn btn-outline-secondary border-0 hamburger-btn" @click="mobileMenuOpen = !mobileMenuOpen">
+               <i class="bi bi-list fs-2"></i>
+            </button>
+            <!-- Mobile Menu Dropdown -->
+            <div v-if="mobileMenuOpen" class="position-absolute end-0 mt-2 p-3 shadow-lg rounded-4 border z-3 mobile-dropdown" style="width: 260px; z-index: 1000 !important">
+               
+               <div class="mb-3 d-flex align-items-center justify-content-between">
+               <span class="small fw-bold section-label">Top Deals</span>
+               <div class="d-flex align-items-center gap-2 ms-2">
+                 <button type="button" class="btn btn-sm btn-outline-secondary border-0 py-0 px-2" @click="decrementTopDeals">−</button>
+                 <span class="fw-bold">{{ topDealsCount }}</span>
+                 <button type="button" class="btn btn-sm btn-outline-secondary border-0 py-0 px-2" @click="incrementTopDeals">+</button>
+               </div>
+               </div>
+               
+               <hr class="my-2">
+               
+               <div class="mb-3 mt-3 d-flex justify-content-center">
+                 <div class="currency-toggle-container w-100 m-0">
+                    <div class="currency-pills">
+                      <button class="pill-btn w-50" :class="{ active: !USDTMode }" @click="USDTMode = false">
+                        <span class="pill-label">TRY</span><span class="pill-symbol">₺</span>
+                      </button>
+                      <button class="pill-btn w-50" :class="{ active: USDTMode }" @click="USDTMode = true">
+                        <span class="pill-label">USD</span><span class="pill-symbol">$</span>
+                      </button>
+                      <div class="pill-slider" :class="{ 'slide-right': USDTMode }"></div>
+                    </div>
+                  </div>
+               </div>
+               
+               <button @click="showCalculatorModal = true; mobileMenuOpen = false" class="btn btn-dark w-100 mb-2 d-flex justify-content-center align-items-center gap-2">
+                 <i class="bi bi-calculator"></i><span class="fw-bold small">Calculator</span>
+               </button>
+               
+               <router-link to="/configs" class="btn btn-outline-danger w-100 d-flex justify-content-center align-items-center gap-2">
+                 <i class="bi bi-gear-fill"></i><span class="fw-bold small">Settings</span>
+               </router-link>
+            </div>
+         </div>
+      </div>
+
+      <!-- Top Coins Row -->
+      <div class="row mt-1 mb-0 theme-text pb-0">
         <topcoin
             v-for="name in topCoins"
             v-bind:coinName="name"
@@ -19,78 +105,80 @@
         <h1>Richmeme is loading</h1>
       </div>
       <div class="row mt-0" v-if="Object.keys(coinData).length>0">
-        <div class="col-11">
-          <div class="row">
+         
+         <!-- Display Top Deals Based on API settings Limit -->
+         <div class="d-flex align-items-center mb-1 mt-0">
+            <i class="bi bi-fire text-danger me-2"></i>
+            <span class="small fw-bold section-label text-uppercase" style="letter-spacing:1px; font-size: 0.75rem;">Top Deals</span>
+            <hr class="flex-grow-1 ms-2 my-0 section-hr">
+         </div>
+         <div class="row mb-1">
             <coinbox
-                class="coinbox col-12"
-                v-for="(coin, name, index) in coinData"
-                v-bind:coinName="name"
-                v-bind:coinData="coin"
-                v-bind:USDTMode="USDTMode"
+                class="coinbox"
+                v-for="coinName in Object.keys(topDeals).slice(0, topDealsCount)"
+                :key="'top_'+coinName"
+                :coinName="coinName"
+                :coinData="coinData[coinName]"
+                :USDTMode="USDTMode"
+                :forceShowROI="true"
+                :isTopDeal="true"
+                :dealDuration="topDealTimers[coinName] || 0"
             />
-          </div>
-        </div>
-        <div class="col-1 theme-text-secondary">
-          <div class="settings-action-card mb-3 shadow-sm">
-            <router-link to="/configs" class="settings-link-wrapper justify-content-center">
-              <i class="bi bi-gear-fill fs-5"></i>
-              <span class="action-title fs-6">SETTINGS</span>
-            </router-link>
-          </div>
-          
-          <div class="currency-toggle-container mb-3 shadow-sm">
-            <div class="currency-pills">
-              <button 
-                class="pill-btn" 
-                :class="{ active: !USDTMode }" 
-                @click="USDTMode = false"
-              >
-                <span class="pill-label">TRY</span>
-                <span class="pill-symbol">₺</span>
-              </button>
-              <button 
-                class="pill-btn" 
-                :class="{ active: USDTMode }" 
-                @click="USDTMode = true"
-              >
-                <span class="pill-label">USD</span>
-                <span class="pill-symbol">$</span>
-              </button>
-              <div class="pill-slider" :class="{ 'slide-right': USDTMode }"></div>
-            </div>
-          </div>
-          <div class="mt-3 p-3 border rounded-3 bg-light-soft theme-input-minimal shadow-sm">
-            <label class="form-label small fw-bold mb-2">PROFIT CALCULATOR</label>
-            <div class="theme-text-secondary">
-              <div class="mb-2 p-2 rounded bg-dark-soft text-center fw-bold text-success border border-success-subtle">
-                {{typeof coinData !== "undefined" ? formatNumber((coinData[selectedCoin].binance.usdt.price-buyPrice)*buyAmount,2) : '0.00'}}$
-              </div>
-              <Select2 v-model="selectedCoin" :options="coinList" :settings="{ placeholder: selectedCoin }" @change="myChangeEvent($event)" @select="mySelectEvent($event)" />
-              <div class="mt-2 text-start">
-                <input type="number" class="form-control form-control-sm theme-input-minimal" v-model="buyPrice" placeholder="Buy Price">
-              </div>
-              <input type="number" class="form-control form-control-sm theme-input-minimal mt-1" v-model="buyAmount" placeholder="Amount">
-            </div>
-          </div>
+         </div>
+         
+         <!-- Display Remaining Coins Alphabetically -->
+         <div class="d-flex align-items-center mb-1 mt-1">
+            <i class="bi bi-coin text-warning me-2"></i>
+            <span class="small fw-bold section-label text-uppercase" style="letter-spacing:1px; font-size: 0.75rem;">All Markets</span>
+            <hr class="flex-grow-1 ms-2 my-0 section-hr">
+         </div>
+         <div class="row pb-3">
+            <coinbox
+                class="coinbox"
+                v-for="coinName in sortedRemainingCoins"
+                :key="'list_'+coinName"
+                :coinName="coinName"
+                :coinData="coinData[coinName]"
+                :USDTMode="USDTMode"
+                :minROI="settings.crossMinROI || 0.5"
+                :isTopDeal="false"
+            />
+         </div>
+         
+      </div>
+    </div>
 
-          <!--
-          <hr>
-          <div class="row" style="color: white">
-            <label for="filterWord" class="col-sm-8 col-form-label">Filter by Name : </label>
-            <div class="col-sm-4" style="border: white">
-              <input type="text" class="form-control" id="filterWord" v-model="filterWord" STYLE="color: white" placeholder="coin name">
+    <!-- Profit Calculator Modal Backdrop Overlay -->
+    <div v-if="showCalculatorModal" class="modal-backdrop-custom d-flex justify-content-center align-items-center" @click.self="showCalculatorModal = false">
+      <div class="modal-wrapper p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw; position: relative; background-color: var(--card-bg, #ffffff); opacity: 1;">
+        <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-3 border-0 rounded-circle" @click="showCalculatorModal = false">
+          <i class="bi bi-x-lg"></i>
+        </button>
+        
+        <div class="text-center mb-4">
+           <i class="bi bi-calculator-fill fs-2 text-primary mb-2"></i>
+           <h5 class="fw-bold theme-text mb-0">Profit Calculator</h5>
+           <p class="small text-muted mb-0">Live estimation tool</p>
+        </div>
+        
+        <div class="p-3 border rounded-3 bg-light-soft theme-input-minimal shadow-sm">
+          <div class="theme-text-secondary">
+            <div class="mb-3 p-3 rounded bg-dark-soft text-center fw-bold text-success border border-success-subtle fs-4 bg-opacity-25 shadow-inner">
+              {{typeof coinData !== "undefined" ? formatNumber((coinData[selectedCoin]?.binance?.usdt?.price-buyPrice)*buyAmount,2) : '0.00'}}$
             </div>
-          </div>
-          -->
-          <hr>
-          <h6>Top
-          <button @click="decreaseTopCoin"> - </button> {{ topCoinAmount }} <button @click="increaseTopCoin"> + </button>
-          Deals</h6>
-          <div class="row" v-for="i in parseFloat(topCoinAmount)">
-            <div class="col-6" style="text-align: left;white-space: nowrap;text-size-adjust: 80%;">
-              <img class="topDealsImage" :src="require(`@/assets/coins/${Object.keys(topDeals)[i-1]}.png`)" @error="require(`@/assets/coins/noimage.png`)">&nbsp;{{Object.keys(topDeals)[i-1] ? Object.keys(topDeals)[i-1].toUpperCase(): 'noData' }}
+            
+            <label class="form-label small fw-bold mb-1 mt-2 text-uppercase text-muted">Select Asset</label>
+            <Select2 v-model="selectedCoin" :options="coinList" :settings="{ placeholder: selectedCoin }" @change="myChangeEvent($event)" @select="mySelectEvent($event)" />
+            
+            <div class="mt-3 text-start">
+              <label class="form-label small fw-bold mb-1 text-uppercase text-muted">Buy Order Target (Price)</label>
+              <input type="number" class="form-control form-control-lg theme-input-minimal font-monospace" v-model="buyPrice" placeholder="0.0000">
             </div>
-            <div class="col-6" :class="cellClass(topDeals[Object.keys(topDeals)[i-1]])">{{ formatNumber(topDeals[Object.keys(topDeals)[i-1]],2) + '%'}}</div>
+            
+            <div class="mt-3 text-start">
+              <label class="form-label small fw-bold mb-1 text-uppercase text-muted">Position Size (Amount)</label>
+              <input type="number" class="form-control form-control-lg theme-input-minimal font-monospace" v-model="buyAmount" placeholder="100.0">
+            </div>
           </div>
         </div>
       </div>
@@ -115,24 +203,27 @@
         coinData2: [],
         topDeals: [],
         topCoins: ['btc','bnb','ftt','usdt','jup','sevilla','eth','shib'],
-        arbROIList : ['avax','eth','btc','xrp','ada','waves','mkr','link','xlm'],
-        coinList : [2,3,4],
-        topCoinAmount: 10,
+        topDealsCount: 10,
+        topDealTimers: {},
+        topDealEntryTimes: {},
+        crossMinROI: 0.5,
+        coinList : [],
         enabled: true,
         selectedCoin: 'btc',
         buyPrice: null,
         buyAmount: null,
+        showCalculatorModal: false,
         USDTMode: false,
-        list: [
-          { name: 'John', id: 1 },
-          { name: 'Joao', id: 2 },
-          { name: 'Jean', id: 3 },
-          { name: 'Gerard', id: 4 },
-        ],
         dragging: false,
         elapsedTime: 0,
         timer: undefined,
-        socket: null
+        socket: null,
+        mobileMenuOpen: false,
+        saving: false,
+        settings: {
+           topDealsCount: 10,
+           crossMinROI: 0.5
+        }
       }
     },
     filters: {
@@ -144,8 +235,40 @@
       }
     },
     methods: {
+      async fetchSettings() {
+        try {
+          const response = await axios.get('/api/settings');
+          if (response.data) {
+            this.settings = response.data;
+            if (response.data.topCoins) this.topCoins = response.data.topCoins;
+            if (response.data.topDealsCount !== undefined) this.topDealsCount = response.data.topDealsCount;
+            if (response.data.crossMinROI !== undefined) this.crossMinROI = response.data.crossMinROI;
+          }
+        } catch (error) {
+          console.error("Failed to fetch settings:", error);
+        }
+      },
+      async saveSettings() {
+        this.saving = true;
+        try {
+          await axios.post('/api/settings', this.settings);
+          this.topDealsCount = parseInt(this.settings.topDealsCount);
+        } catch (error) {
+           console.error('Failed to save settings:', error);
+        } finally {
+           this.saving = false;
+        }
+      },
       log(event) {
         console.log(event)
+      },
+      getIcon(coinName) {
+        if (!coinName) return require(`@/assets/coins/noimage.png`);
+        try {
+          return require(`@/assets/coins/${coinName.toLowerCase()}.png`);
+        } catch (e) {
+          return require(`@/assets/coins/noimage.png`);
+        }
       },
       increaseTopCoin (){
         this.topCoinAmount++
@@ -177,6 +300,28 @@
               .reverse()
               .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
           this.topDeals = x;
+
+          // Track how long each coin has been in Top Deals
+          const now = Date.now();
+          const activeTopDealKeys = Object.keys(x).slice(0, this.topDealsCount);
+          // Add entry time for new coins
+          activeTopDealKeys.forEach(coin => {
+            if (!this.topDealEntryTimes[coin]) {
+              this.topDealEntryTimes[coin] = now;
+            }
+          });
+          // Remove entry times for coins no longer in top deals
+          Object.keys(this.topDealEntryTimes).forEach(coin => {
+            if (!activeTopDealKeys.includes(coin)) {
+              delete this.topDealEntryTimes[coin];
+            }
+          });
+          // Compute elapsed seconds
+          const timers = {};
+          activeTopDealKeys.forEach(coin => {
+            timers[coin] = Math.round((now - this.topDealEntryTimes[coin]) / 1000);
+          });
+          this.topDealTimers = timers;
       },
       async updateData() {
         try {
@@ -189,6 +334,20 @@
       formatNumber (value,fraction) {
         let answer = Number(value).toFixed(fraction)
         return answer
+      },
+      incrementTopDeals() {
+        if (this.topDealsCount < 50) {
+          this.topDealsCount++;
+          this.settings.topDealsCount = this.topDealsCount;
+          this.saveSettings();
+        }
+      },
+      decrementTopDeals() {
+        if (this.topDealsCount > 1) {
+          this.topDealsCount--;
+          this.settings.topDealsCount = this.topDealsCount;
+          this.saveSettings();
+        }
       },
       cellClass(coinROI) {
         if (!coinROI || coinROI < 0.2) return 'theme-text-secondary';
@@ -224,11 +383,9 @@
       });
 
       this.socket.on('data_update', (data) => {
-          // console.log('Data update received', data);
           if (data && data.btc) {
               this.processData(data);
           } else {
-             // Fallback if data format is unexpected (e.g. initial message)
              this.updateData();
           }
       });
@@ -236,6 +393,9 @@
       this.socket.on('disconnect', () => {
           console.log('Disconnected from WebSocket server');
       });
+      
+      // Fetch user settings
+      this.fetchSettings();
     },
     watch: {
       selectedCoin(newVal) {
@@ -268,6 +428,17 @@
              }
          }
          return 36.5; // Fallback
+      },
+      sortedRemainingCoins() {
+         // Show ALL coins (including top deals) sorted alphabetically
+         const remaining = Object.keys(this.coinData).filter(coin => {
+            if (coin === 'usdt') return false;
+            const d = this.coinData[coin];
+            if (!d) return false;
+            const hasActiveData = (d.paribu?.try?.price > 0) || (d.binance?.usdt?.price > 0) || (d.BTCTurk?.try?.price > 0);
+            return hasActiveData;
+         });
+         return remaining.sort((a,b) => a.localeCompare(b));
       }
     }
   })
@@ -314,6 +485,99 @@
   body.dark-mode .bg-dark-soft {
     background-color: rgba(255, 255, 255, 0.05);
   }
+
+  body.dark-mode .bg-light-soft {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Section Labels - theme aware */
+  .section-label {
+    color: #64748b;
+  }
+  body.dark-mode .section-label {
+    color: #94a3b8;
+  }
+
+  /* Section HR lines */
+  .section-hr {
+    opacity: 0.15;
+    border-color: currentColor;
+  }
+  body.dark-mode .section-hr {
+    opacity: 0.25;
+    border-color: #475569;
+  }
+
+  /* Top Bar Pill - theme aware */
+  .top-bar-pill {
+    background-color: var(--current-card-bg, #fff);
+    border-color: var(--current-border, #dee2e6) !important;
+    color: inherit;
+  }
+
+  .top-bar-btn {
+    color: inherit;
+    opacity: 0.6;
+    font-size: 1.1em;
+    line-height: 1;
+  }
+  .top-bar-btn:hover {
+    opacity: 1;
+    color: #dc3545 !important;
+  }
+  .top-bar-btn:disabled {
+    opacity: 0.2;
+  }
+
+  /* Calculator button - dark mode */
+  body.dark-mode .btn-dark {
+    background-color: rgba(255,255,255,0.12) !important;
+    border-color: rgba(255,255,255,0.2) !important;
+    color: #e2e8f0 !important;
+  }
+  body.dark-mode .btn-dark:hover {
+    background-color: rgba(255,255,255,0.22) !important;
+    color: #fff !important;
+  }
+
+  /* Settings button - dark mode */
+  body.dark-mode .btn-outline-danger {
+    color: #ff6b7a !important;
+    border-color: rgba(255, 107, 122, 0.5) !important;
+  }
+  body.dark-mode .btn-outline-danger:hover {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+    color: #ff8a97 !important;
+  }
+
+  /* Secondary buttons in dark mode */
+  body.dark-mode .btn-outline-secondary {
+    color: rgba(255,255,255,0.7) !important;
+    border-color: rgba(255,255,255,0.2) !important;
+  }
+
+  /* Hamburger menu button */
+  .hamburger-btn {
+    color: inherit !important;
+  }
+
+  /* Mobile dropdown */
+  .mobile-dropdown {
+    background-color: var(--current-card-bg, #fff);
+    border-color: var(--current-border, #dee2e6) !important;
+    color: inherit;
+  }
+
+  /* Global dark mode text fixes */
+  body.dark-mode .text-dark {
+    color: #e2e8f0 !important;
+  }
+  body.dark-mode .border-end {
+    border-color: var(--current-border) !important;
+  }
+  body.dark-mode .border {
+    border-color: var(--current-border) !important;
+  }
   
   /* Select2 Theme Sync */
   .select2-container--default .select2-selection--single {
@@ -342,12 +606,21 @@
   .settings-link-wrapper {
     display: flex;
     align-items: center;
-    padding: 12px;
+    padding: 0px;
     text-decoration: none;
     color: white !important;
     gap: 8px;
   }
-
+  .modal-backdrop-custom {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1050;
+    backdrop-filter: blur(4px);
+  }
   .action-title {
     font-size: 14px;
     font-weight: 800;
