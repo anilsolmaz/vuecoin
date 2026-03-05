@@ -88,7 +88,24 @@ class CoinDataService {
             if (!this.coinList[key]) {
                 this.coinList[key] = {
                     "ROI": 0,
-                    "fraction": 0,
+                    "fraction": (() => {
+                        let f = 4;
+                        if (this.BTCTurkInitials && this.BTCTurkInitials.data) {
+                            let btcPair = this.BTCTurkInitials.data.find(x => x.pair === key.toUpperCase() + 'TRY');
+                            if (btcPair && btcPair.displayFormat) {
+                                let decimals = btcPair.displayFormat.split('.')[1];
+                                if (decimals) return decimals.length;
+                            }
+                        }
+                        if (this.paribuInitials) {
+                            let pKey = key + '_tl';
+                            let pPair = typeof this.paribuInitials === 'object' ? this.paribuInitials[pKey] : null;
+                            if (pPair && pPair.precisions && pPair.precisions.price !== undefined) {
+                                return pPair.precisions.price;
+                            }
+                        }
+                        return f;
+                    })(),
                     "paribu": {
                         "try": { "price": null, "inUSDT": null },
                         "usdt": { "price": null, "inTRY": null },
@@ -542,18 +559,18 @@ class CoinDataService {
         if (item.BTCTurk.try?.price) convert(item.BTCTurk.try, this.btcturkUSDT, 'div');
 
         // Initialize Arbitrage Data
-        let bestBuy = { price: Infinity, rawPrice: 0, exchange: null, qty: null };
-        let bestSell = { price: 0, rawPrice: 0, exchange: null, qty: null };
+        let buys = [];
+        let sells = [];
 
         const checkBuy = (price, exchange, qty, rawPrice) => {
-            if (price > 0 && price < bestBuy.price) {
-                bestBuy = { price, rawPrice: rawPrice || price, exchange, qty };
+            if (price > 0) {
+                buys.push({ price, rawPrice: rawPrice || price, exchange, qty });
             }
         };
 
         const checkSell = (price, exchange, qty, rawPrice) => {
-            if (price > 0 && price > bestSell.price) {
-                bestSell = { price, rawPrice: rawPrice || price, exchange, qty };
+            if (price > 0) {
+                sells.push({ price, rawPrice: rawPrice || price, exchange, qty });
             }
         };
 
@@ -578,137 +595,106 @@ class CoinDataService {
         if (item.BTCTurk.usdt?.bidInTRY) checkSell(item.BTCTurk.usdt.bidInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.bidQty, item.BTCTurk.usdt.bid);
 
 
-        if (bestBuy.exchange && bestSell.exchange) {
-            // Initial ROI
-            item.ROI = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
+        let bestCross = null;
+        let bestIntra = null;
+        let highestCrossROI = -100;
+        let highestIntraROI = -100;
 
-            let waitingForDepth = false;
-
-            // Use user setting or default low threshold to ensure we capture all potential deals
-            let crossTrigger = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.5;
-            let intraTrigger = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
-
-            // Fix Bug 1: Expire stale depth cache entries (TTL = 10 seconds)
-            const DEPTH_TTL = 10000;
-            const now = Date.now();
-            if (this.depthCache[coin]) {
-                for (const ex of Object.keys(this.depthCache[coin])) {
-                    const ts = this.depthTimestamps[`${coin}_${ex}`];
-                    if (!ts || (now - ts > DEPTH_TTL)) {
-                        delete this.depthCache[coin][ex];
+        buys.forEach(b => {
+            sells.forEach(s => {
+                let roi = ((s.price - b.price) / b.price) * 100;
+                let isSame = this.isSameExchange({ buyExchange: b.exchange, sellExchange: s.exchange });
+                if (isSame) {
+                    if (roi > highestIntraROI) {
+                        highestIntraROI = roi;
+                        bestIntra = { buy: b, sell: s, roi: roi };
+                    }
+                } else {
+                    if (roi > highestCrossROI) {
+                        highestCrossROI = roi;
+                        bestCross = { buy: b, sell: s, roi: roi };
                     }
                 }
-                // Clean up empty coin entries
-                if (Object.keys(this.depthCache[coin]).length === 0) {
-                    delete this.depthCache[coin];
+            });
+        });
+
+        item.arbitrageDetails = item.arbitrageDetails || {};
+
+        let crossTrigger = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.5;
+        let intraTrigger = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
+
+        // Fix Bug 1: Expire stale depth cache entries
+        const DEPTH_TTL = 10000;
+        const now = Date.now();
+        if (this.depthCache[coin]) {
+            for (const ex of Object.keys(this.depthCache[coin])) {
+                const ts = this.depthTimestamps[`${coin}_${ex}`];
+                if (!ts || (now - ts > DEPTH_TTL)) {
+                    delete this.depthCache[coin][ex];
                 }
             }
+            if (Object.keys(this.depthCache[coin]).length === 0) {
+                delete this.depthCache[coin];
+            }
+        }
 
-            // DYNAMIC DEPTH CHECK TRIGGER
-            let isSame = this.isSameExchange({ buyExchange: bestBuy.exchange, sellExchange: bestSell.exchange });
+        const processOpportunity = (opportunity, triggerLevel, type) => {
+            if (!opportunity) return null;
 
-            if ((!isSame && item.ROI >= crossTrigger) || (isSame && item.ROI >= intraTrigger)) {
-                // Fetch depth for the specific winning exchange/pair
-                // IMPORTANT: Use the full exchange identifier (e.g. 'BTCTurk(USDT)', 'Paribu(TRY)')
-                // so the cache key matches what fetchDepth stores.
+            let isTriggered = opportunity.roi >= triggerLevel;
+            let waitingForDepth = false;
+
+            if (isTriggered) {
                 const triggerDepth = (exchange) => {
                     this.fetchDepth(coin, exchange);
-                    // Check if depth data is available under the exchange key
                     if (!this.depthCache[coin]?.[exchange]) {
                         waitingForDepth = true;
                     }
                 };
 
-                triggerDepth(bestBuy.exchange);
-                if (bestSell.exchange !== bestBuy.exchange) {
-                    triggerDepth(bestSell.exchange);
-                }
-            } else {
-                // Fix Bug 2: Opportunity no longer viable — clear stale depth data
-                // This prevents old order book data from being used if ROI briefly spikes again
-                if (this.depthCache[coin]) {
-                    delete this.depthCache[coin];
+                triggerDepth(opportunity.buy.exchange);
+                if (opportunity.sell.exchange !== opportunity.buy.exchange) {
+                    triggerDepth(opportunity.sell.exchange);
                 }
             }
 
-            // If we are waiting for depth data to populate, SKIP calculation this cycle.
-            // This prevents "Fake" 100k volume alerts before data arrives.
-            // Exception: If cache contains {error:true}, we proceed (will use fallback).
-            if (waitingForDepth) {
-                // Check if the "missing" cache is actually an error? 
-                // Note: !this.depthCache[coin]?.['Paribu'] covers both undefined and null.
-                // But if it's {error:true}, it IS truthy. So waitingForDepth would be FALSE.
-                // So this logic works perfectly:
-                // undefined -> waitingForDepth = true -> Return
-                // {error:true} -> waitingForDepth = false -> Proceed -> Fallback
-                // Data -> waitingForDepth = false -> Proceed -> Real Volume
-                return;
-            }
-
-            // Profit Calculation (UNLIMITED Budget - Based on Market Capacity)
-            let effectiveBuyPrice = bestBuy.price;
-            let effectiveSellPrice = bestSell.price;
-            let maxTradableCoin = Infinity;
-
-            // -------------------------------------------------------------
-            // ORDER BOOK MATCHING ENGINE (Real Trade Simulation)
-            // -------------------------------------------------------------
+            if (waitingForDepth) return null;
 
             let finalTradeStats = {
                 tradeAmountTRY: 0,
                 profit: 0,
-                avgBuyPrice: bestBuy.price,
-                avgSellPrice: bestSell.price,
+                avgBuyPrice: opportunity.buy.price,
+                avgSellPrice: opportunity.sell.price,
                 totalVolume: 0
             };
 
             const getDepth = (type, exchange) => {
-                // type: 'asks' or 'bids'
                 if (exchange.includes('Binance')) {
                     if (this.depthCache[coin]?.[exchange]?.[type]) return this.depthCache[coin][exchange][type];
                     if (this.depthCache[coin]?.['Binance']?.[type]) return this.depthCache[coin]['Binance'][type];
                 }
                 if (exchange.includes('BTCTurk')) {
-                    // Try explicit key first (BTCTurk(TRY), BTCTurk(USDT))
                     if (this.depthCache[coin]?.[exchange]?.[type]) return this.depthCache[coin][exchange][type];
-                    // Fallback to legacy 'BTCTurk' key
                     if (this.depthCache[coin]?.['BTCTurk']?.[type]) return this.depthCache[coin]['BTCTurk'][type];
                 }
-                // For Paribu, we likely have explicit keys depending on pair (TRY/USDT)
                 if (exchange.includes('Paribu')) {
-                    // Try explicit key first (Paribu(TRY), Paribu(USDT))
                     if (this.depthCache[coin]?.[exchange]?.[type]) return this.depthCache[coin][exchange][type];
-                    // Fallback to legacy 'Paribu' key (just in case)
                     if (this.depthCache[coin]?.['Paribu']?.[type]) return this.depthCache[coin]['Paribu'][type];
                 }
-                return null; // Not found in cache
+                return null;
             };
 
-            // Check for Errors First (Kill Switch)
             let depthError = false;
-            // Check if depth data fetched with error for any involved exchange
-            if (this.depthCache[coin]?.[bestBuy.exchange]?.error ||
-                this.depthCache[coin]?.[bestSell.exchange]?.error) {
+            if (this.depthCache[coin]?.[opportunity.buy.exchange]?.error ||
+                this.depthCache[coin]?.[opportunity.sell.exchange]?.error) {
                 depthError = true;
             }
 
-            if (depthError) {
-                // Kill Switch Active
-                finalTradeStats.tradeAmountTRY = 0;
-                finalTradeStats.profit = 0;
-            } else {
-                // 1. Try to get Real Depth
-                let asks = getDepth('asks', bestBuy.exchange);
-                let bids = getDepth('bids', bestSell.exchange);
+            if (!depthError) {
+                let asks = getDepth('asks', opportunity.buy.exchange);
+                let bids = getDepth('bids', opportunity.sell.exchange);
 
-                // NORMALIZE CURRENCIES TO TRY
-                // The Matching Engine operates in TRY. If an order book is in USDT, 
-                // we must convert its Price levels to TRY.
-                // Note: Qty is usually in Coin (e.g. BTC), so it stays same.
-                // Exception: Some exchanges might have quote-currency qty? Assuming Base Coin Qty for now.
-
-                // Updated Normalization with Bid/Ask awareness
-                const normalizeOrderBook = (book, exchange, type) => {
+                const normalizeOrderBook = (book, exchange, tType) => {
                     if (!book) return null;
                     let isUSDT = exchange.includes('USDT');
 
@@ -718,72 +704,71 @@ class CoinDataService {
                         else if (exchange.includes('BTCTurk')) rateObj = this.btcturkUSDT;
                         else if (exchange.includes('Paribu')) rateObj = this.paribuUSDT;
 
-                        // DO NOT FALLBACK - If the exchange's own rate is missing, normalization fails safely
-                        if (!rateObj || !rateObj.price) {
-                            return null;
-                        }
+                        if (!rateObj || !rateObj.price) return null;
 
-                        // If we are looking at 'asks', we are going to BUY. We need USDT.
-                        // We must BUY USDT with TRY -> use USDT Ask
-                        // If we are looking at 'bids', we are going to SELL. We get USDT.
-                        // We must SELL USDT into TRY -> use USDT Bid
-                        let rate = type === 'asks' ? (rateObj.ask || rateObj.price) : (rateObj.bid || rateObj.price);
-
-                        // Fallback completely just in case rate is 0 or NaN
+                        let rate = tType === 'asks' ? (rateObj.ask || rateObj.price) : (rateObj.bid || rateObj.price);
                         if (!rate || rate === 0) rate = 30;
 
                         return book.map(level => [
-                            parseFloat(level[0]) * rate, // Price * Rate
-                            parseFloat(level[1])         // Qty
+                            parseFloat(level[0]) * rate,
+                            parseFloat(level[1])
                         ]);
                     }
                     return book;
                 };
 
-                asks = normalizeOrderBook(asks, bestBuy.exchange, 'asks');
-                bids = normalizeOrderBook(bids, bestSell.exchange, 'bids');
+                asks = normalizeOrderBook(asks, opportunity.buy.exchange, 'asks');
+                bids = normalizeOrderBook(bids, opportunity.sell.exchange, 'bids');
 
-                // 2. If missing, Fallback to Ticker (Construct Single-Level Depth)
-                // Only if Ticker Qty exists and is valid
-                if (!asks && bestBuy.qty) {
-                    asks = [[bestBuy.price, bestBuy.qty]]; // Top level is already converted/normalized in 'bestBuy'
+                if (!asks && opportunity.buy.qty) {
+                    asks = [[opportunity.buy.price, opportunity.buy.qty]];
                 }
-                if (!bids && bestSell.qty) {
-                    bids = [[bestSell.price, bestSell.qty]];
+                if (!bids && opportunity.sell.qty) {
+                    bids = [[opportunity.sell.price, opportunity.sell.qty]];
                 }
 
-                // 3. Run Matching Engine if we have data
                 if (asks && bids && asks.length > 0 && bids.length > 0) {
-                    // Use Infinity for same-exchange to calculate total market potential (matching cross-exchange logic)
                     finalTradeStats = this.calculateOrderBookMatch(asks, bids, Infinity);
-
-                    // Update ROI with the real simulated ROI (considering slippage/depth)
                     if (finalTradeStats.totalVolume > 0) {
-                        item.ROI = finalTradeStats.effectiveROI;
+                        opportunity.roi = finalTradeStats.effectiveROI;
                     }
                 }
-                // If still no stats (e.g. empty depth or no ticker qty), explicit 0 is maintained.
             }
 
-            item.arbitrageDetails = {
-                buyExchange: bestBuy.exchange,
-                sellExchange: bestSell.exchange,
-                buyPrice: finalTradeStats.avgBuyPrice || effectiveBuyPrice,
-                sellPrice: finalTradeStats.avgSellPrice || effectiveSellPrice,
-                buyPriceRaw: bestBuy.rawPrice,   // Original currency price (TRY or USDT)
-                sellPriceRaw: bestSell.rawPrice,  // Original currency price (TRY or USDT)
-                effectiveBuyPriceTRY: effectiveBuyPrice, // The raw TRY cost used for ROI
-                effectiveSellPriceTRY: effectiveSellPrice, // The converted TRY revenue used for ROI
+            return {
+                buyExchange: opportunity.buy.exchange,
+                sellExchange: opportunity.sell.exchange,
+                buyPrice: finalTradeStats.avgBuyPrice || opportunity.buy.price,
+                sellPrice: finalTradeStats.avgSellPrice || opportunity.sell.price,
+                buyPriceRaw: opportunity.buy.rawPrice,
+                sellPriceRaw: opportunity.sell.rawPrice,
+                effectiveBuyPriceTRY: opportunity.buy.price,
+                effectiveSellPriceTRY: opportunity.sell.price,
                 tradeAmountTRY: finalTradeStats.tradeAmountTRY,
                 profit: finalTradeStats.profit,
-                roi: item.ROI,
-                buyQty: bestBuy.qty,
-                sellQty: bestSell.qty,
-                depthFetched: (this.depthCache[coin] && this.depthCache[coin][bestBuy.exchange]) ? true : false
+                roi: opportunity.roi,
+                buyQty: opportunity.buy.qty,
+                sellQty: opportunity.sell.qty,
+                depthFetched: (this.depthCache[coin] && this.depthCache[coin][opportunity.buy.exchange]) ? true : false
             };
+        };
 
-        } else {
-            item.ROI = -100;
+        let processedCross = processOpportunity(bestCross, crossTrigger, 'cross');
+        let processedIntra = processOpportunity(bestIntra, intraTrigger, 'intra');
+
+        if (!bestCross && !bestIntra && this.depthCache[coin]) {
+            delete this.depthCache[coin];
+        }
+
+        if (processedCross) item.arbitrageDetails.cross = processedCross;
+        if (processedIntra) item.arbitrageDetails.intra = processedIntra;
+
+        if (processedCross && processedIntra) item.ROI = Math.max(processedCross.roi, processedIntra.roi);
+        else if (processedCross) item.ROI = processedCross.roi;
+        else if (processedIntra) item.ROI = processedIntra.roi;
+        else item.ROI = Math.max(highestCrossROI, highestIntraROI);
+
+        if (!item.arbitrageDetails.cross && !item.arbitrageDetails.intra) {
             item.arbitrageDetails = null;
         }
     }
@@ -802,30 +787,31 @@ class CoinDataService {
     }
 
     logTopOpportunities() {
-        let opportunities = [];
+        let sameExchangeOpportunities = [];
+        let crossExchangeOpportunities = [];
+
         Object.keys(this.coinList).forEach(key => {
-            if (this.coinList[key].arbitrageDetails) {
-                opportunities.push({
-                    coin: key,
-                    ...this.coinList[key].arbitrageDetails
-                });
+            const details = this.coinList[key].arbitrageDetails;
+            if (!details) return;
+
+            if (details.cross) {
+                crossExchangeOpportunities.push({ coin: key, ...details.cross });
+            }
+            if (details.intra) {
+                sameExchangeOpportunities.push({ coin: key, ...details.intra });
             }
         });
 
-        // Separate same-exchange and cross-exchange opportunities
-        // Separate same-exchange and cross-exchange opportunities
+        // --- SAME-EXCHANGE: Apply ROI and Min Profit filters ---
         const intraMinROI = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
         const intraMinProfit = (this.settings.intraMinProfit !== undefined) ? this.settings.intraMinProfit : 100;
 
-        const sameExchangeFiltered = opportunities.filter(o =>
-            this.isSameExchange(o) &&
+        const sameExchangeFiltered = sameExchangeOpportunities.filter(o =>
             o.roi >= intraMinROI &&
             o.profit >= intraMinProfit &&
             this.getBaseExchange(o.buyExchange) !== 'Binance'
         );
-        const crossExchange = opportunities.filter(o => !this.isSameExchange(o));
 
-        // --- SAME-EXCHANGE: Apply ROI and Min Profit filters ---
         sameExchangeFiltered.sort((a, b) => b.profit - a.profit);
         sameExchangeFiltered.forEach((op) => {
             this.checkAndSendTelegramAlert(op, true);
@@ -835,7 +821,7 @@ class CoinDataService {
         const crossMinROI = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.50;
         const crossMinProfit = (this.settings.crossMinProfit !== undefined) ? this.settings.crossMinProfit : 1000;
 
-        const filteredCross = crossExchange.filter(o =>
+        const filteredCross = crossExchangeOpportunities.filter(o =>
             o.roi >= crossMinROI &&
             o.profit >= crossMinProfit
         );
