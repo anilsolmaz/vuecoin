@@ -118,7 +118,7 @@
                     <div class="form-group custom-input-group max-w-400">
                       <label class="form-label fw-bold small text-secondary">MAX EXCLUSIVE DEALS TO DISPLAY</label>
                       <div class="input-group border-bottom">
-                        <input type="number" step="1" v-model="settings.topDealsCount" class="form-control border-0 bg-transparent theme-input" required>
+                        <input type="number" step="1" v-model="settings.topDealsCount" @change="saveSettings" class="form-control border-0 bg-transparent theme-input" required>
                         <span class="input-group-text text-muted border-0 bg-transparent theme-unit">COINS</span>
                       </div>
                       <p class="form-text mt-2">Maximum number of high-priority arbitrage deals shown in the distinct top row before moving to regular rows.</p>
@@ -152,6 +152,7 @@
                         drag-class="drag-active"
                         animation="250"
                         handle=".drag-handle"
+                        @end="saveSettings"
                       >
                         <template #item="{ element, index }">
                           <div class="pinned-coin-row d-flex align-items-center">
@@ -398,12 +399,14 @@ export default {
     },
     removeTopCoin(index) {
       this.settings.topCoins.splice(index, 1);
+      this.saveSettings();
     },
     addTopCoin() {
       if (this.newCoinAdd && this.newCoinAdd.trim() !== '') {
         const coin = this.newCoinAdd.trim().toLowerCase();
         if (!this.settings.topCoins.includes(coin)) {
           this.settings.topCoins.push(coin);
+          this.saveSettings();
         }
         this.newCoinAdd = '';
       }
