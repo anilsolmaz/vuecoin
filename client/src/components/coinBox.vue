@@ -1,7 +1,7 @@
 <template>
   <div class="coinbox" :style="cellClass(coinName, coinData.ROI)" @click="toggleExpand">
     <h6 class="header" style="margin-bottom:2px">
-      <img class="coinBoxImage" :src="coinImageSource" @error="handleImageError">
+      <img class="coinBoxImage" :style="{ width: (customFontSize * 25) + 'px', height: (customFontSize * 25) + 'px' }" :src="coinImageSource" @error="handleImageError">
       <b>{{ coinName.toUpperCase() }}</b>
       <span v-if="forceShowROI || coinData.ROI >= minROI" style="font-size:0.7em">{{ formatNumber(coinData.ROI, 2) > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
       <span v-if="dealDuration > 0" class="deal-timer" :title="'In Top Deals for ' + formatDuration(dealDuration)">{{ formatDuration(dealDuration) }}</span>
@@ -15,7 +15,7 @@
              <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'bid_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
                <template v-if="row.bid">
                  <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
-                   <img class="marketBoxImage" style="width: 14px; height: 14px; margin-right: 4px;" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
+                   <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
                  </a>
                  <span class="fw-medium">{{ formatNumber(row.bid.rawPrice, coinData.fraction || 5) }} {{ row.bid.symbol }}</span>
                </template>
@@ -27,7 +27,7 @@
              <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
                <template v-if="row.ask">
                  <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
-                   <img class="marketBoxImage" style="width: 14px; height: 14px; margin-right: 4px;" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
+                   <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
                  </a>
                  <span class="fw-medium">{{ formatNumber(row.ask.rawPrice, coinData.fraction || 5) }} {{ row.ask.symbol }}</span>
                </template>
@@ -296,8 +296,6 @@ export default {
 }
 
 .coinBoxImage {
-  width: 18px;
-  height: 18px;
   margin: 1px;
   border-radius: 50%;
   background-color: #ffffff;
@@ -311,8 +309,6 @@ body.light-mode .coinBoxImage {
 }
 
 .marketBoxImage {
-  width: 14px;
-  height: 14px;
   margin: 1px;
   border-radius: 3px;
 }

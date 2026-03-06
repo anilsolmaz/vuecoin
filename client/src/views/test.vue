@@ -111,10 +111,10 @@
             <i class="bi bi-fire text-danger me-2"></i>
             <span class="small fw-bold section-label text-uppercase" style="letter-spacing:1px; font-size: 0.75rem;">Top Deals</span>
             <hr class="flex-grow-1 ms-2 my-0 section-hr">
-            <div class="d-flex align-items-center ms-2 gap-1 text-muted" style="font-size: 0.75rem;">
-               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('topDeals', -1)"><i class="bi bi-dash"></i></button>
-               <span><i class="bi bi-fonts"></i></span>
-               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('topDeals', 1)"><i class="bi bi-plus"></i></button>
+            <div class="d-flex align-items-center ms-2 gap-1 theme-text" style="font-size: 0.75rem;">
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none theme-text fw-bold" @click="changeFontSize('topDeals', -1)"><i class="bi bi-dash fs-5"></i></button>
+               <span class="mx-1"><i class="bi bi-fonts fs-6"></i></span>
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none theme-text fw-bold" @click="changeFontSize('topDeals', 1)"><i class="bi bi-plus fs-5"></i></button>
             </div>
          </div>
          <div class="row mb-1">
@@ -137,10 +137,10 @@
             <i class="bi bi-coin text-warning me-2"></i>
             <span class="small fw-bold section-label text-uppercase" style="letter-spacing:1px; font-size: 0.75rem;">All Markets</span>
             <hr class="flex-grow-1 ms-2 my-0 section-hr">
-            <div class="d-flex align-items-center ms-2 gap-1 text-muted" style="font-size: 0.75rem;">
-               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('allMarkets', -1)"><i class="bi bi-dash"></i></button>
-               <span><i class="bi bi-fonts"></i></span>
-               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('allMarkets', 1)"><i class="bi bi-plus"></i></button>
+            <div class="d-flex align-items-center ms-2 gap-1 theme-text" style="font-size: 0.75rem;">
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none theme-text fw-bold" @click="changeFontSize('allMarkets', -1)"><i class="bi bi-dash fs-5"></i></button>
+               <span class="mx-1"><i class="bi bi-fonts fs-6"></i></span>
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none theme-text fw-bold" @click="changeFontSize('allMarkets', 1)"><i class="bi bi-plus fs-5"></i></button>
             </div>
          </div>
          <div class="row pb-3">
