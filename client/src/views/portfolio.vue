@@ -14,11 +14,11 @@
        </div>
        <div class="col-auto d-flex align-items-center gap-1">
           <template v-if="currentProfile">
-             <div class="d-flex align-items-center bg-white bg-opacity-10 border border-white border-opacity-10 rounded-pill px-3 py-1 me-2 shadow-sm">
+             <div class="d-flex align-items-center profile-badge rounded-pill px-3 py-1 me-2 shadow-sm">
                 <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
                    <i class="bi bi-cloud-check-fill text-white small"></i>
                 </div>
-                <span class="fw-bold small text-white">{{ currentProfile }}</span>
+                <span class="fw-bold small">{{ currentProfile }}</span>
              </div>
              <button @click="deleteProfile" class="btn btn-sm btn-outline-danger rounded-pill px-3 d-flex align-items-center gap-1">
                 <i class="bi bi-trash"></i><span class="d-none d-sm-inline small">Delete</span>
@@ -579,7 +579,7 @@ body.dark-mode ::placeholder {
 }
 
 .card-bg-gradient {
-  background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+  background: linear-gradient(135deg, #dc3545 0%, #000000 100%);
   opacity: 1;
 }
 
@@ -787,8 +787,26 @@ body.dark-mode .coin-dropdown-item {
 
 /* Modals */
 .modal-backdrop-custom {
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(10px);
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-badge {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #333;
+}
+
+body.dark-mode .profile-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .modal-card {
