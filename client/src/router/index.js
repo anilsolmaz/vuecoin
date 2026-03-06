@@ -22,6 +22,11 @@ const routes = [
     name: 'Configs',
     component: () => import(/* webpackChunkName: "configs" */ '../views/configs.vue'),
   },
+  {
+    path: '/portfolio',
+    name: 'Portfolio',
+    component: () => import(/* webpackChunkName: "portfolio" */ '../views/portfolio.vue'),
+  },
 ];
 
 // Create a new router instance

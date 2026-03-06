@@ -31,6 +31,11 @@
               </div>
             </div>
             
+            <!-- My Portfolio Link -->
+            <router-link to="/portfolio" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm rounded-pill px-3">
+              <i class="bi bi-wallet2"></i><span class="fw-bold small text-white">My Portfolio</span>
+            </router-link>
+            
             <!-- Calculator Toggle Button -->
             <button @click="showCalculatorModal = true" class="btn btn-dark d-flex align-items-center gap-2 shadow-sm rounded-pill px-3">
               <i class="bi bi-calculator"></i><span class="fw-bold small">Calculator</span>
@@ -74,6 +79,10 @@
                     </div>
                   </div>
                </div>
+               
+               <router-link to="/portfolio" class="btn btn-primary text-white w-100 mb-2 d-flex justify-content-center align-items-center gap-2">
+                 <i class="bi bi-wallet2 text-white"></i><span class="fw-bold small text-white">My Portfolio</span>
+               </router-link>
                
                <button @click="showCalculatorModal = true; mobileMenuOpen = false" class="btn btn-dark w-100 mb-2 d-flex justify-content-center align-items-center gap-2">
                  <i class="bi bi-calculator"></i><span class="fw-bold small">Calculator</span>
