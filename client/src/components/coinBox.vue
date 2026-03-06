@@ -25,7 +25,7 @@
                     <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
                       <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
                     </a>
-                    <span class="fw-medium text-nowrap">{{ formatNumber(row.ask.rawPrice, coinData.fraction || 5) }} {{ row.ask.symbol }}</span>
+                    <span class="fw-medium text-nowrap">{{ formatNumber(row.ask.rawPrice) }} {{ row.ask.symbol }}</span>
                   </template>
                 </div>
              </div>
@@ -37,7 +37,7 @@
                     <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
                       <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
                     </a>
-                    <span class="fw-medium text-nowrap">{{ formatNumber(row.bid.rawPrice, coinData.fraction || 5) }} {{ row.bid.symbol }}</span>
+                    <span class="fw-medium text-nowrap">{{ formatNumber(row.bid.rawPrice) }} {{ row.bid.symbol }}</span>
                   </template>
                 </div>
              </div>
