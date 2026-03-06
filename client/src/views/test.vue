@@ -31,6 +31,33 @@
               </div>
             </div>
             
+            <!-- Profile Badge & Balance (if data exists) -->
+            <div v-if="portfolio.length > 0" class="d-flex align-items-center gap-2">
+               <!-- Active Profile Badge -->
+               <div v-if="currentProfile" class="d-flex align-items-center profile-badge rounded-pill px-3 py-1 shadow-sm position-relative" style="height: 38px;">
+                  <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-2" style="width: 20px; height: 20px;">
+                     <i class="bi bi-cloud-check-fill text-white" style="font-size: 0.7rem;"></i>
+                  </div>
+                  <span class="fw-bold small text-truncate mr-2" style="max-width: 80px;">{{ currentProfile }}</span>
+                  <button @click="exitProfile" class="btn btn-sm p-0 d-flex align-items-center justify-content-center border-0 opacity-75 hover-opacity-100 ms-1" style="color: inherit; background: none;" title="Exit profile">
+                     <i class="bi bi-x-circle-fill"></i>
+                  </button>
+               </div>
+
+               <!-- Balance Card -->
+               <div class="d-flex align-items-center gap-2 portfolio-balance-card rounded-pill px-3 py-1 border shadow-sm balance-header" style="height: 38px;">
+                  <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
+                  <div class="d-flex align-items-center gap-2">
+                     <span class="fw-bold small theme-text">
+                        {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : '****' }}
+                     </span>
+                     <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75 hover-opacity-100">
+                        <i :class="showBalance ? 'bi bi-eye' : 'bi bi-eye-slash'" style="font-size: 0.9rem;"></i>
+                     </button>
+                  </div>
+               </div>
+            </div>
+
             <!-- My Portfolio Link -->
             <router-link to="/portfolio" class="btn btn-portfolio d-flex align-items-center gap-2 shadow-sm rounded-pill px-3">
               <i class="bi bi-wallet2 text-white"></i><span class="fw-bold small text-white">My Portfolio</span>
@@ -80,6 +107,35 @@
                   </div>
                </div>
                
+               <!-- Profile Badge & Balance (if data exists) -->
+               <div v-if="portfolio.length > 0" class="mb-3">
+                  <!-- Active Profile Badge -->
+                  <div v-if="currentProfile" class="d-flex align-items-center justify-content-between profile-badge rounded-4 p-3 border shadow-sm mb-2">
+                     <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle bg-success d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
+                           <i class="bi bi-cloud-check-fill text-white small"></i>
+                        </div>
+                        <span class="fw-bold small">{{ currentProfile }}</span>
+                     </div>
+                     <button @click="exitProfile" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75" title="Exit profile">
+                        <i class="bi bi-x-circle-fill fs-5"></i>
+                     </button>
+                  </div>
+
+                  <!-- Balance Card -->
+                  <div class="d-flex align-items-center justify-content-between gap-2 bg-dark-soft rounded-4 p-3 border shadow-sm">
+                     <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
+                        <span class="fw-bold small theme-text">
+                           {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : '****' }}
+                        </span>
+                     </div>
+                     <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75">
+                        <i :class="showBalance ? 'bi bi-eye' : 'bi bi-eye-slash'" style="font-size: 1.1rem;"></i>
+                     </button>
+                  </div>
+               </div>
+
                <router-link to="/portfolio" class="btn btn-portfolio text-white w-100 mb-2 d-flex justify-content-center align-items-center gap-2">
                  <i class="bi bi-wallet2 text-white"></i><span class="fw-bold small text-white">My Portfolio</span>
                </router-link>
@@ -247,8 +303,11 @@
         settings: {
            topDealsCount: 10,
            crossMinROI: 0.5
-        }
-      }
+        },
+        portfolio: [],
+        showBalance: localStorage.getItem('vuecoin_showBalance') !== 'false',
+        currentProfile: null,
+     }
     },
     filters: {
       lira (value) {
@@ -282,6 +341,39 @@
         } finally {
            this.saving = false;
         }
+      },
+      loadPortfolio() {
+        const stored = localStorage.getItem('vuecoin_portfolio');
+        if (stored) {
+           try {
+             this.portfolio = JSON.parse(stored);
+           } catch (e) {
+             this.portfolio = [];
+           }
+        }
+        this.currentProfile = localStorage.getItem('vuecoin_current_profile') || null;
+      },
+      exitProfile() {
+        this.currentProfile = null;
+        localStorage.setItem('vuecoin_current_profile', '');
+        this.loadPortfolio();
+      },
+      getCurrentPrice(coin) {
+         if (!coin) return 0;
+         if (coin === 'usdt') return 1;
+         if (this.coinData[coin]) {
+           if (this.coinData[coin].binance?.usdt?.price) return this.coinData[coin].binance.usdt.price;
+           if (this.coinData[coin].paribu?.usdt?.price) return this.coinData[coin].paribu.usdt.price;
+           if (this.coinData[coin].paribu?.try?.price && this.USDTMode) {
+              const rate = this.coinData['usdt']?.paribu?.try?.price || 35;
+              return this.coinData[coin].paribu.try.price / rate;
+           }
+         }
+         return 0;
+      },
+      formatNumber(value, fraction) {
+        if (!value) return "0.00";
+        return Number(value).toLocaleString(undefined, { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
       },
       log(event) {
         console.log(event)
@@ -429,12 +521,16 @@
       
       // Fetch user settings
       this.fetchSettings();
+      this.loadPortfolio();
     },
     watch: {
       selectedCoin(newVal) {
         if (this.coinData[newVal] && this.coinData[newVal].binance?.usdt?.price) {
           this.buyPrice = this.coinData[newVal].binance.usdt.price;
         }
+      },
+      showBalance(newVal) {
+         localStorage.setItem('vuecoin_showBalance', newVal);
       }
     },
     beforeUnmount() {
@@ -444,6 +540,15 @@
       }
     },
     computed: {
+      totalBalanceUsdt() {
+         return this.portfolio.reduce((sum, item) => {
+            return sum + (item.amount * this.getCurrentPrice(item.coin));
+         }, 0);
+      },
+      totalBalanceTry() {
+         const rate = this.coinData['usdt']?.paribu?.try?.price || 35;
+         return this.totalBalanceUsdt * rate;
+      },
       formattedElapsedTime() {
         const date = new Date(null);
         date.setSeconds(this.elapsedTime / 1000);
