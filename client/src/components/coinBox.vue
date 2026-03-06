@@ -142,18 +142,23 @@ export default {
           }
       };
 
-      // Check Paribu (Only TRY)
+      // Check Paribu (TRY & USDT)
       if (item?.paribu?.try?.ask) checkBuy(item.paribu.try.ask, 'paribu', item.paribu.try.ask, '₺');
       if (item?.paribu?.try?.bid) checkSell(item.paribu.try.bid, 'paribu', item.paribu.try.bid, '₺');
+      if (item?.paribu?.usdt?.askInTRY) checkBuy(item.paribu.usdt.askInTRY, 'paribu', item.paribu.usdt.ask, '$');
+      if (item?.paribu?.usdt?.bidInTRY) checkSell(item.paribu.usdt.bidInTRY, 'paribu', item.paribu.usdt.bid, '$');
 
-      // Check Binance (Only USDT)
+      // Check Binance (TRY & USDT)
+      if (item?.binance?.try?.ask) checkBuy(item.binance.try.ask, 'binance', item.binance.try.ask, '₺');
+      if (item?.binance?.try?.bid) checkSell(item.binance.try.bid, 'binance', item.binance.try.bid, '₺');
       if (item?.binance?.usdt?.askInTRY) checkBuy(item.binance.usdt.askInTRY, 'binance', item.binance.usdt.ask, '$');
       if (item?.binance?.usdt?.bidInTRY) checkSell(item.binance.usdt.bidInTRY, 'binance', item.binance.usdt.bid, '$');
 
-      // Check BTCTurk (Only TRY)
-      // Note: BTCTurk image is BTCTurk.png, so we use BTCTurk
+      // Check BTCTurk (TRY & USDT)
       if (item?.BTCTurk?.try?.ask) checkBuy(item.BTCTurk.try.ask, 'BTCTurk', item.BTCTurk.try.ask, '₺');
       if (item?.BTCTurk?.try?.bid) checkSell(item.BTCTurk.try.bid, 'BTCTurk', item.BTCTurk.try.bid, '₺');
+      if (item?.BTCTurk?.usdt?.askInTRY) checkBuy(item.BTCTurk.usdt.askInTRY, 'BTCTurk', item.BTCTurk.usdt.ask, '$');
+      if (item?.BTCTurk?.usdt?.bidInTRY) checkSell(item.BTCTurk.usdt.bidInTRY, 'BTCTurk', item.BTCTurk.usdt.bid, '$');
 
       // Sort
       bids.sort((a, b) => b.priceTRY - a.priceTRY);
