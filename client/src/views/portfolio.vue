@@ -14,11 +14,14 @@
        </div>
        <div class="col-auto d-flex align-items-center gap-1">
           <template v-if="currentProfile">
-             <div class="d-flex align-items-center profile-badge rounded-pill px-3 py-1 me-2 shadow-sm">
+             <div class="d-flex align-items-center profile-badge rounded-pill px-3 py-1 me-2 shadow-sm position-relative">
                 <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
                    <i class="bi bi-cloud-check-fill text-white small"></i>
                 </div>
-                <span class="fw-bold small">{{ currentProfile }}</span>
+                <span class="fw-bold small me-2">{{ currentProfile }}</span>
+                <button @click="exitProfile" class="btn btn-sm p-0 d-flex align-items-center justify-content-center border-0 opacity-75 hover-opacity-100" style="color: inherit; background: none;" title="Exit profile">
+                   <i class="bi bi-x-circle-fill"></i>
+                </button>
              </div>
              <button @click="deleteProfile" class="btn btn-sm btn-outline-danger rounded-pill px-3 d-flex align-items-center gap-1">
                 <i class="bi bi-trash"></i><span class="d-none d-sm-inline small">Delete</span>
@@ -502,6 +505,10 @@ export default defineComponent({
         this.saveMsg = 'Error saving: ' + (e.response?.data?.error || e.message);
       }
     },
+    exitProfile() {
+      this.currentProfile = null;
+      this.loadPortfolio();
+    },
     async retrieveProfile() {
       this.retrieveMsg = '';
       this.retrieveError = false;
@@ -566,7 +573,7 @@ body.dark-mode .theme-text-secondary {
 }
 
 body.dark-mode ::placeholder {
-  color: #888 !important;
+  color: #bbb !important;
   opacity: 1 !important;
 }
 
