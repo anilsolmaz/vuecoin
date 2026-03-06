@@ -8,9 +8,24 @@
     </h6>
     <div v-if="isExpanded">
       <template v-if="isTopDeal">
-        <div class="d-flex w-100 mt-1" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.1' }">
+        <div class="d-flex w-100 mt-1 position-relative" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.1' }">
+          <!-- Ask Column (You Buy) -->
+          <div class="flex-grow-1 border-end border-secondary border-opacity-25 pe-1 position-relative">
+             <div class="opacity-75 fw-bold mb-1 border-bottom border-secondary border-opacity-25 pb-1 text-start ps-1 d-flex justify-content-between align-items-center" style="font-size:0.65rem; letter-spacing: 0.5px;">
+               <span>ASK</span>
+               <span class="position-absolute" style="right: -6px; top: -1px; font-weight: bolder; color: var(--text-muted, #777); font-size: 0.75rem;">&gt;</span>
+             </div>
+             <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
+               <template v-if="row.ask">
+                 <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
+                   <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
+                 </a>
+                 <span class="fw-medium">{{ formatNumber(row.ask.rawPrice, coinData.fraction || 5) }} {{ row.ask.symbol }}</span>
+               </template>
+             </div>
+          </div>
           <!-- Bid Column (You Sell) -->
-          <div class="flex-grow-1 border-end border-secondary border-opacity-25 pe-1">
+          <div class="flex-grow-1 ps-2">
              <div class="opacity-75 fw-bold mb-1 border-bottom border-secondary border-opacity-25 pb-1 text-start ps-1" style="font-size:0.65rem; letter-spacing: 0.5px">BID</div>
              <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'bid_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
                <template v-if="row.bid">
@@ -18,18 +33,6 @@
                    <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
                  </a>
                  <span class="fw-medium">{{ formatNumber(row.bid.rawPrice, coinData.fraction || 5) }} {{ row.bid.symbol }}</span>
-               </template>
-             </div>
-          </div>
-          <!-- Ask Column (You Buy) -->
-          <div class="flex-grow-1 ps-1">
-             <div class="opacity-75 fw-bold mb-1 border-bottom border-secondary border-opacity-25 pb-1 text-start ps-1" style="font-size:0.65rem; letter-spacing: 0.5px">ASK</div>
-             <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
-               <template v-if="row.ask">
-                 <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
-                   <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
-                 </a>
-                 <span class="fw-medium">{{ formatNumber(row.ask.rawPrice, coinData.fraction || 5) }} {{ row.ask.symbol }}</span>
                </template>
              </div>
           </div>
