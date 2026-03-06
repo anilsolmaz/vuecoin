@@ -574,25 +574,18 @@ class CoinDataService {
             }
         };
 
-        // Check Paribu (Detect both TRY and USDT pairs)
+        // Check Paribu (Detect ONLY TRY pairs as requested)
         // rawPrice: TRY pairs pass raw TRY, USDT pairs pass raw USDT
         if (item.paribu.try?.ask) checkBuy(item.paribu.try.ask, 'Paribu(TRY)', item.paribu.try.askQty, item.paribu.try.ask);
         if (item.paribu.try?.bid) checkSell(item.paribu.try.bid, 'Paribu(TRY)', item.paribu.try.bidQty, item.paribu.try.bid);
 
-        if (item.paribu.usdt?.askInTRY) checkBuy(item.paribu.usdt.askInTRY, 'Paribu(USDT)', item.paribu.usdt.askQty, item.paribu.usdt.ask);
-        if (item.paribu.usdt?.bidInTRY) checkSell(item.paribu.usdt.bidInTRY, 'Paribu(USDT)', item.paribu.usdt.bidQty, item.paribu.usdt.bid);
-
-        // Check Binance
+        // Check Binance (ONLY USDT pairs)
         if (item.binance.usdt?.askInTRY) checkBuy(item.binance.usdt.askInTRY, 'Binance(USDT)', item.binance.usdt.askQty, item.binance.usdt.ask);
         if (item.binance.usdt?.bidInTRY) checkSell(item.binance.usdt.bidInTRY, 'Binance(USDT)', item.binance.usdt.bidQty, item.binance.usdt.bid);
-        if (item.binance.try?.ask) checkBuy(item.binance.try.ask, 'Binance(TRY)', item.binance.try.askQty, item.binance.try.ask);
-        if (item.binance.try?.bid) checkSell(item.binance.try.bid, 'Binance(TRY)', item.binance.try.bidQty, item.binance.try.bid);
 
-        // Check BTCTurk
+        // Check BTCTurk (ONLY TRY pairs)
         if (item.BTCTurk.try?.ask) checkBuy(item.BTCTurk.try.ask, 'BTCTurk(TRY)', item.BTCTurk.try.askQty, item.BTCTurk.try.ask);
         if (item.BTCTurk.try?.bid) checkSell(item.BTCTurk.try.bid, 'BTCTurk(TRY)', item.BTCTurk.try.bidQty, item.BTCTurk.try.bid);
-        if (item.BTCTurk.usdt?.askInTRY) checkBuy(item.BTCTurk.usdt.askInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.askQty, item.BTCTurk.usdt.ask);
-        if (item.BTCTurk.usdt?.bidInTRY) checkSell(item.BTCTurk.usdt.bidInTRY, 'BTCTurk(USDT)', item.BTCTurk.usdt.bidQty, item.BTCTurk.usdt.bid);
 
 
         let bestCross = null;
