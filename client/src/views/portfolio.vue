@@ -36,18 +36,18 @@
         <div class="balance-card position-relative overflow-hidden p-4 rounded-4 shadow-lg border">
           <div class="card-bg-gradient position-absolute top-0 start-0 w-100 h-100 z-0"></div>
           <div class="position-relative z-1 d-flex flex-column align-items-center text-center">
-            <span class="fw-bold text-uppercase opacity-75 mb-2" style="font-size: 0.85rem; letter-spacing: 2px;">Total Portfolio Value</span>
+            <span class="fw-bold text-uppercase mb-2 text-white text-opacity-75" style="font-size: 0.85rem; letter-spacing: 2px;">Total Portfolio Value</span>
             
             <h1 class="display-3 fw-bolder mb-0 text-white value-shadow">
-              {{ formatNumber(totalBalanceUsdt, 2) }} <span class="fs-3 opacity-75 text-white">$</span>
+              {{ formatNumber(totalBalanceUsdt, 2) }} <span class="fs-3 text-white text-opacity-75">$</span>
             </h1>
-            <h4 class="fw-bold opacity-75 mt-2 text-white">
+            <h4 class="fw-bold mt-2 text-white text-opacity-75">
               ≈ {{ formatNumber(totalBalanceTry, 2) }} ₺
             </h4>
             
             <div class="mt-4 d-flex gap-3">
               <div class="p-2 px-3 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 backdrop-blur">
-                <span class="small fw-bold opacity-75 me-2 text-white">24H CHANGE:</span>
+                <span class="small fw-bold me-2 text-white text-opacity-75">24H CHANGE:</span>
                 <span class="fw-bold text-white">Live updating...</span>
               </div>
             </div>
@@ -546,10 +546,24 @@ body.dark-mode .portfolio-page {
   --bg-deep: #0f172a;
   --bg-card: #1e293b;
   --bg-input: #0f172a;
-  --text-main: #f8fafc;
-  --text-dim: #94a3b8;
+  --text-main: #f1f5f9;
+  --text-dim: #cbd5e1;
   --accent: #6366f1;
   --border: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .text-muted, 
+body.dark-mode .small.text-muted {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .opacity-75,
+body.dark-mode .text-opacity-75 {
+  opacity: 0.85 !important;
+}
+
+body.dark-mode .opacity-50 {
+  opacity: 0.7 !important;
 }
 
 /* Glassmorphism & Cards */
