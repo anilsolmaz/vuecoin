@@ -11,6 +11,9 @@
             <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">My Portfolio</h4>
             <span class="small text-muted">Track your holdings in real-time</span>
           </div>
+          <span v-if="currentProfile" class="badge bg-success bg-opacity-75 rounded-pill px-3 py-2 d-flex align-items-center gap-1 small">
+             <i class="bi bi-cloud-check"></i> {{ currentProfile }}
+          </span>
        </div>
        <div class="col-auto d-flex gap-2">
           <button v-if="currentProfile" @click="deleteProfile" class="btn btn-sm btn-outline-danger rounded-pill px-3 d-flex align-items-center gap-2">
@@ -459,16 +462,8 @@ export default defineComponent({
     },
     async onSaveClick() {
       if (this.currentProfile) {
-        // Already have a profile — save directly
-        try {
-          await axios.post('/api/portfolio', { name: this.currentProfile, data: this.portfolio });
-          this.saveMsg = `Saved to "${this.currentProfile}"`;
-          this.showSaveModal = true;
-          setTimeout(() => { this.showSaveModal = false; this.saveMsg = ''; }, 1500);
-        } catch (e) {
-          this.saveMsg = 'Error: ' + (e.response?.data?.error || e.message);
-          this.showSaveModal = true;
-        }
+        // Already have a profile — save silently, no popup
+        axios.post('/api/portfolio', { name: this.currentProfile, data: this.portfolio }).catch(() => {});
       } else {
         // No active profile — ask for name
         this.profileName = '';
