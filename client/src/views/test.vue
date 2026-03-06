@@ -159,13 +159,6 @@
             v-for="name in topCoins"
             v-bind:coinName="name"
             v-bind:coinData="coinData[name]"
-            v-bind:usdtRate="calculatedUsdtRate"
-        ></topcoin>
-        <topcoin
-            v-bind:coinName="'pda'"
-            v-bind:coinData="coinData['pda']"
-            v-bind:coinSource="'paribu'"
-            v-bind:usdtRate="calculatedUsdtRate"
         ></topcoin>
       </div>
       <div class="row" v-if="Object.keys(coinData).length ==0" style="margin-top: 100px">
@@ -278,7 +271,6 @@
     data() {
       return {
         filterWord: '',
-        PDAPrice: null,
         coinData: [],
         coinData2: [],
         topDeals: [],
