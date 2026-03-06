@@ -152,6 +152,7 @@
                 :coinData="coinData[coinName]"
                 :USDTMode="USDTMode"
                 :minROI="settings.crossMinROI"
+                :isTopDeal="false"
                 :dealDuration="0"
                 :customFontSize="allMarketsFontSize"
             />
