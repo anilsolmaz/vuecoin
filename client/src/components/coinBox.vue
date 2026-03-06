@@ -7,7 +7,7 @@
       <span v-if="dealDuration > 0" class="deal-timer" :title="'In Top Deals for ' + formatDuration(dealDuration)">{{ formatDuration(dealDuration) }}</span>
     </h6>
     <div v-if="isExpanded">
-      <template v-if="isTopDeal">
+      <template v-if="isTopDeal || isExpandedAllMarkets">
         <div class="d-flex flex-column w-100 mt-1" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.1' }">
           <!-- Header Row -->
           <div class="d-flex w-100 align-items-center mb-1 pb-1 border-bottom border-secondary border-opacity-25 position-relative">
@@ -46,9 +46,9 @@
       </template>
 
       <template v-else>
-         <div class="text-start ps-3" :style="{ padding: '2px 0', fontSize: customFontSize + 'rem', letterSpacing: '0.5px' }">
+         <div class="text-center" :style="{ padding: '4px 0', fontSize: customFontSize + 'rem', letterSpacing: '0.5px' }">
             <span class="fw-bold">
-               {{ USDTMode ? formatNumber(singleDisplayPriceUSD, coinData.fraction || 5) : formatNumber(singleDisplayPriceTRY, coinData.fraction || 6) }}
+               {{ formatNumber(USDTMode ? singleDisplayPriceUSD : singleDisplayPriceTRY) }}
                {{ USDTMode ? '$' : '₺' }}
             </span>
          </div>
@@ -191,7 +191,8 @@ export default {
   ,
   data() {
     return {
-      isExpanded: true
+      isExpanded: true,
+      isExpandedAllMarkets: false
     };
   },
   mounted() {
@@ -200,38 +201,35 @@ export default {
   },
   methods: {
     toggleExpand() {
-      // this.isExpanded = !this.isExpanded;
+      if (!this.isTopDeal) {
+          this.isExpandedAllMarkets = !this.isExpandedAllMarkets;
+      }
     },
     checkAutoExpand() {
       // if (this.coinData.ROI > 1) {
       //   this.isExpanded = true;
       // }
     },
-    formatNumber(value, fraction = null) {
+    formatNumber(value) {
       const val = parseFloat(value);
       if (isNaN(val)) return "0";
       
       let maxF = 4;
       const absVal = Math.abs(val);
 
-      if (absVal >= 10000) {
-         maxF = 0; // 5+ hane
-      } else if (absVal >= 1000) {
-         maxF = 0; // 4 hane
-      } else if (absVal >= 100) {
-         maxF = 1; // 3 hane + 1 ondalık = 4
-      } else if (absVal >= 10) {
-         maxF = 2; // 2 hane + 2 ondalık = 4
-      } else if (absVal >= 1) {
-         maxF = 3; // 1 hane + 3 ondalık = 4
-      } else {
-         // < 1 olan sayılar için (örn: 0.03453)
-         maxF = (fraction !== null && !isNaN(parseInt(fraction))) ? parseInt(fraction) : 5;
-      }
+      if (absVal >= 1000) maxF = 0; // e.g. 1450
+      else if (absVal >= 100) maxF = 1; // e.g. 123.4
+      else if (absVal >= 10) maxF = 2; // e.g. 12.34
+      else if (absVal >= 1) maxF = 3;  // e.g. 1.234
+      else if (absVal >= 0.1) maxF = 4; // e.g. 0.1234
+      else if (absVal >= 0.01) maxF = 5; // e.g. 0.01234
+      else if (absVal >= 0.001) maxF = 6;
+      else if (absVal >= 0.0001) maxF = 7;
+      else maxF = 8;
 
       return val.toLocaleString('en-US', { 
         minimumFractionDigits: 0, 
-        maximumFractionDigits: Math.max(0, Math.min(maxF, 20))
+        maximumFractionDigits: maxF
       });
     },
     formatDuration(seconds) {

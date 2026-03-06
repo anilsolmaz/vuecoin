@@ -285,7 +285,7 @@
         topCoins: ['btc','bnb','ftt','usdt','jup','sevilla','eth','shib'],
         topDealsCount: 10,
         topDealTimers: {},
-        topDealEntryTimes: {},
+        topDealEntryTimes: JSON.parse(localStorage.getItem('vuecoin_topDealEntryTimes')) || {},
         crossMinROI: 0.5,
         coinList : [],
         enabled: true,
@@ -373,33 +373,26 @@
          }
          return 0;
       },
-      formatNumber(value, fraction = null) {
+      formatNumber(value) {
         const val = parseFloat(value);
-        if (isNaN(val)) return "0.00";
+        if (isNaN(val)) return "0";
         
-        let minF = 0;
-        let maxF = 4; // default max 4 based on request
-        
-        if (fraction !== null) {
-           minF = parseInt(fraction);
-           maxF = minF;
-        } else {
-           const absVal = Math.abs(val);
-           if (absVal >= 1000) {
-              minF = 0; maxF = 2; // if large, don't show many decimals if not needed
-           } else if (absVal >= 1) {
-              minF = 0; maxF = 3;
-           } else {
-              minF = 0; maxF = 5; // keep high precision for small decimals
-           }
-        }
-        
-        const safeMinF = isNaN(minF) ? 0 : Math.min(Math.max(minF, 0), 20);
-        const safeMaxF = isNaN(maxF) ? 4 : Math.min(Math.max(maxF, safeMinF), 20);
+        let maxF = 4;
+        const absVal = Math.abs(val);
+
+        if (absVal >= 1000) maxF = 0; // e.g. 1450
+        else if (absVal >= 100) maxF = 1; // e.g. 123.4
+        else if (absVal >= 10) maxF = 2; // e.g. 12.34
+        else if (absVal >= 1) maxF = 3;  // e.g. 1.234
+        else if (absVal >= 0.1) maxF = 4; // e.g. 0.1234
+        else if (absVal >= 0.01) maxF = 5; // e.g. 0.01234
+        else if (absVal >= 0.001) maxF = 6;
+        else if (absVal >= 0.0001) maxF = 7;
+        else maxF = 8;
 
         return val.toLocaleString('en-US', { 
-          minimumFractionDigits: safeMinF, 
-          maximumFractionDigits: safeMaxF 
+          minimumFractionDigits: 0, 
+          maximumFractionDigits: maxF
         });
       },
       log(event) {
@@ -459,6 +452,10 @@
               delete this.topDealEntryTimes[coin];
             }
           });
+          
+          // Save to localStorage so timers persist across reloads
+          localStorage.setItem('vuecoin_topDealEntryTimes', JSON.stringify(this.topDealEntryTimes));
+          
           // Compute elapsed seconds
           const timers = {};
           activeTopDealKeys.forEach(coin => {
