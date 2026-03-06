@@ -533,7 +533,7 @@ export default defineComponent({
 <style scoped>
 .portfolio-page {
   animation: fadeIn 0.4s ease-out;
-  color: var(--current-text);
+  color: var(--current-text, #333);
 }
 
 @keyframes fadeIn {
@@ -541,10 +541,21 @@ export default defineComponent({
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Base Themes */
+body.dark-mode .portfolio-page {
+  --bg-deep: #0f172a;
+  --bg-card: #1e293b;
+  --bg-input: #0f172a;
+  --text-main: #f8fafc;
+  --text-dim: #94a3b8;
+  --accent: #6366f1;
+  --border: rgba(255, 255, 255, 0.1);
+}
+
 /* Glassmorphism & Cards */
 .balance-card {
-  background: var(--current-card-bg);
-  border: 1px solid var(--current-border);
+  background: var(--current-card-bg, #fff);
+  border: 1px solid var(--current-border, #eee);
   position: relative;
   z-index: 1;
 }
@@ -556,24 +567,26 @@ export default defineComponent({
 
 body.dark-mode .card-bg-gradient {
   background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .premium-card {
-  background: var(--current-card-bg);
-  border: 1px solid var(--current-border);
+  background: var(--current-card-bg, #fff);
+  border: 1px solid var(--current-border, #eee);
   transition: all 0.3s ease;
 }
 
 body.dark-mode .premium-card {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1e293b;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Typography & Colors */
-.theme-text { color: var(--current-text); }
-.theme-text-secondary { color: var(--current-text-muted); }
+/* Typography */
+.theme-text { color: var(--current-text, inherit); }
+body.dark-mode .theme-text { color: var(--text-main); }
+.theme-text-secondary { color: var(--current-text-muted, #666); }
+body.dark-mode .theme-text-secondary { color: var(--text-dim); }
 
 .value-shadow {
   text-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -581,22 +594,22 @@ body.dark-mode .premium-card {
 
 /* Form Elements */
 .theme-input-minimal {
-  background-color: var(--current-card-bg) !important;
-  border: 1px solid var(--current-border) !important;
+  background-color: var(--current-card-bg, #fff) !important;
+  border: 1px solid var(--current-border, #eee) !important;
   color: inherit !important;
   border-radius: 12px;
   transition: all 0.2s ease;
 }
 
 body.dark-mode .theme-input-minimal {
-  background-color: rgba(15, 23, 42, 0.6) !important;
+  background-color: #0f172a !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
 }
 
 .theme-input-minimal:focus {
   border-color: #6366f1 !important;
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
-  background-color: var(--current-card-bg) !important;
 }
 
 .add-btn {
@@ -622,62 +635,63 @@ body.dark-mode .theme-input-minimal {
 }
 
 .portfolio-table th {
-  color: var(--current-text-muted);
+  color: #64748b;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  padding-bottom: 12px;
+  padding: 12px;
   border: none;
+  background: transparent !important;
 }
 
-.asset-row {
-  background: transparent;
-  transition: all 0.2s ease;
+.portfolio-table thead, .portfolio-table tr {
+  background: transparent !important;
+}
+
+body.dark-mode .portfolio-table th {
+  color: #94a3b8;
 }
 
 .asset-row td {
-  background: var(--current-card-bg);
-  border-top: 1px solid var(--current-border);
-  border-bottom: 1px solid var(--current-border);
+  background: #fff;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
   padding: 16px 12px;
 }
 
-.asset-row td:first-child {
-  border-left: 1px solid var(--current-border);
-  border-radius: 12px 0 0 12px;
-}
-
-.asset-row td:last-child {
-  border-right: 1px solid var(--current-border);
-  border-radius: 0 12px 12px 0;
-}
-
 body.dark-mode .asset-row td {
-  background: rgba(30, 41, 59, 0.4);
+  background: #1e293b;
   border-color: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
 }
+
+.asset-row td:first-child { border-left: 1px solid #eee; border-radius: 12px 0 0 12px; }
+.asset-row td:last-child { border-right: 1px solid #eee; border-radius: 0 12px 12px 0; }
+
+body.dark-mode .asset-row td:first-child { border-left-color: rgba(255, 255, 255, 0.05); }
+body.dark-mode .asset-row td:last-child { border-right-color: rgba(255, 255, 255, 0.05); }
 
 .asset-row:hover td {
   background: rgba(99, 102, 241, 0.05);
-  border-color: rgba(99, 102, 241, 0.2);
 }
 
-/* Coin Picker */
+/* Coin Picker Fixes */
 .coin-picker {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 52px;
   padding: 0 16px;
-  border: 1px solid var(--current-border);
+  border: 1px solid var(--current-border, #eee);
   border-radius: 12px;
-  background-color: var(--current-card-bg);
+  background-color: #fff;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 body.dark-mode .coin-picker {
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: #0f172a;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -686,24 +700,68 @@ body.dark-mode .coin-picker {
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
 
+.coin-picker-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: white;
+  padding: 2px;
+}
+
+.coin-search-input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  flex: 1;
+  color: inherit !important;
+  font-weight: 600;
+  padding: 8px 0;
+  box-shadow: none !important;
+  min-width: 100px;
+}
+
+body.dark-mode .coin-search-input {
+  color: #fff !important;
+}
+
 .coin-dropdown {
-  background-color: var(--current-card-bg);
-  border: 1px solid var(--current-border);
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background-color: #fff;
+  border: 1px solid #eee;
   border-radius: 12px;
   margin-top: 8px;
-  overflow: hidden;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 body.dark-mode .coin-dropdown {
   background-color: #1e293b;
   border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
-.coin-dropdown-item:hover,
-.coin-dropdown-item.dropdown-highlighted {
-  background-color: rgba(99, 102, 241, 0.15);
+.coin-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.coin-dropdown-item:hover, .coin-dropdown-item.dropdown-highlighted {
+  background-color: rgba(99, 102, 241, 0.1);
   color: #6366f1;
+}
+
+.coin-dropdown-img {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: white;
+  padding: 2px;
 }
 
 /* Modals */
@@ -713,33 +771,35 @@ body.dark-mode .coin-dropdown {
 }
 
 .modal-card {
-  background-color: var(--current-card-bg);
-  border: 1px solid var(--current-border);
+  background-color: #fff;
   border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: none;
 }
 
 body.dark-mode .modal-card {
   background: #1e293b;
+  color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Scrollbar */
-.table-responsive::-webkit-scrollbar { height: 6px; }
-.table-responsive::-webkit-scrollbar-thumb {
-  background: var(--current-border);
-  border-radius: 10px;
-}
+/* Utils */
+.text-success { color: #10b981 !important; }
+.text-danger { color: #ef4444 !important; }
 
 .btn-portfolio {
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #fff !important;
   border: none;
-  font-weight: 600;
 }
 
-.text-success { color: #10b981 !important; }
-.text-danger { color: #ef4444 !important; }
+.table-responsive::-webkit-scrollbar { height: 6px; }
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
+  background: #334155;
+}
 
 
 </style>
