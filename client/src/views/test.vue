@@ -111,6 +111,11 @@
             <i class="bi bi-fire text-danger me-2"></i>
             <span class="small fw-bold section-label text-uppercase" style="letter-spacing:1px; font-size: 0.75rem;">Top Deals</span>
             <hr class="flex-grow-1 ms-2 my-0 section-hr">
+            <div class="d-flex align-items-center ms-2 gap-1 text-muted" style="font-size: 0.75rem;">
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('topDeals', -1)"><i class="bi bi-dash"></i></button>
+               <span><i class="bi bi-fonts"></i></span>
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('topDeals', 1)"><i class="bi bi-plus"></i></button>
+            </div>
          </div>
          <div class="row mb-1">
             <coinbox
@@ -123,6 +128,7 @@
                 :forceShowROI="true"
                 :isTopDeal="true"
                 :dealDuration="topDealTimers[coinName] || 0"
+                :customFontSize="topDealsFontSize"
             />
          </div>
          
@@ -131,6 +137,11 @@
             <i class="bi bi-coin text-warning me-2"></i>
             <span class="small fw-bold section-label text-uppercase" style="letter-spacing:1px; font-size: 0.75rem;">All Markets</span>
             <hr class="flex-grow-1 ms-2 my-0 section-hr">
+            <div class="d-flex align-items-center ms-2 gap-1 text-muted" style="font-size: 0.75rem;">
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('allMarkets', -1)"><i class="bi bi-dash"></i></button>
+               <span><i class="bi bi-fonts"></i></span>
+               <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted fw-bold" @click="changeFontSize('allMarkets', 1)"><i class="bi bi-plus"></i></button>
+            </div>
          </div>
          <div class="row pb-3">
             <coinbox
@@ -140,8 +151,9 @@
                 :coinName="coinName"
                 :coinData="coinData[coinName]"
                 :USDTMode="USDTMode"
-                :minROI="settings.crossMinROI || 0.5"
-                :isTopDeal="false"
+                :minROI="settings.crossMinROI"
+                :dealDuration="0"
+                :customFontSize="allMarketsFontSize"
             />
          </div>
          
@@ -220,6 +232,8 @@
         socket: null,
         mobileMenuOpen: false,
         saving: false,
+        topDealsFontSize: parseFloat(localStorage.getItem('vuecoin_topDealsFontSize')) || 0.72,
+        allMarketsFontSize: parseFloat(localStorage.getItem('vuecoin_allMarketsFontSize')) || 0.75,
         settings: {
            topDealsCount: 10,
            crossMinROI: 0.5
@@ -347,6 +361,15 @@
           this.topDealsCount--;
           this.settings.topDealsCount = this.topDealsCount;
           this.saveSettings();
+        }
+      },
+      changeFontSize(type, step) {
+        if (type === 'topDeals') {
+          this.topDealsFontSize = Math.max(0.4, Math.min(1.5, this.topDealsFontSize + (step * 0.05)));
+          localStorage.setItem('vuecoin_topDealsFontSize', this.topDealsFontSize);
+        } else if (type === 'allMarkets') {
+          this.allMarketsFontSize = Math.max(0.4, Math.min(1.5, this.allMarketsFontSize + (step * 0.05)));
+          localStorage.setItem('vuecoin_allMarketsFontSize', this.allMarketsFontSize);
         }
       },
       cellClass(coinROI) {
