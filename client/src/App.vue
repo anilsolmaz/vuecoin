@@ -88,6 +88,7 @@ body.light-mode {
   --current-card-bg: var(--card-bg-light);
   --current-border: var(--border-light);
   --current-text-muted: var(--text-muted-light);
+  --current-text-main: var(--text-main-light);
   --roi-success: rgba(25, 135, 84, 0.15);
   --roi-warning: rgba(255, 193, 7, 0.15);
   --roi-danger: rgba(220, 53, 69, 0.15);
@@ -100,6 +101,7 @@ body.dark-mode {
   --current-card-bg: var(--card-bg-dark);
   --current-border: var(--border-dark);
   --current-text-muted: var(--text-muted-dark);
+  --current-text-main: var(--text-main-dark);
   --roi-success: rgba(40, 167, 69, 0.4);
   --roi-warning: rgba(255, 193, 7, 0.35);
   --roi-danger: rgba(220, 53, 69, 0.45);
@@ -116,5 +118,41 @@ body.dark-mode {
 /* Global Transitions */
 .transition-all {
   transition: all var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global theme-aware text helpers */
+.theme-text {
+  color: var(--current-text-main, inherit) !important;
+}
+
+.theme-text-secondary {
+  color: var(--current-text-muted) !important;
+}
+
+/* Global Select2 dark mode styling */
+body.dark-mode .select2-container--default .select2-selection--single {
+  background-color: var(--current-card-bg) !important;
+  border-color: var(--current-border) !important;
+  color: #fff !important;
+}
+body.dark-mode .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: #fff !important;
+}
+body.dark-mode .select2-container--default .select2-results__option {
+  background-color: var(--card-bg-dark) !important;
+  color: #e2e8f0 !important;
+}
+body.dark-mode .select2-container--default .select2-results__option--highlighted {
+  background-color: rgba(220, 53, 69, 0.3) !important;
+  color: #fff !important;
+}
+body.dark-mode .select2-container--default .select2-search--dropdown .select2-search__field {
+  background-color: var(--bg-color-dark) !important;
+  border-color: var(--border-dark) !important;
+  color: #fff !important;
+}
+body.dark-mode .select2-dropdown {
+  background-color: var(--card-bg-dark) !important;
+  border-color: var(--border-dark) !important;
 }
 </style>
