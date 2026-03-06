@@ -141,7 +141,7 @@
                         <th class="text-end pb-3">Current Price</th>
                         <th class="text-end pb-3">Current Value</th>
                         <th class="text-end pb-3">PnL</th>
-                        <th class="text-end pe-0 pb-3"></th>
+                        <th class="text-end pb-3" style="width: 50px;"></th>
                      </tr>
                   </thead>
                   <tbody>
@@ -177,7 +177,7 @@
                            </div>
                            <div v-else class="text-muted opacity-50">—</div>
                         </td>
-                        <td class="text-end pe-0 py-3">
+                        <td class="text-end py-3">
                            <button @click="removeAsset(index)" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
                               <i class="bi bi-trash" style="font-size:0.75rem"></i>
                            </button>
@@ -599,6 +599,11 @@ body.dark-mode .balance-card {
 
 .portfolio-table {
   color: inherit;
+  min-width: 850px;
+}
+
+.portfolio-table th, .portfolio-table td {
+  white-space: nowrap;
 }
 
 .portfolio-table th {
