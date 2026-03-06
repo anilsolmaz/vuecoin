@@ -12,9 +12,14 @@
             <span class="small theme-text-secondary">Track your holdings in real-time</span>
           </div>
        </div>
-       <div class="col-auto d-flex align-items-center gap-2">
+       <div class="col-auto d-flex align-items-center gap-1">
           <template v-if="currentProfile">
-             <span class="fw-bold small me-1"><i class="bi bi-cloud-check text-success me-1"></i>{{ currentProfile }}</span>
+             <div class="d-flex align-items-center bg-white bg-opacity-10 border border-white border-opacity-10 rounded-pill px-3 py-1 me-2 shadow-sm">
+                <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                   <i class="bi bi-cloud-check-fill text-white small"></i>
+                </div>
+                <span class="fw-bold small text-white">{{ currentProfile }}</span>
+             </div>
              <button @click="deleteProfile" class="btn btn-sm btn-outline-danger rounded-pill px-3 d-flex align-items-center gap-1">
                 <i class="bi bi-trash"></i><span class="d-none d-sm-inline small">Delete</span>
              </button>
@@ -121,7 +126,7 @@
 
       <!-- Assets Table -->
       <div class="col-12 col-lg-8 mb-4">
-         <div class="card premium-card rounded-4 p-4 h-100 shadow-sm overflow-hidden border-0">
+         <div class="card premium-card rounded-4 p-3 h-100 shadow-sm overflow-hidden border-0">
             <h5 class="fw-bold theme-text mb-4 d-flex align-items-center gap-2">
               <i class="bi bi-pie-chart-fill text-warning"></i> Your Assets
             </h5>
@@ -640,18 +645,18 @@ body.dark-mode .theme-input-minimal {
 /* Table Design */
 .portfolio-table {
   color: inherit;
-  min-width: 850px;
+  width: 100%;
   border-collapse: separate;
-  border-spacing: 0 8px;
+  border-spacing: 0 6px;
 }
 
 .portfolio-table th {
   color: #888;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  padding: 12px;
+  letter-spacing: 1px;
+  padding: 8px 10px;
   border: none;
   background: transparent !important;
 }
@@ -664,7 +669,7 @@ body.dark-mode .portfolio-table th {
   background: #fff;
   border-top: 1px solid #eee;
   border-bottom: 1px solid #eee;
-  padding: 16px 12px;
+  padding: 12px 10px;
 }
 
 body.dark-mode .asset-row td {
