@@ -63,17 +63,15 @@
                 <div v-if="newAsset.coin" class="coin-tag">
                    <img :src="getIcon(newAsset.coin)" class="coin-tag-img" />
                    <span class="fw-bold">{{ newAsset.coin.toUpperCase() }}</span>
-                   <button type="button" class="coin-tag-x" @click.stop="clearCoin">&times;</button>
                 </div>
                 <input
                    ref="coinSearchInput"
                    v-model="coinSearch"
                    type="text"
                    class="coin-search-input"
-                   :placeholder="newAsset.coin ? '' : 'Search coin...'"
-                   @focus="coinPickerOpen = true"
+                   :placeholder="newAsset.coin ? 'Change...' : 'Search coin...'"
+                   @focus="onPickerFocus"
                    @blur="closeCoinPicker"
-                   :style="{ width: newAsset.coin ? '50px' : '100%' }"
                 />
              </div>
              <div v-if="coinPickerOpen && filteredCoins.length > 0" class="coin-dropdown shadow-lg border">
@@ -391,16 +389,15 @@ export default defineComponent({
       this.coinSearch = '';
       this.coinPickerOpen = false;
     },
-    clearCoin() {
-      this.newAsset.coin = '';
+    onPickerFocus() {
+      this.coinPickerOpen = true;
       this.coinSearch = '';
-      this.$nextTick(() => { this.$refs.coinSearchInput?.focus(); });
     },
     focusCoinSearch() {
       this.$refs.coinSearchInput?.focus();
     },
     closeCoinPicker() {
-      setTimeout(() => { this.coinPickerOpen = false; }, 150);
+      setTimeout(() => { this.coinPickerOpen = false; this.coinSearch = ''; }, 200);
     },
     fmtPrice(price) {
       if (!price) return '0.00';
