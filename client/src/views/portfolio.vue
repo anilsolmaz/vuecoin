@@ -351,6 +351,7 @@ export default defineComponent({
       // Reset only amount and price, keep coin selected
       this.newAsset.amount = null;
       this.newAsset.avgPrice = null;
+      this.coinSearch = this.newAsset.coin.toUpperCase();
     },
     removeAsset(index) {
        this.portfolio.splice(index, 1);
