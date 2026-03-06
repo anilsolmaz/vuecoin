@@ -38,7 +38,7 @@
 
       <template v-else>
          <div class="text-start ps-3" :style="{ padding: '2px 0', fontSize: customFontSize + 'rem', letterSpacing: '0.5px' }">
-            <span class="fw-bold" style="color: var(--text-main)">
+            <span class="fw-bold">
                {{ USDTMode ? formatNumber(singleDisplayPriceUSD, coinData.fraction || 5) : formatNumber(singleDisplayPriceTRY, coinData.fraction || 6) }}
                {{ USDTMode ? '$' : '₺' }}
             </span>
