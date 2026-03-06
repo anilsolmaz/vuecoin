@@ -69,10 +69,7 @@
                    placeholder="Search coin..."
                    @focus="onPickerFocus"
                    @blur="closeCoinPicker"
-                   @keydown.down.prevent="highlightMove(1)"
-                   @keydown.up.prevent="highlightMove(-1)"
-                   @keydown.enter.prevent="confirmHighlighted"
-                   @keydown.tab="confirmHighlighted"
+                   @keydown="onPickerKeydown"
                 />
              </div>
              <div v-if="coinPickerOpen && filteredCoins.length > 0" class="coin-dropdown shadow-lg border" ref="coinDropdown">
@@ -397,6 +394,20 @@ export default defineComponent({
       this.newAsset.coin = coin;
       this.coinSearch = coin.toUpperCase();
       this.coinPickerOpen = false;
+    },
+    onPickerKeydown(e) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.highlightMove(1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.highlightMove(-1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        this.confirmHighlighted();
+      } else if (e.key === 'Tab') {
+        this.confirmHighlighted();
+      }
     },
     onPickerFocus() {
       this.coinPickerOpen = true;
