@@ -117,20 +117,10 @@ export default {
         }
         
         if (binanceUSDT) {
-            let precision = 4;
-            if (binanceUSDT >= 100) precision = 1;
-            else if (binanceUSDT >= 1) precision = 2; // < 100
-            else precision = 8; // < 1, keep high precision
-
-            return `${this.formatNumber(binanceUSDT, precision)} $`;
+            return `${this.formatNumber(binanceUSDT)} $`;
         }
         if (paribuTRY) {
-             let precision = 4;
-             if (paribuTRY >= 100) precision = 1;
-             else if (paribuTRY >= 1) precision = 2; // < 100
-             else precision = 8; // < 1
-
-             return `${this.formatNumber(paribuTRY, precision)} ₺`;
+             return `${this.formatNumber(paribuTRY)} ₺`;
         }
         return '';
     },
@@ -165,14 +155,34 @@ export default {
     }
   },
   methods: {
-    formatNumber(value, fraction = 2) {
+    formatNumber(value, forceFraction = null) {
       const val = parseFloat(value);
-      if (isNaN(val)) return "0.00";
-      const f = parseInt(fraction);
-      const safeF = isNaN(f) ? 2 : Math.min(Math.max(f, 0), 20);
+      if (isNaN(val)) return "0";
+      
+      if (forceFraction !== null && !isNaN(parseInt(forceFraction))) {
+          const f = parseInt(forceFraction);
+          return val.toLocaleString('en-US', { 
+            minimumFractionDigits: f, 
+            maximumFractionDigits: f 
+          });
+      }
+
+      let maxF = 4;
+      const absVal = Math.abs(val);
+
+      if (absVal >= 1000) maxF = 0; // e.g. 1450
+      else if (absVal >= 100) maxF = 1; // e.g. 123.4
+      else if (absVal >= 10) maxF = 2; // e.g. 12.34
+      else if (absVal >= 1) maxF = 3;  // e.g. 1.234
+      else if (absVal >= 0.1) maxF = 4; // e.g. 0.1234
+      else if (absVal >= 0.01) maxF = 5; // e.g. 0.01234
+      else if (absVal >= 0.001) maxF = 6;
+      else if (absVal >= 0.0001) maxF = 7;
+      else maxF = 8;
+
       return val.toLocaleString('en-US', { 
-        minimumFractionDigits: safeF, 
-        maximumFractionDigits: safeF 
+        minimumFractionDigits: 0, 
+        maximumFractionDigits: maxF
       });
     },
     noImage(event) {
