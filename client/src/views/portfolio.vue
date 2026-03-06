@@ -515,6 +515,7 @@ export default defineComponent({
     },
     exitProfile() {
       this.currentProfile = null;
+      localStorage.setItem('vuecoin_current_profile', '');
       this.loadPortfolio();
     },
     async retrieveProfile() {
@@ -542,6 +543,7 @@ export default defineComponent({
       try {
         await axios.delete(`/api/portfolio/${encodeURIComponent(this.currentProfile)}`);
         this.currentProfile = null;
+        localStorage.setItem('vuecoin_current_profile', '');
       } catch (e) {
         alert('Error deleting: ' + (e.response?.data?.error || e.message));
       }
