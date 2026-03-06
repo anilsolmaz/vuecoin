@@ -8,14 +8,18 @@
     </h6>
     <div v-if="isExpanded">
       <template v-if="isTopDeal">
-        <div class="d-flex w-100 mt-1" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.1' }">
-          <!-- Ask Column (You Buy) -->
-          <div class="flex-grow-1 w-50 pe-2 border-end border-secondary border-opacity-25 position-relative">
-             <div class="opacity-75 fw-bold mb-1 border-bottom border-secondary border-opacity-25 pb-1 d-flex justify-content-center position-relative" style="font-size:0.65rem; letter-spacing: 0.5px; margin-right: -0.5rem;">
-               <span>ASK</span>
-               <span class="position-absolute" style="right: -4px; top: -1px; font-weight: bolder; color: var(--text-muted, #777); font-size: 0.75rem; z-index: 5; background: var(--bg-card, transparent); padding-left: 2px;">&gt;</span>
-             </div>
-             <div class="h-100" style="min-height: 20px;">
+        <div class="d-flex flex-column w-100 mt-1" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.1' }">
+          <!-- Header Row -->
+          <div class="d-flex w-100 align-items-center mb-1 pb-1 border-bottom border-secondary border-opacity-25 position-relative">
+             <div class="w-50 text-center opacity-75 fw-bold" style="font-size:0.65rem; letter-spacing: 0.5px;">ASK</div>
+             <div class="position-absolute start-50 translate-middle-x fw-bolder" style="top: -2px; color: var(--text-muted, #777); font-size: 0.75rem; z-index:5;">&gt;</div>
+             <div class="w-50 text-center opacity-75 fw-bold" style="font-size:0.65rem; letter-spacing: 0.5px;">BID</div>
+          </div>
+          
+          <!-- Data Row -->
+          <div class="d-flex w-100 h-100" style="min-height: 20px;">
+             <!-- Ask Column (You Buy) -->
+             <div class="w-50 pe-1 border-end border-secondary border-opacity-25">
                 <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
                   <template v-if="row.ask">
                     <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
@@ -25,12 +29,9 @@
                   </template>
                 </div>
              </div>
-          </div>
-
-          <!-- Bid Column (You Sell) -->
-          <div class="flex-grow-1 w-50 ps-2">
-             <div class="opacity-75 fw-bold mb-1 border-bottom border-secondary border-opacity-25 pb-1 text-center" style="font-size:0.65rem; letter-spacing: 0.5px; margin-left: -0.5rem;">BID</div>
-             <div class="h-100">
+             
+             <!-- Bid Column (You Sell) -->
+             <div class="w-50 ps-2">
                 <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'bid_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
                   <template v-if="row.bid">
                     <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
