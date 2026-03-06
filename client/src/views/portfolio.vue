@@ -362,12 +362,13 @@ body.dark-mode .balance-card {
 .theme-box-header {
   background-color: var(--current-card-bg);
   border-color: var(--current-border) !important;
+  color: inherit;
 }
 
 .theme-input-minimal {
   background-color: var(--current-card-bg) !important;
   border: 1px solid var(--current-border) !important;
-  color: var(--current-text-main) !important;
+  color: inherit !important;
   border-radius: 8px;
 }
 
@@ -406,15 +407,11 @@ body.dark-mode .balance-card {
 
 .asset-row {
   transition: background-color 0.2s;
-  color: var(--current-text-main) !important;
+  color: inherit;
 }
 
 .asset-row:hover {
   background-color: rgba(220, 53, 69, 0.05);
-}
-
-body.dark-mode .asset-row {
-  color: #f8f9fa !important;
 }
 
 body.dark-mode .asset-row:hover {
