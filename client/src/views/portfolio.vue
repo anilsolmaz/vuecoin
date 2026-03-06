@@ -3,7 +3,7 @@
     
     <!-- Top Action Bar -->
     <div class="row mt-1 mb-4 align-items-center justify-content-between">
-       <div class="d-flex align-items-center gap-3">
+       <div class="col d-flex align-items-center gap-3">
           <router-link to="/" class="btn btn-sm btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
              <i class="bi bi-arrow-left fs-5"></i>
           </router-link>
@@ -11,6 +11,14 @@
             <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">My Portfolio</h4>
             <span class="small text-muted">Track your holdings in real-time</span>
           </div>
+       </div>
+       <div class="col-auto d-flex gap-2">
+          <button @click="showRetrieveModal = true" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-flex align-items-center gap-2">
+             <i class="bi bi-cloud-download"></i><span class="d-none d-sm-inline fw-bold small">Retrieve</span>
+          </button>
+          <button @click="showSaveModal = true" class="btn btn-sm btn-portfolio rounded-pill px-3 d-flex align-items-center gap-2">
+             <i class="bi bi-cloud-upload text-white"></i><span class="d-none d-sm-inline fw-bold small text-white">Save</span>
+          </button>
        </div>
     </div>
 
@@ -99,46 +107,51 @@
                <table class="table table-hover table-borderless align-middle mb-0 portfolio-table">
                   <thead>
                      <tr class="text-muted small text-uppercase" style="letter-spacing: 1px;">
-                        <th class="ps-0 pb-3 font-monospace">Asset</th>
-                        <th class="text-end pb-3 font-monospace">Price</th>
-                        <th class="text-end pb-3 font-monospace">Holdings</th>
-                        <th class="text-end pb-3 font-monospace">Avg Buy Cost</th>
-                        <th class="text-end pb-3 font-monospace">PnL</th>
-                        <th class="text-end pe-0 pb-3 font-monospace">Action</th>
+                        <th class="ps-0 pb-3">Asset</th>
+                        <th class="text-end pb-3">Buy Price</th>
+                        <th class="text-end pb-3">Current Price</th>
+                        <th class="text-end pb-3">Cost</th>
+                        <th class="text-end pb-3">Value</th>
+                        <th class="text-end pb-3">PnL</th>
+                        <th class="text-end pe-0 pb-3"></th>
                      </tr>
                   </thead>
                   <tbody>
                      <tr v-for="(item, index) in portfolio" :key="index" class="asset-row border-top">
                         <td class="ps-0 py-3">
-                           <div class="d-flex align-items-center gap-3">
-                              <img :src="getIcon(item.coin)" class="shadow-sm bg-white rounded-circle p-1" style="width: 36px; height: 36px; object-fit: contain;">
+                           <div class="d-flex align-items-center gap-2">
+                              <img :src="getIcon(item.coin)" class="shadow-sm bg-white rounded-circle p-1" style="width: 32px; height: 32px; object-fit: contain;">
                               <div>
-                                 <div class="fw-bold theme-text fs-6">{{ item.coin.toUpperCase() }}</div>
-                                 <div class="small text-muted font-monospace">{{ formatNumber(item.amount, 6) }}</div>
+                                 <div class="fw-bold fs-6">{{ item.coin.toUpperCase() }}</div>
+                                 <div class="small text-muted font-monospace">{{ formatNumber(item.amount, 4) }}</div>
                               </div>
                            </div>
                         </td>
                         <td class="text-end py-3">
-                           <div class="fw-bold theme-text">{{ formatNumber(getCurrentPrice(item.coin), getCurrentPrice(item.coin) < 1 ? 6 : 2) }} $</div>
-                           <div class="small text-muted opacity-75">~{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }} ₺</div>
+                           <div v-if="item.avgPrice" class="fw-bold">{{ fmtPrice(item.avgPrice) }} $</div>
+                           <div v-else class="text-muted opacity-50">—</div>
                         </td>
                         <td class="text-end py-3">
-                           <div class="fw-bold theme-text">{{ formatNumber(item.amount * getCurrentPrice(item.coin), 2) }} $</div>
+                           <div class="fw-bold">{{ fmtPrice(getCurrentPrice(item.coin)) }} $</div>
+                           <div class="small text-muted">~{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }} ₺</div>
                         </td>
                         <td class="text-end py-3">
-                           <div v-if="item.avgPrice" class="fw-bold theme-text">{{ formatNumber(item.avgPrice, 4) }} $</div>
-                           <div v-else class="text-muted opacity-50">-</div>
+                           <div v-if="item.avgPrice" class="fw-bold">{{ formatNumber(item.amount * item.avgPrice, 2) }} $</div>
+                           <div v-else class="text-muted opacity-50">—</div>
+                        </td>
+                        <td class="text-end py-3">
+                           <div class="fw-bold">{{ formatNumber(item.amount * getCurrentPrice(item.coin), 2) }} $</div>
                         </td>
                         <td class="text-end py-3">
                            <div v-if="item.avgPrice" :class="getPnLClass(item)">
                               <div class="fw-bold">{{ getPnLValue(item, true) }} $</div>
                               <div class="small font-monospace">{{ getPnLPercentage(item) }}%</div>
                            </div>
-                           <div v-else class="text-muted opacity-50">-</div>
+                           <div v-else class="text-muted opacity-50">—</div>
                         </td>
                         <td class="text-end pe-0 py-3">
-                           <button @click="removeAsset(index)" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-inline-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
-                              <i class="bi bi-trash"></i>
+                           <button @click="removeAsset(index)" class="btn btn-sm btn-outline-danger rounded-circle p-0 d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                              <i class="bi bi-trash" style="font-size:0.75rem"></i>
                            </button>
                         </td>
                      </tr>
@@ -146,6 +159,34 @@
                </table>
             </div>
          </div>
+      </div>
+    </div>
+
+    <!-- Save Profile Modal -->
+    <div v-if="showSaveModal" class="modal-backdrop-custom d-flex justify-content-center align-items-center" @click.self="showSaveModal = false">
+      <div class="modal-card p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw;">
+        <h5 class="fw-bold mb-3"><i class="bi bi-cloud-upload me-2" style="color:#dc3545"></i>Save Portfolio</h5>
+        <p class="small text-muted">Enter a name to save your portfolio to the cloud.</p>
+        <input v-model="profileName" class="form-control form-control-lg theme-input-minimal mb-3" placeholder="e.g. anils_portfolio">
+        <div class="d-flex gap-2">
+           <button @click="showSaveModal = false" class="btn btn-outline-secondary flex-grow-1 rounded-pill">Cancel</button>
+           <button @click="saveProfile" :disabled="!profileName" class="btn add-btn flex-grow-1 rounded-pill fw-bold">Save</button>
+        </div>
+        <div v-if="saveMsg" class="mt-3 alert alert-success small py-2 mb-0">{{ saveMsg }}</div>
+      </div>
+    </div>
+
+    <!-- Retrieve Profile Modal -->
+    <div v-if="showRetrieveModal" class="modal-backdrop-custom d-flex justify-content-center align-items-center" @click.self="showRetrieveModal = false">
+      <div class="modal-card p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw;">
+        <h5 class="fw-bold mb-3"><i class="bi bi-cloud-download me-2" style="color:#dc3545"></i>Retrieve Portfolio</h5>
+        <p class="small text-muted">Enter the name you used to save your portfolio.</p>
+        <input v-model="retrieveName" class="form-control form-control-lg theme-input-minimal mb-3" placeholder="e.g. anils_portfolio">
+        <div class="d-flex gap-2">
+           <button @click="showRetrieveModal = false" class="btn btn-outline-secondary flex-grow-1 rounded-pill">Cancel</button>
+           <button @click="retrieveProfile" :disabled="!retrieveName" class="btn add-btn flex-grow-1 rounded-pill fw-bold">Retrieve</button>
+        </div>
+        <div v-if="retrieveMsg" class="mt-3 alert small py-2 mb-0" :class="retrieveError ? 'alert-danger' : 'alert-success'">{{ retrieveMsg }}</div>
       </div>
     </div>
   </div>
@@ -173,7 +214,14 @@ export default defineComponent({
       coinData: {},
       socket: null,
       usdtTryRate: 0,
-      coinListCache: [], // cached so websocket updates don't re-render Select2
+      coinListCache: [],
+      showSaveModal: false,
+      showRetrieveModal: false,
+      profileName: '',
+      retrieveName: '',
+      saveMsg: '',
+      retrieveMsg: '',
+      retrieveError: false,
     }
   },
   computed: {
@@ -340,6 +388,44 @@ export default defineComponent({
       wrapper.appendChild(img);
       wrapper.appendChild(label);
       return wrapper;
+    },
+    fmtPrice(price) {
+      if (!price) return '0.00';
+      if (price >= 1000) return this.formatNumber(price, 2);
+      if (price >= 1) return this.formatNumber(price, 4);
+      return this.formatNumber(price, 6);
+    },
+    async saveProfile() {
+      this.saveMsg = '';
+      try {
+        const resp = await axios.post('/api/portfolio', {
+          name: this.profileName,
+          data: this.portfolio
+        });
+        this.saveMsg = resp.data.message || 'Saved!';
+        // Also save to local
+        this.savePortfolio();
+      } catch (e) {
+        this.saveMsg = 'Error saving: ' + (e.response?.data?.error || e.message);
+      }
+    },
+    async retrieveProfile() {
+      this.retrieveMsg = '';
+      this.retrieveError = false;
+      try {
+        const resp = await axios.get(`/api/portfolio/${encodeURIComponent(this.retrieveName)}`);
+        if (resp.data && Array.isArray(resp.data)) {
+          this.portfolio = resp.data;
+          this.savePortfolio(); // save to local too
+          this.retrieveMsg = `Portfolio "${this.retrieveName}" loaded (${resp.data.length} assets)`;
+        } else {
+          this.retrieveError = true;
+          this.retrieveMsg = 'Invalid portfolio data format';
+        }
+      } catch (e) {
+        this.retrieveError = true;
+        this.retrieveMsg = e.response?.data?.error || 'Portfolio not found';
+      }
     }
   }
 });
@@ -478,6 +564,40 @@ body.dark-mode .asset-row:hover {
 body.dark-mode .input-group-text.theme-input-minimal {
   background-color: var(--current-card-bg) !important;
   color: inherit !important;
+}
+
+/* Modal styles */
+.modal-backdrop-custom {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-card {
+  background-color: var(--current-card-bg, #fff);
+  border-color: var(--current-border) !important;
+  color: inherit;
+  z-index: 10000;
+  animation: scaleIn 0.2s ease;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Portfolio button — reuse from main page */
+.btn-portfolio {
+  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+  border: none;
+  color: #fff !important;
+}
+.btn-portfolio:hover {
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+  color: #fff !important;
 }
 
 </style>

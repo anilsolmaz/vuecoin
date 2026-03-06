@@ -400,5 +400,31 @@ router.post('/settings', async (req, res) => {
         res.json({ message: 'Settings saved successfully', settings });
     });
 });
+// --- Portfolio Save/Retrieve ---
+router.post('/portfolio', (req, res) => {
+    const { name, data } = req.body;
+    if (!name || !data) {
+        return res.status(400).json({ error: 'Name and data are required' });
+    }
+    const key = `portfolio_${name.toLowerCase().trim()}`;
+    client.set(key, JSON.stringify(data), (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: `Portfolio "${name}" saved successfully` });
+    });
+});
+
+router.get('/portfolio/:name', (req, res) => {
+    const name = req.params.name;
+    const key = `portfolio_${name.toLowerCase().trim()}`;
+    client.get(key, (err, data) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!data) return res.status(404).json({ error: `Portfolio "${name}" not found` });
+        try {
+            res.json(JSON.parse(data));
+        } catch (e) {
+            res.status(500).json({ error: 'Failed to parse portfolio data' });
+        }
+    });
+});
 
 module.exports = router;
