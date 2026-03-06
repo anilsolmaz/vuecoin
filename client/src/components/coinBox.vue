@@ -10,10 +10,9 @@
       <template v-if="isTopDeal">
         <div class="d-flex w-100 mt-1 position-relative" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.1' }">
           <!-- Ask Column (You Buy) -->
-          <div class="flex-grow-1 border-end border-secondary border-opacity-25 pe-1 position-relative">
+          <div class="flex-grow-1 pe-1">
              <div class="opacity-75 fw-bold mb-1 border-bottom border-secondary border-opacity-25 pb-1 text-start ps-1 d-flex justify-content-between align-items-center" style="font-size:0.65rem; letter-spacing: 0.5px;">
                <span>ASK</span>
-               <span class="position-absolute" style="right: -6px; top: -1px; font-weight: bolder; color: var(--text-muted, #777); font-size: 0.75rem;">&gt;</span>
              </div>
              <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
                <template v-if="row.ask">
@@ -24,6 +23,12 @@
                </template>
              </div>
           </div>
+          
+          <!-- Separator Column -->
+          <div class="d-flex flex-column align-items-center justify-content-start border-end border-secondary border-opacity-25 px-1" style="margin-top: -2px;">
+             <span style="font-weight: bolder; color: var(--text-muted, #777); font-size: 0.75rem; background: var(--bg-card, #fff); z-index: 2; padding-top: 2px;">&gt;</span>
+          </div>
+
           <!-- Bid Column (You Sell) -->
           <div class="flex-grow-1 ps-2">
              <div class="opacity-75 fw-bold mb-1 border-bottom border-secondary border-opacity-25 pb-1 text-start ps-1" style="font-size:0.65rem; letter-spacing: 0.5px">BID</div>
