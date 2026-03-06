@@ -541,29 +541,28 @@ export default defineComponent({
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Base Themes */
+/* Red & Black Premium Theme Variables */
 body.dark-mode .portfolio-page {
-  --bg-deep: #0f172a;
-  --bg-card: #1e293b;
-  --bg-input: #0f172a;
-  --text-main: #f1f5f9;
-  --text-dim: #cbd5e1;
-  --accent: #6366f1;
-  --border: rgba(255, 255, 255, 0.1);
+  --bg-deep: #080808;
+  --bg-card: #141414;
+  --bg-input: #000000;
+  --text-main: #ffffff;
+  --text-dim: #b0b0b0;
+  --accent: #dc3545;
+  --accent-soft: rgba(220, 53, 69, 0.15);
+  --border: rgba(255, 255, 255, 0.08);
 }
 
+/* Helpers for High Redability */
 body.dark-mode .text-muted, 
-body.dark-mode .small.text-muted {
-  color: #94a3b8 !important;
+body.dark-mode .small.text-muted,
+body.dark-mode .theme-text-secondary {
+  color: #b0b0b0 !important;
 }
 
-body.dark-mode .opacity-75,
-body.dark-mode .text-opacity-75 {
-  opacity: 0.85 !important;
-}
-
-body.dark-mode .opacity-50 {
-  opacity: 0.7 !important;
+body.dark-mode ::placeholder {
+  color: #888 !important;
+  opacity: 1 !important;
 }
 
 /* Glassmorphism & Cards */
@@ -571,17 +570,17 @@ body.dark-mode .opacity-50 {
   background: var(--current-card-bg, #fff);
   border: 1px solid var(--current-border, #eee);
   position: relative;
-  z-index: 1;
+  overflow: hidden;
 }
 
 .card-bg-gradient {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
   opacity: 1;
 }
 
 body.dark-mode .card-bg-gradient {
-  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #2d0a0e 0%, #000000 100%);
+  border-bottom: 1px solid rgba(220, 53, 69, 0.15);
 }
 
 .premium-card {
@@ -591,19 +590,17 @@ body.dark-mode .card-bg-gradient {
 }
 
 body.dark-mode .premium-card {
-  background: #1e293b;
+  background: #121212;
   border: 1px solid var(--border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 /* Typography */
 .theme-text { color: var(--current-text, inherit); }
-body.dark-mode .theme-text { color: var(--text-main); }
-.theme-text-secondary { color: var(--current-text-muted, #666); }
-body.dark-mode .theme-text-secondary { color: var(--text-dim); }
+body.dark-mode .theme-text { color: #fff; }
 
 .value-shadow {
-  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  text-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
 
 /* Form Elements */
@@ -616,28 +613,28 @@ body.dark-mode .theme-text-secondary { color: var(--text-dim); }
 }
 
 body.dark-mode .theme-input-minimal {
-  background-color: #0f172a !important;
+  background-color: #000 !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
   color: #fff !important;
 }
 
 .theme-input-minimal:focus {
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.15) !important;
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
   border: none;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 .add-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 8px 24px rgba(220, 53, 69, 0.5);
 }
 
 /* Table Design */
@@ -649,7 +646,7 @@ body.dark-mode .theme-input-minimal {
 }
 
 .portfolio-table th {
-  color: #64748b;
+  color: #888;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -659,12 +656,8 @@ body.dark-mode .theme-input-minimal {
   background: transparent !important;
 }
 
-.portfolio-table thead, .portfolio-table tr {
-  background: transparent !important;
-}
-
 body.dark-mode .portfolio-table th {
-  color: #94a3b8;
+  color: #aaa;
 }
 
 .asset-row td {
@@ -675,9 +668,9 @@ body.dark-mode .portfolio-table th {
 }
 
 body.dark-mode .asset-row td {
-  background: #1e293b;
+  background: #141414;
   border-color: rgba(255, 255, 255, 0.05);
-  color: #f8fafc;
+  color: #fff;
 }
 
 .asset-row td:first-child { border-left: 1px solid #eee; border-radius: 12px 0 0 12px; }
@@ -687,7 +680,12 @@ body.dark-mode .asset-row td:first-child { border-left-color: rgba(255, 255, 255
 body.dark-mode .asset-row td:last-child { border-right-color: rgba(255, 255, 255, 0.05); }
 
 .asset-row:hover td {
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(220, 53, 69, 0.05);
+}
+
+body.dark-mode .asset-row:hover td {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(220, 53, 69, 0.2);
 }
 
 /* Coin Picker Fixes */
@@ -705,13 +703,13 @@ body.dark-mode .asset-row td:last-child { border-right-color: rgba(255, 255, 255
 }
 
 body.dark-mode .coin-picker {
-  background-color: #0f172a;
+  background-color: #000;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
 .coin-picker.picker-focused {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  border-color: #dc3545;
+  box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.15);
 }
 
 .coin-picker-icon {
@@ -745,30 +743,34 @@ body.dark-mode .coin-search-input {
   border: 1px solid #eee;
   border-radius: 12px;
   margin-top: 8px;
-  max-height: 300px;
+  max-height: 350px;
   overflow-y: auto;
   z-index: 1000;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 body.dark-mode .coin-dropdown {
-  background-color: #1e293b;
+  background-color: #1a1a1a;
   border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
 .coin-dropdown-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 12px 16px;
   cursor: pointer;
-  transition: background 0.2s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+body.dark-mode .coin-dropdown-item {
+  color: #fff;
 }
 
 .coin-dropdown-item:hover, .coin-dropdown-item.dropdown-highlighted {
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
 }
 
 .coin-dropdown-img {
@@ -780,8 +782,8 @@ body.dark-mode .coin-dropdown {
 
 /* Modals */
 .modal-backdrop-custom {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
 }
 
 .modal-card {
@@ -791,17 +793,18 @@ body.dark-mode .coin-dropdown {
 }
 
 body.dark-mode .modal-card {
-  background: #1e293b;
+  background: #141414;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 50px rgba(220, 53, 69, 0.1);
 }
 
 /* Utils */
-.text-success { color: #10b981 !important; }
-.text-danger { color: #ef4444 !important; }
+.text-success { color: #28a745 !important; }
+.text-danger { color: #dc3545 !important; }
 
 .btn-portfolio {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
   color: #fff !important;
   border: none;
 }
@@ -812,7 +815,7 @@ body.dark-mode .modal-card {
   border-radius: 10px;
 }
 body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #333;
 }
 
 
