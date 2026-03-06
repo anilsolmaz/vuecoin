@@ -13,10 +13,13 @@
           </div>
        </div>
        <div class="col-auto d-flex gap-2">
+          <button v-if="currentProfile" @click="deleteProfile" class="btn btn-sm btn-outline-danger rounded-pill px-3 d-flex align-items-center gap-2">
+             <i class="bi bi-trash"></i><span class="d-none d-sm-inline fw-bold small">Delete</span>
+          </button>
           <button @click="showRetrieveModal = true" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-flex align-items-center gap-2">
              <i class="bi bi-cloud-download"></i><span class="d-none d-sm-inline fw-bold small">Retrieve</span>
           </button>
-          <button @click="showSaveModal = true" class="btn btn-sm btn-portfolio rounded-pill px-3 d-flex align-items-center gap-2">
+          <button @click="onSaveClick" class="btn btn-sm btn-portfolio rounded-pill px-3 d-flex align-items-center gap-2">
              <i class="bi bi-cloud-upload text-white"></i><span class="d-none d-sm-inline fw-bold small text-white">Save</span>
           </button>
        </div>
@@ -100,7 +103,7 @@
           <div class="mb-4">
              <label class="form-label small fw-bold text-uppercase text-muted"><i class="bi bi-tag me-1"></i>Avg Buy Price <span class="fw-normal opacity-50">(Optional)</span></label>
              <div class="input-group input-group-lg">
-                <input type="number" step="0.0001" class="form-control theme-input-minimal shadow-none font-monospace" v-model="newAsset.avgPrice" placeholder="0.00">
+                <input type="number" step="0.0001" class="form-control theme-input-minimal shadow-none font-monospace" v-model="newAsset.avgPrice" placeholder="0.00" @keydown.enter="addAsset">
                 <span class="input-group-text theme-input-minimal border-start-0 fw-bold" style="font-size:0.9rem;">$</span>
              </div>
           </div>
@@ -242,6 +245,7 @@ export default defineComponent({
       coinSearch: '',
       coinPickerOpen: false,
       highlightIndex: 0,
+      currentProfile: null, // NOT persisted — lost on refresh
     }
   },
   computed: {
@@ -325,22 +329,25 @@ export default defineComponent({
     },
     savePortfolio() {
       localStorage.setItem('vuecoin_portfolio', JSON.stringify(this.portfolio));
+      // If a profile is active, auto-sync to Redis
+      if (this.currentProfile) {
+        axios.post('/api/portfolio', { name: this.currentProfile, data: this.portfolio }).catch(() => {});
+      }
     },
     addAsset() {
-      if (!this.newAsset.coin || !this.newAsset.amount) return;
+      if (!this.newAsset.coin || !this.newAsset.amount || this.newAsset.amount <= 0) return;
       
       const asset = {
          coin: this.newAsset.coin,
          amount: parseFloat(this.newAsset.amount),
          avgPrice: this.newAsset.avgPrice ? parseFloat(this.newAsset.avgPrice) : null
       };
-
-      // Check if already exists, maybe merge or just push
       this.portfolio.push(asset);
       this.savePortfolio();
       
-      // Reset form
-      this.newAsset = { coin: '', amount: null, avgPrice: null };
+      // Reset only amount and price, keep coin selected
+      this.newAsset.amount = null;
+      this.newAsset.avgPrice = null;
     },
     removeAsset(index) {
        this.portfolio.splice(index, 1);
@@ -450,6 +457,25 @@ export default defineComponent({
       if (price >= 1) return this.formatNumber(price, 4);
       return this.formatNumber(price, 6);
     },
+    async onSaveClick() {
+      if (this.currentProfile) {
+        // Already have a profile — save directly
+        try {
+          await axios.post('/api/portfolio', { name: this.currentProfile, data: this.portfolio });
+          this.saveMsg = `Saved to "${this.currentProfile}"`;
+          this.showSaveModal = true;
+          setTimeout(() => { this.showSaveModal = false; this.saveMsg = ''; }, 1500);
+        } catch (e) {
+          this.saveMsg = 'Error: ' + (e.response?.data?.error || e.message);
+          this.showSaveModal = true;
+        }
+      } else {
+        // No active profile — ask for name
+        this.profileName = '';
+        this.saveMsg = '';
+        this.showSaveModal = true;
+      }
+    },
     async saveProfile() {
       this.saveMsg = '';
       try {
@@ -457,8 +483,8 @@ export default defineComponent({
           name: this.profileName,
           data: this.portfolio
         });
+        this.currentProfile = this.profileName;
         this.saveMsg = resp.data.message || 'Saved!';
-        // Also save to local
         this.savePortfolio();
       } catch (e) {
         this.saveMsg = 'Error saving: ' + (e.response?.data?.error || e.message);
@@ -471,7 +497,8 @@ export default defineComponent({
         const resp = await axios.get(`/api/portfolio/${encodeURIComponent(this.retrieveName)}`);
         if (resp.data && Array.isArray(resp.data)) {
           this.portfolio = resp.data;
-          this.savePortfolio(); // save to local too
+          this.currentProfile = this.retrieveName;
+          this.savePortfolio();
           this.retrieveMsg = `Portfolio "${this.retrieveName}" loaded (${resp.data.length} assets)`;
         } else {
           this.retrieveError = true;
@@ -480,6 +507,16 @@ export default defineComponent({
       } catch (e) {
         this.retrieveError = true;
         this.retrieveMsg = e.response?.data?.error || 'Portfolio not found';
+      }
+    },
+    async deleteProfile() {
+      if (!this.currentProfile) return;
+      if (!confirm(`Delete profile "${this.currentProfile}"? This will remove from cloud but keep local data.`)) return;
+      try {
+        await axios.delete(`/api/portfolio/${encodeURIComponent(this.currentProfile)}`);
+        this.currentProfile = null;
+      } catch (e) {
+        alert('Error deleting: ' + (e.response?.data?.error || e.message));
       }
     }
   }

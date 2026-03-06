@@ -427,4 +427,13 @@ router.get('/portfolio/:name', (req, res) => {
     });
 });
 
+router.delete('/portfolio/:name', (req, res) => {
+    const name = req.params.name;
+    const key = `portfolio_${name.toLowerCase().trim()}`;
+    client.del(key, (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: `Portfolio "${name}" deleted successfully` });
+    });
+});
+
 module.exports = router;
