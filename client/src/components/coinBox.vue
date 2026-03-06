@@ -207,14 +207,31 @@ export default {
       //   this.isExpanded = true;
       // }
     },
-    formatNumber(value, fraction = 2) {
+    formatNumber(value, fraction = null) {
       const val = parseFloat(value);
-      if (isNaN(val)) return "0.00";
-      const f = parseInt(fraction);
-      const safeF = isNaN(f) ? 2 : Math.min(Math.max(f, 0), 20);
+      if (isNaN(val)) return "0";
+      
+      let maxF = 4;
+      const absVal = Math.abs(val);
+
+      if (absVal >= 10000) {
+         maxF = 0; // 5+ hane
+      } else if (absVal >= 1000) {
+         maxF = 0; // 4 hane
+      } else if (absVal >= 100) {
+         maxF = 1; // 3 hane + 1 ondalık = 4
+      } else if (absVal >= 10) {
+         maxF = 2; // 2 hane + 2 ondalık = 4
+      } else if (absVal >= 1) {
+         maxF = 3; // 1 hane + 3 ondalık = 4
+      } else {
+         // < 1 olan sayılar için (örn: 0.03453)
+         maxF = (fraction !== null && !isNaN(parseInt(fraction))) ? parseInt(fraction) : 5;
+      }
+
       return val.toLocaleString('en-US', { 
-        minimumFractionDigits: safeF, 
-        maximumFractionDigits: safeF 
+        minimumFractionDigits: 0, 
+        maximumFractionDigits: Math.max(0, Math.min(maxF, 20))
       });
     },
     formatDuration(seconds) {
