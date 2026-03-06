@@ -163,7 +163,7 @@
 
     <!-- Profit Calculator Modal Backdrop Overlay -->
     <div v-if="showCalculatorModal" class="modal-backdrop-custom d-flex justify-content-center align-items-center" @click.self="showCalculatorModal = false">
-      <div class="modal-wrapper p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw; position: relative; background-color: var(--card-bg, #ffffff); opacity: 1;">
+      <div class="modal-wrapper p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw; position: relative; background-color: var(--current-card-bg, #ffffff); opacity: 1;">
         <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-3 border-0 rounded-circle" @click="showCalculatorModal = false">
           <i class="bi bi-x-lg"></i>
         </button>
