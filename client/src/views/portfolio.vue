@@ -346,9 +346,11 @@ export default defineComponent({
            this.portfolio = [];
          }
       }
+      this.currentProfile = localStorage.getItem('vuecoin_current_profile') || null;
     },
     savePortfolio() {
       localStorage.setItem('vuecoin_portfolio', JSON.stringify(this.portfolio));
+      localStorage.setItem('vuecoin_current_profile', this.currentProfile || '');
       // If a profile is active, auto-sync to Redis
       if (this.currentProfile) {
         axios.post('/api/portfolio', { name: this.currentProfile, data: this.portfolio }).catch(() => {});
