@@ -60,26 +60,29 @@
           <div class="mb-3 position-relative">
              <label class="form-label small fw-bold text-uppercase text-muted">Select Coin</label>
              <div class="coin-picker" :class="{ 'picker-focused': coinPickerOpen }" @click="focusCoinSearch">
-                <div v-if="newAsset.coin" class="coin-tag">
-                   <img :src="getIcon(newAsset.coin)" class="coin-tag-img" />
-                   <span class="fw-bold">{{ newAsset.coin.toUpperCase() }}</span>
-                </div>
+                <img v-if="newAsset.coin" :src="getIcon(newAsset.coin)" class="coin-picker-icon" />
                 <input
                    ref="coinSearchInput"
                    v-model="coinSearch"
                    type="text"
                    class="coin-search-input"
-                   :placeholder="newAsset.coin ? 'Change...' : 'Search coin...'"
+                   placeholder="Search coin..."
                    @focus="onPickerFocus"
                    @blur="closeCoinPicker"
+                   @keydown.down.prevent="highlightMove(1)"
+                   @keydown.up.prevent="highlightMove(-1)"
+                   @keydown.enter.prevent="confirmHighlighted"
+                   @keydown.tab="confirmHighlighted"
                 />
              </div>
-             <div v-if="coinPickerOpen && filteredCoins.length > 0" class="coin-dropdown shadow-lg border">
+             <div v-if="coinPickerOpen && filteredCoins.length > 0" class="coin-dropdown shadow-lg border" ref="coinDropdown">
                 <div
-                   v-for="coin in filteredCoins.slice(0, 30)"
+                   v-for="(coin, idx) in filteredCoins.slice(0, 40)"
                    :key="coin"
                    class="coin-dropdown-item"
+                   :class="{ 'dropdown-highlighted': idx === highlightIndex }"
                    @mousedown.prevent="selectCoin(coin)"
+                   @mouseenter="highlightIndex = idx"
                 >
                    <img :src="getIcon(coin)" class="coin-dropdown-img" />
                    <span>{{ coin.toUpperCase() }}</span>
@@ -241,6 +244,7 @@ export default defineComponent({
       retrieveError: false,
       coinSearch: '',
       coinPickerOpen: false,
+      highlightIndex: 0,
     }
   },
   computed: {
@@ -305,6 +309,11 @@ export default defineComponent({
     updateCoinListCache() {
       if (this.coinListCache.length === 0 && Object.keys(this.coinData).length > 0) {
         this.coinListCache = Object.keys(this.coinData).sort();
+        // Auto-select first coin if nothing selected
+        if (!this.newAsset.coin && this.coinListCache.length > 0) {
+          this.newAsset.coin = this.coinListCache[0];
+          this.coinSearch = this.coinListCache[0].toUpperCase();
+        }
       }
     },
     loadPortfolio() {
@@ -386,18 +395,43 @@ export default defineComponent({
     },
     selectCoin(coin) {
       this.newAsset.coin = coin;
-      this.coinSearch = '';
+      this.coinSearch = coin.toUpperCase();
       this.coinPickerOpen = false;
     },
     onPickerFocus() {
       this.coinPickerOpen = true;
       this.coinSearch = '';
+      this.highlightIndex = 0;
     },
     focusCoinSearch() {
       this.$refs.coinSearchInput?.focus();
     },
     closeCoinPicker() {
-      setTimeout(() => { this.coinPickerOpen = false; this.coinSearch = ''; }, 200);
+      setTimeout(() => {
+        this.coinPickerOpen = false;
+        // Restore display text to current selection
+        if (this.newAsset.coin) {
+          this.coinSearch = this.newAsset.coin.toUpperCase();
+        }
+      }, 200);
+    },
+    highlightMove(dir) {
+      const max = Math.min(this.filteredCoins.length, 40) - 1;
+      this.highlightIndex = Math.max(0, Math.min(max, this.highlightIndex + dir));
+      // Scroll into view
+      this.$nextTick(() => {
+        const dropdown = this.$refs.coinDropdown;
+        if (dropdown) {
+          const item = dropdown.children[this.highlightIndex];
+          if (item) item.scrollIntoView({ block: 'nearest' });
+        }
+      });
+    },
+    confirmHighlighted() {
+      const visible = this.filteredCoins.slice(0, 40);
+      if (visible.length > 0 && this.highlightIndex < visible.length) {
+        this.selectCoin(visible[this.highlightIndex]);
+      }
     },
     fmtPrice(price) {
       if (!price) return '0.00';
@@ -567,35 +601,12 @@ body.dark-mode .asset-row:hover {
   box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.2);
 }
 
-.coin-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
-  color: #fff;
-  border-radius: 20px;
-  padding: 4px 10px 4px 4px;
-  font-size: 0.85rem;
-  animation: scaleIn 0.15s ease;
-}
-.coin-tag-img {
-  width: 22px; height: 22px;
+.coin-picker-icon {
+  width: 24px; height: 24px;
   border-radius: 50%;
   object-fit: contain;
   background: white;
-}
-.coin-tag-x {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.8);
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0 2px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.coin-tag-x:hover {
-  color: #fff;
+  flex-shrink: 0;
 }
 
 .coin-search-input {
@@ -607,10 +618,12 @@ body.dark-mode .asset-row:hover {
   font-size: 0.95rem;
   color: inherit;
   padding: 4px 0;
+  font-weight: 600;
 }
 .coin-search-input::placeholder {
   color: var(--current-text-muted);
   opacity: 0.6;
+  font-weight: 400;
 }
 
 .coin-dropdown {
@@ -631,12 +644,14 @@ body.dark-mode .asset-row:hover {
   padding: 8px 14px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background 0.15s;
+  transition: background 0.1s;
 }
-.coin-dropdown-item:hover {
+.coin-dropdown-item:hover,
+.coin-dropdown-item.dropdown-highlighted {
   background-color: rgba(220, 53, 69, 0.1);
 }
-body.dark-mode .coin-dropdown-item:hover {
+body.dark-mode .coin-dropdown-item:hover,
+body.dark-mode .coin-dropdown-item.dropdown-highlighted {
   background-color: rgba(255, 255, 255, 0.08);
 }
 .coin-dropdown-img {
