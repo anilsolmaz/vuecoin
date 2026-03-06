@@ -57,15 +57,38 @@
             <i class="bi bi-plus-circle-fill" style="color: #dc3545"></i> Add Asset
           </h5>
           
-          <div class="mb-3">
+          <div class="mb-3 position-relative">
              <label class="form-label small fw-bold text-uppercase text-muted">Select Coin</label>
-             <Select2 class="w-100 select2-lg" v-model="newAsset.coin" :options="coinListCache" :settings="select2Settings" />
-             <div v-if="newAsset.coin" class="mt-2 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                   <img :src="getIcon(newAsset.coin)" style="width:22px;height:22px;border-radius:50%;background:white;" />
+             <div class="coin-picker" :class="{ 'picker-focused': coinPickerOpen }" @click="focusCoinSearch">
+                <div v-if="newAsset.coin" class="coin-tag">
+                   <img :src="getIcon(newAsset.coin)" class="coin-tag-img" />
                    <span class="fw-bold">{{ newAsset.coin.toUpperCase() }}</span>
+                   <button type="button" class="coin-tag-x" @click.stop="clearCoin">&times;</button>
                 </div>
-                <span class="fw-bold text-success">{{ formatNumber(getCurrentPrice(newAsset.coin), getCurrentPrice(newAsset.coin) < 1 ? 6 : 2) }} $</span>
+                <input
+                   ref="coinSearchInput"
+                   v-model="coinSearch"
+                   type="text"
+                   class="coin-search-input"
+                   :placeholder="newAsset.coin ? '' : 'Search coin...'"
+                   @focus="coinPickerOpen = true"
+                   @blur="closeCoinPicker"
+                   :style="{ width: newAsset.coin ? '50px' : '100%' }"
+                />
+             </div>
+             <div v-if="coinPickerOpen && filteredCoins.length > 0" class="coin-dropdown shadow-lg border">
+                <div
+                   v-for="coin in filteredCoins.slice(0, 30)"
+                   :key="coin"
+                   class="coin-dropdown-item"
+                   @mousedown.prevent="selectCoin(coin)"
+                >
+                   <img :src="getIcon(coin)" class="coin-dropdown-img" />
+                   <span>{{ coin.toUpperCase() }}</span>
+                </div>
+             </div>
+             <div v-if="newAsset.coin" class="mt-2 text-end">
+                <span class="fw-bold text-success small">{{ fmtPrice(getCurrentPrice(newAsset.coin)) }} $</span>
              </div>
           </div>
           
@@ -196,13 +219,9 @@
 import { defineComponent } from 'vue';
 import axios from 'axios';
 import { io } from "socket.io-client";
-import Select2 from 'vue3-select2-component';
 
 export default defineComponent({
   name: 'Portfolio',
-  components: {
-    Select2
-  },
   data() {
     return {
       portfolio: [], // shape: { coin: 'btc', amount: 1.5, avgPrice: 60000 }
@@ -222,16 +241,16 @@ export default defineComponent({
       saveMsg: '',
       retrieveMsg: '',
       retrieveError: false,
+      coinSearch: '',
+      coinPickerOpen: false,
     }
   },
   computed: {
-    select2Settings() {
-       return {
-          width: '100%',
-          placeholder: 'Type to search...',
-          templateResult: this.formatSelect2Result,
-          templateSelection: this.formatSelect2Result
-       };
+    filteredCoins() {
+      const list = this.coinListCache.length > 0 ? this.coinListCache : Object.keys(this.coinData).sort();
+      if (!this.coinSearch) return list;
+      const q = this.coinSearch.toLowerCase();
+      return list.filter(c => c.toLowerCase().includes(q));
     },
     calculatedUsdtRate() {
       // Find USDT to TRY rate
@@ -286,13 +305,8 @@ export default defineComponent({
         }
     },
     updateCoinListCache() {
-      // Only update if we don't have data yet, to prevent Select2 from re-rendering
       if (this.coinListCache.length === 0 && Object.keys(this.coinData).length > 0) {
-        this.coinListCache = Object.keys(this.coinData).sort().map(coin => ({
-           id: coin,
-           text: coin.toUpperCase(),
-           img: this.getIcon(coin)
-        }));
+        this.coinListCache = Object.keys(this.coinData).sort();
       }
     },
     loadPortfolio() {
@@ -372,22 +386,21 @@ export default defineComponent({
       if (!value) return "0.00";
       return Number(value).toLocaleString(undefined, { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
     },
-    formatSelect2Result(state) {
-      if (!state.id) {
-         return state.text;
-      }
-      var wrapper = document.createElement('span');
-      wrapper.style.display = 'flex';
-      wrapper.style.alignItems = 'center';
-      wrapper.style.gap = '8px';
-      var img = document.createElement('img');
-      img.src = state.img || this.getIcon(state.id);
-      img.style.cssText = 'width:20px;height:20px;border-radius:50%;object-fit:contain;background:white;';
-      var label = document.createElement('span');
-      label.textContent = state.text;
-      wrapper.appendChild(img);
-      wrapper.appendChild(label);
-      return wrapper;
+    selectCoin(coin) {
+      this.newAsset.coin = coin;
+      this.coinSearch = '';
+      this.coinPickerOpen = false;
+    },
+    clearCoin() {
+      this.newAsset.coin = '';
+      this.coinSearch = '';
+      this.$nextTick(() => { this.$refs.coinSearchInput?.focus(); });
+    },
+    focusCoinSearch() {
+      this.$refs.coinSearchInput?.focus();
+    },
+    closeCoinPicker() {
+      setTimeout(() => { this.coinPickerOpen = false; }, 150);
     },
     fmtPrice(price) {
       if (!price) return '0.00';
@@ -538,26 +551,102 @@ body.dark-mode .asset-row:hover {
   background: var(--current-border);
   border-radius: 10px;
 }
-
-/* Select2 sizing to match form-control-lg */
-.select2-lg .select2-container--default .select2-selection--single {
-  height: 48px !important;
-  padding: 8px 12px !important;
-  border-radius: 8px !important;
-  border: 1px solid var(--current-border) !important;
-  background-color: var(--current-card-bg) !important;
-  display: flex !important;
-  align-items: center !important;
+/* Custom Coin Picker */
+.coin-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 12px;
+  border: 1px solid var(--current-border);
+  border-radius: 8px;
+  background-color: var(--current-card-bg);
+  cursor: text;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.coin-picker.picker-focused {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.2);
 }
 
-.select2-lg .select2-container--default .select2-selection--single .select2-selection__rendered {
-  line-height: 30px !important;
-  padding-left: 0 !important;
-  color: inherit !important;
+.coin-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+  color: #fff;
+  border-radius: 20px;
+  padding: 4px 10px 4px 4px;
+  font-size: 0.85rem;
+  animation: scaleIn 0.15s ease;
+}
+.coin-tag-img {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: white;
+}
+.coin-tag-x {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.8);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.coin-tag-x:hover {
+  color: #fff;
 }
 
-.select2-lg .select2-container--default .select2-selection--single .select2-selection__arrow {
-  height: 46px !important;
+.coin-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  min-width: 50px;
+  font-size: 0.95rem;
+  color: inherit;
+  padding: 4px 0;
+}
+.coin-search-input::placeholder {
+  color: var(--current-text-muted);
+  opacity: 0.6;
+}
+
+.coin-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+  background-color: var(--current-card-bg);
+  border-radius: 0 0 8px 8px;
+  border-color: var(--current-border) !important;
+}
+.coin-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.coin-dropdown-item:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+body.dark-mode .coin-dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.coin-dropdown-img {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: white;
 }
 
 /* Input group dark mode */
@@ -589,7 +678,7 @@ body.dark-mode .input-group-text.theme-input-minimal {
   to { transform: scale(1); opacity: 1; }
 }
 
-/* Portfolio button — reuse from main page */
+/* Portfolio button */
 .btn-portfolio {
   background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
   border: none;
