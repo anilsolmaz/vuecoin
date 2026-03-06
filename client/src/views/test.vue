@@ -34,24 +34,24 @@
             <!-- Profile Badge & Balance (if data exists) -->
             <div v-if="portfolio.length > 0" class="d-flex align-items-center gap-2">
                <!-- Active Profile Badge -->
-               <div v-if="currentProfile" class="d-flex align-items-center profile-badge rounded-pill px-3 py-1 shadow-sm position-relative" style="height: 38px;">
-                  <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-2" style="width: 20px; height: 20px;">
-                     <i class="bi bi-cloud-check-fill text-white" style="font-size: 0.7rem;"></i>
+               <div v-if="currentProfile" class="d-flex align-items-center profile-badge rounded-pill px-3 shadow-sm" title="Active Profile">
+                  <div class="rounded-circle bg-success d-flex align-items-center justify-content-center me-2" style="width: 18px; height: 18px;">
+                     <i class="bi bi-person-fill text-white" style="font-size: 0.75rem;"></i>
                   </div>
-                  <span class="fw-bold small text-truncate mr-2" style="max-width: 80px;">{{ currentProfile }}</span>
-                  <button @click="exitProfile" class="btn btn-sm p-0 d-flex align-items-center justify-content-center border-0 opacity-75 hover-opacity-100 ms-1" style="color: inherit; background: none;" title="Exit profile">
+                  <span class="fw-bold small text-truncate" style="max-width: 90px;">{{ currentProfile }}</span>
+                  <button @click="exitProfile" class="btn btn-sm p-0 d-flex align-items-center justify-content-center border-0 opacity-50 hover-opacity-100 ms-2" style="color: inherit; background: none;" title="Exit profile">
                      <i class="bi bi-x-circle-fill"></i>
                   </button>
                </div>
 
                <!-- Balance Card -->
-               <div class="d-flex align-items-center gap-2 portfolio-balance-card rounded-pill px-3 py-1 border shadow-sm balance-header" style="height: 38px;">
+               <div class="d-flex align-items-center gap-2 portfolio-balance-card rounded-pill px-3 shadow-sm balance-header">
                   <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
                   <div class="d-flex align-items-center gap-2">
-                     <span class="fw-bold small theme-text">
+                     <span class="fw-bold small theme-text mb-0">
                         {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : '****' }}
                      </span>
-                     <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75 hover-opacity-100">
+                     <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-50 hover-opacity-100">
                         <i :class="showBalance ? 'bi bi-eye' : 'bi bi-eye-slash'" style="font-size: 0.9rem;"></i>
                      </button>
                   </div>
@@ -373,7 +373,7 @@
       },
       formatNumber(value, fraction) {
         if (!value) return "0.00";
-        return Number(value).toLocaleString(undefined, { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+        return Number(value).toLocaleString('en-US', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
       },
       log(event) {
         console.log(event)
@@ -647,11 +647,23 @@
   }
 
   /* Top Bar Pill - theme aware */
-  .top-bar-pill {
+  .top-bar-pill, .profile-badge, .portfolio-balance-card {
     background-color: var(--current-card-bg, #fff);
-    border-color: var(--current-border, #dee2e6) !important;
+    border: 1px solid var(--current-border, #dee2e6) !important;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
     color: inherit;
   }
+
+  body.dark-mode .top-bar-pill, 
+  body.dark-mode .profile-badge, 
+  body.dark-mode .portfolio-balance-card {
+    background: rgba(255,255,255,0.05);
+  }
+
+  .hover-opacity-100:hover { opacity: 1 !important; }
 
   .top-bar-btn {
     color: inherit;

@@ -420,7 +420,7 @@ export default defineComponent({
     },
     formatNumber(value, fraction) {
       if (!value) return "0.00";
-      return Number(value).toLocaleString(undefined, { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+      return Number(value).toLocaleString('en-US', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
     },
     selectCoin(coin) {
       this.newAsset.coin = coin;
