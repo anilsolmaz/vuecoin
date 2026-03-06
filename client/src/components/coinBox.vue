@@ -254,7 +254,7 @@ export default {
 .coinbox {
   width: auto !important;
   height: auto !important;
-  margin: 2px auto 2px 2px;
+  margin: 3px 6px 3px 0;
   padding: 2px 4px;
   border-radius: 6px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
