@@ -162,7 +162,9 @@ export default {
     },
     textColor() {
        return ''; // Inherit monochrome colors from theme
-    },
+    }
+  },
+  methods: {
     formatNumber(value, fraction = 2) {
       const val = parseFloat(value);
       if (isNaN(val)) return "0.00";
@@ -172,9 +174,7 @@ export default {
         minimumFractionDigits: safeF, 
         maximumFractionDigits: safeF 
       });
-    }
-  },
-  methods: {
+    },
     noImage(event) {
       event.target.src = require('../assets/coins/noimage.png');
     },
