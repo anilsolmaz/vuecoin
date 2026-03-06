@@ -9,7 +9,7 @@
           </router-link>
           <div>
             <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">My Portfolio</h4>
-            <span class="small text-muted">Track your holdings in real-time</span>
+            <span class="small theme-text-secondary">Track your holdings in real-time</span>
           </div>
        </div>
        <div class="col-auto d-flex align-items-center gap-2">
@@ -60,9 +60,9 @@
     <div class="row">
       <!-- Add Asset Form -->
       <div class="col-12 col-lg-4 mb-4">
-        <div class="card bg-transparent border theme-box-header rounded-4 p-4 h-100 shadow-sm">
+        <div class="card premium-card rounded-4 p-4 h-100 shadow-sm border-0">
           <h5 class="fw-bold theme-text mb-4 d-flex align-items-center gap-2">
-            <i class="bi bi-plus-circle-fill" style="color: #dc3545"></i> Add Asset
+            <i class="bi bi-plus-circle-fill" style="color: #6366f1"></i> Add Asset
           </h5>
           
           <div class="mb-3 position-relative">
@@ -121,7 +121,7 @@
 
       <!-- Assets Table -->
       <div class="col-12 col-lg-8 mb-4">
-         <div class="card bg-transparent border theme-box-header rounded-4 p-4 h-100 shadow-sm overflow-hidden">
+         <div class="card premium-card rounded-4 p-4 h-100 shadow-sm overflow-hidden border-0">
             <h5 class="fw-bold theme-text mb-4 d-flex align-items-center gap-2">
               <i class="bi bi-pie-chart-fill text-warning"></i> Your Assets
             </h5>
@@ -533,6 +533,7 @@ export default defineComponent({
 <style scoped>
 .portfolio-page {
   animation: fadeIn 0.4s ease-out;
+  color: var(--current-text);
 }
 
 @keyframes fadeIn {
@@ -540,225 +541,205 @@ export default defineComponent({
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Glassmorphism & Cards */
 .balance-card {
-  background-color: var(--current-card-bg, #ffffff);
-  border-color: var(--current-border) !important;
+  background: var(--current-card-bg);
+  border: 1px solid var(--current-border);
+  position: relative;
+  z-index: 1;
 }
 
 .card-bg-gradient {
-  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
-  opacity: 0.95;
-}
-
-body.dark-mode .card-bg-gradient {
-  background: linear-gradient(135deg, #842029 0%, #5c161d 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   opacity: 1;
 }
 
-body.dark-mode .balance-card {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+body.dark-mode .card-bg-gradient {
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+.premium-card {
+  background: var(--current-card-bg);
+  border: 1px solid var(--current-border);
+  transition: all 0.3s ease;
+}
+
+body.dark-mode .premium-card {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Typography & Colors */
+.theme-text { color: var(--current-text); }
+.theme-text-secondary { color: var(--current-text-muted); }
 
 .value-shadow {
-  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-.backdrop-blur {
-  backdrop-filter: blur(8px);
-}
-
-.theme-box-header {
-  background-color: var(--current-card-bg);
-  border-color: var(--current-border) !important;
-  color: inherit;
-}
-
+/* Form Elements */
 .theme-input-minimal {
   background-color: var(--current-card-bg) !important;
   border: 1px solid var(--current-border) !important;
   color: inherit !important;
-  border-radius: 8px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+body.dark-mode .theme-input-minimal {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .theme-input-minimal:focus {
-  border-color: #dc3545 !important;
-  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
+  background-color: var(--current-card-bg) !important;
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   border: none;
-  transition: transform 0.2s, box-shadow 0.2s;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   color: #fff !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .add-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
 }
 
+/* Table Design */
 .portfolio-table {
   color: inherit;
   min-width: 850px;
-}
-
-.portfolio-table th, .portfolio-table td {
-  white-space: nowrap;
+  border-collapse: separate;
+  border-spacing: 0 8px;
 }
 
 .portfolio-table th {
-  border-bottom: 2px solid var(--current-border);
-  font-size: 0.8rem;
-  font-weight: 700;
+  color: var(--current-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
-}
-
-.portfolio-table td {
-  border-color: var(--current-border) !important;
-  vertical-align: middle;
+  letter-spacing: 1.5px;
+  padding-bottom: 12px;
+  border: none;
 }
 
 .asset-row {
-  transition: background-color 0.2s;
-  color: inherit;
-}
-
-.asset-row:hover {
-  background-color: rgba(220, 53, 69, 0.05);
-}
-
-body.dark-mode .asset-row:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-/* Custom Scrollbar for table if active */
-.table-responsive::-webkit-scrollbar {
-  height: 6px;
-}
-.table-responsive::-webkit-scrollbar-track {
   background: transparent;
+  transition: all 0.2s ease;
 }
+
+.asset-row td {
+  background: var(--current-card-bg);
+  border-top: 1px solid var(--current-border);
+  border-bottom: 1px solid var(--current-border);
+  padding: 16px 12px;
+}
+
+.asset-row td:first-child {
+  border-left: 1px solid var(--current-border);
+  border-radius: 12px 0 0 12px;
+}
+
+.asset-row td:last-child {
+  border-right: 1px solid var(--current-border);
+  border-radius: 0 12px 12px 0;
+}
+
+body.dark-mode .asset-row td {
+  background: rgba(30, 41, 59, 0.4);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.asset-row:hover td {
+  background: rgba(99, 102, 241, 0.05);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+/* Coin Picker */
+.coin-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--current-border);
+  border-radius: 12px;
+  background-color: var(--current-card-bg);
+  transition: all 0.2s ease;
+}
+
+body.dark-mode .coin-picker {
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.coin-picker.picker-focused {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+.coin-dropdown {
+  background-color: var(--current-card-bg);
+  border: 1px solid var(--current-border);
+  border-radius: 12px;
+  margin-top: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .coin-dropdown {
+  background-color: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.coin-dropdown-item:hover,
+.coin-dropdown-item.dropdown-highlighted {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+/* Modals */
+.modal-backdrop-custom {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.modal-card {
+  background-color: var(--current-card-bg);
+  border: 1px solid var(--current-border);
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .modal-card {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Scrollbar */
+.table-responsive::-webkit-scrollbar { height: 6px; }
 .table-responsive::-webkit-scrollbar-thumb {
   background: var(--current-border);
   border-radius: 10px;
 }
-/* Custom Coin Picker */
-.coin-picker {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 48px;
-  padding: 6px 12px;
-  border: 1px solid var(--current-border);
-  border-radius: 8px;
-  background-color: var(--current-card-bg);
-  cursor: text;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.coin-picker.picker-focused {
-  border-color: #dc3545;
-  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.2);
-}
 
-.coin-picker-icon {
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  object-fit: contain;
-  background: white;
-  flex-shrink: 0;
-}
-
-.coin-search-input {
+.btn-portfolio {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff !important;
   border: none;
-  outline: none;
-  background: transparent;
-  flex: 1;
-  min-width: 50px;
-  font-size: 0.95rem;
-  color: inherit;
-  padding: 4px 0;
   font-weight: 600;
 }
-.coin-search-input::placeholder {
-  color: var(--current-text-muted);
-  opacity: 0.6;
-  font-weight: 400;
-}
 
-.coin-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0; right: 0;
-  z-index: 1000;
-  max-height: 250px;
-  overflow-y: auto;
-  background-color: var(--current-card-bg);
-  border-radius: 0 0 8px 8px;
-  border-color: var(--current-border) !important;
-}
-.coin-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.1s;
-}
-.coin-dropdown-item:hover,
-.coin-dropdown-item.dropdown-highlighted {
-  background-color: rgba(220, 53, 69, 0.1);
-}
-body.dark-mode .coin-dropdown-item:hover,
-body.dark-mode .coin-dropdown-item.dropdown-highlighted {
-  background-color: rgba(255, 255, 255, 0.08);
-}
-.coin-dropdown-img {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  object-fit: contain;
-  background: white;
-}
+.text-success { color: #10b981 !important; }
+.text-danger { color: #ef4444 !important; }
 
-/* Input group dark mode */
-body.dark-mode .input-group-text.theme-input-minimal {
-  background-color: var(--current-card-bg) !important;
-  color: inherit !important;
-}
-
-/* Modal styles */
-.modal-backdrop-custom {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(4px);
-  z-index: 9999;
-  animation: fadeIn 0.2s ease;
-}
-
-.modal-card {
-  background-color: var(--current-card-bg, #fff);
-  border-color: var(--current-border) !important;
-  color: inherit;
-  z-index: 10000;
-  animation: scaleIn 0.2s ease;
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-/* Portfolio button */
-.btn-portfolio {
-  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
-  border: none;
-  color: #fff !important;
-}
-.btn-portfolio:hover {
-  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
-  color: #fff !important;
-}
 
 </style>
