@@ -32,8 +32,8 @@
             </div>
             
             <!-- My Portfolio Link -->
-            <router-link to="/portfolio" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm rounded-pill px-3">
-              <i class="bi bi-wallet2"></i><span class="fw-bold small text-white">My Portfolio</span>
+            <router-link to="/portfolio" class="btn btn-portfolio d-flex align-items-center gap-2 shadow-sm rounded-pill px-3">
+              <i class="bi bi-wallet2 text-white"></i><span class="fw-bold small text-white">My Portfolio</span>
             </router-link>
             
             <!-- Calculator Toggle Button -->
@@ -80,7 +80,7 @@
                   </div>
                </div>
                
-               <router-link to="/portfolio" class="btn btn-primary text-white w-100 mb-2 d-flex justify-content-center align-items-center gap-2">
+               <router-link to="/portfolio" class="btn btn-portfolio text-white w-100 mb-2 d-flex justify-content-center align-items-center gap-2">
                  <i class="bi bi-wallet2 text-white"></i><span class="fw-bold small text-white">My Portfolio</span>
                </router-link>
                
@@ -604,6 +604,19 @@
   /* Global dark mode text fixes */
   body.dark-mode .text-dark {
     color: #e2e8f0 !important;
+  }
+  
+  /* Portfolio custom button to match general design */
+  .btn-portfolio {
+    background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+    border: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    color: #fff !important;
+  }
+  .btn-portfolio:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+    color: #fff !important;
   }
   body.dark-mode .border-end {
     border-color: var(--current-border) !important;

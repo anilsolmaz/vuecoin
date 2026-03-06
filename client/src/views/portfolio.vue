@@ -51,12 +51,9 @@
           
           <div class="mb-3">
              <label class="form-label small fw-bold text-uppercase text-muted">Select Coin</label>
-             <select class="form-select form-select-lg theme-input-minimal shadow-none" v-model="newAsset.coin">
-               <option value="" disabled selected>Choose a coin</option>
-               <option v-for="coin in sortedCoinList" :key="coin" :value="coin">{{ coin.toUpperCase() }}</option>
-             </select>
+             <Select2 class="w-100" v-model="newAsset.coin" :options="select2Options" :settings="select2Settings" />
              <div v-if="newAsset.coin" class="mt-2 text-end small">
-                Current price: <span class="fw-bold text-success">{{ getCurrentPrice(newAsset.coin) }} $</span>
+                Current price: <span class="fw-bold text-success">{{ formatNumber(getCurrentPrice(newAsset.coin), getCurrentPrice(newAsset.coin) < 1 ? 6 : 2) }} $</span>
              </div>
           </div>
           
@@ -113,7 +110,7 @@
                            </div>
                         </td>
                         <td class="text-end py-3">
-                           <div class="fw-bold theme-text">{{ getCurrentPrice(item.coin) }} $</div>
+                           <div class="fw-bold theme-text">{{ formatNumber(getCurrentPrice(item.coin), getCurrentPrice(item.coin) < 1 ? 6 : 2) }} $</div>
                            <div class="small text-muted opacity-75">~{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }} ₺</div>
                         </td>
                         <td class="text-end py-3">
@@ -149,9 +146,13 @@
 import { defineComponent } from 'vue';
 import axios from 'axios';
 import { io } from "socket.io-client";
+import Select2 from 'vue3-select2-component';
 
 export default defineComponent({
   name: 'Portfolio',
+  components: {
+    Select2
+  },
   data() {
     return {
       portfolio: [], // shape: { coin: 'btc', amount: 1.5, avgPrice: 60000 }
@@ -166,8 +167,20 @@ export default defineComponent({
     }
   },
   computed: {
-    sortedCoinList() {
-       return Object.keys(this.coinData).sort();
+    select2Options() {
+       return Object.keys(this.coinData).sort().map(coin => ({
+          id: coin,
+          text: coin.toUpperCase(),
+          img: this.getIcon(coin)
+       }));
+    },
+    select2Settings() {
+       return {
+          width: '100%',
+          placeholder: 'Type to search...',
+          templateResult: this.formatSelect2Result,
+          templateSelection: this.formatSelect2Result
+       };
     },
     calculatedUsdtRate() {
       // Find USDT to TRY rate
@@ -295,6 +308,15 @@ export default defineComponent({
     formatNumber(value, fraction) {
       if (!value) return "0.00";
       return Number(value).toLocaleString(undefined, { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+    },
+    formatSelect2Result(state) {
+      if (!state.id) {
+         return state.text;
+      }
+      var $state = window.jQuery(
+         `<span><img src="${state.img || this.getIcon(state.id)}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain; background: white; margin-right: 8px; vertical-align: middle;" /> <span style="vertical-align: middle">${state.text}</span></span>`
+      );
+      return $state;
     }
   }
 });
@@ -316,12 +338,12 @@ export default defineComponent({
 }
 
 .card-bg-gradient {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
   opacity: 0.95;
 }
 
 body.dark-mode .card-bg-gradient {
-  background: linear-gradient(135deg, #312e81 0%, #4c1d95 100%);
+  background: linear-gradient(135deg, #842029 0%, #5c161d 100%);
   opacity: 1;
 }
 
@@ -343,26 +365,27 @@ body.dark-mode .balance-card {
 }
 
 .theme-input-minimal {
-  background-color: var(--current-bg) !important;
+  background-color: var(--current-card-bg) !important;
   border: 1px solid var(--current-border) !important;
-  color: inherit !important;
+  color: var(--current-text-main) !important;
   border-radius: 8px;
 }
 
 .theme-input-minimal:focus {
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25) !important;
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
   border: none;
   transition: transform 0.2s, box-shadow 0.2s;
+  color: #fff !important;
 }
 
 .add-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
 }
 
 .portfolio-table {
@@ -383,14 +406,19 @@ body.dark-mode .balance-card {
 
 .asset-row {
   transition: background-color 0.2s;
+  color: var(--current-text-main) !important;
 }
 
 .asset-row:hover {
-  background-color: rgba(99, 102, 241, 0.05);
+  background-color: rgba(220, 53, 69, 0.05);
+}
+
+body.dark-mode .asset-row {
+  color: #f8f9fa !important;
 }
 
 body.dark-mode .asset-row:hover {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Custom Scrollbar for table if active */
