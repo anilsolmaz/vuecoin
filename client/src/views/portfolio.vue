@@ -313,10 +313,18 @@ export default defineComponent({
       if (!state.id) {
          return state.text;
       }
-      var $state = window.jQuery(
-         `<span><img src="${state.img || this.getIcon(state.id)}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain; background: white; margin-right: 8px; vertical-align: middle;" /> <span style="vertical-align: middle">${state.text}</span></span>`
-      );
-      return $state;
+      var wrapper = document.createElement('span');
+      wrapper.style.display = 'flex';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.gap = '8px';
+      var img = document.createElement('img');
+      img.src = state.img || this.getIcon(state.id);
+      img.style.cssText = 'width:20px;height:20px;border-radius:50%;object-fit:contain;background:white;';
+      var label = document.createElement('span');
+      label.textContent = state.text;
+      wrapper.appendChild(img);
+      wrapper.appendChild(label);
+      return wrapper;
     }
   }
 });
