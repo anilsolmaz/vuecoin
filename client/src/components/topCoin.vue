@@ -113,7 +113,7 @@ export default {
         // User specifically said for PDA use Paribu BUT show in USD.
         if (this.isPDA && paribuTRY && this.usdtRate) {
              let priceUSD = paribuTRY / this.usdtRate;
-             return `${priceUSD.toFixed(4)} $`;
+             return `${this.formatNumber(priceUSD, 4)} $`;
         }
         
         if (binanceUSDT) {
@@ -122,7 +122,7 @@ export default {
             else if (binanceUSDT >= 1) precision = 2; // < 100
             else precision = 8; // < 1, keep high precision
 
-            return `${parseFloat(binanceUSDT.toFixed(precision))} $`;
+            return `${this.formatNumber(binanceUSDT, precision)} $`;
         }
         if (paribuTRY) {
              let precision = 4;
@@ -130,7 +130,7 @@ export default {
              else if (paribuTRY >= 1) precision = 2; // < 100
              else precision = 8; // < 1
 
-             return `${parseFloat(paribuTRY.toFixed(precision))} ₺`;
+             return `${this.formatNumber(paribuTRY, precision)} ₺`;
         }
         return '';
     },
@@ -156,12 +156,22 @@ export default {
     percentageChange() {
       let roi = this.getROI;
       if (typeof roi === 'number') {
-          return `(%${roi.toFixed(2)})`;
+          return `(%${this.formatNumber(roi, 2)})`;
       }
       return '';
     },
     textColor() {
        return ''; // Inherit monochrome colors from theme
+    },
+    formatNumber(value, fraction = 2) {
+      const val = parseFloat(value);
+      if (isNaN(val)) return "0.00";
+      const f = parseInt(fraction);
+      const safeF = isNaN(f) ? 2 : Math.min(Math.max(f, 0), 20);
+      return val.toLocaleString('en-US', { 
+        minimumFractionDigits: safeF, 
+        maximumFractionDigits: safeF 
+      });
     }
   },
   methods: {
