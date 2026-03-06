@@ -167,13 +167,19 @@ export default {
       let filteredBids = bids;
 
       // Only filter if there is actual arbitrage, keeping only those inside the range.
-      if (bestBid > 0 && bestAsk > 0 && bestBid >= bestAsk) {
-         filteredAsks = asks.filter(a => a.priceTRY <= bestBid);
-         filteredBids = bids.filter(b => b.priceTRY >= bestAsk);
+      if (this.isTopDeal) {
+          if (bestBid > 0 && bestAsk > 0 && bestBid >= bestAsk) {
+             filteredAsks = asks.filter(a => a.priceTRY <= bestBid);
+             filteredBids = bids.filter(b => b.priceTRY >= bestAsk);
+          } else {
+             // If no real arbitrage at the moment, just show top 1 of each to avoid empty box
+             filteredAsks = asks.slice(0, 1);
+             filteredBids = bids.slice(0, 1);
+          }
       } else {
-         // If no real arbitrage at the moment, just show top 1 of each to avoid empty box
-         filteredAsks = asks.slice(0, 1);
-         filteredBids = bids.slice(0, 1);
+          // If expanded from "All Markets" explicitly, show all available exchanges
+          filteredAsks = asks;
+          filteredBids = bids;
       }
 
       // Convert into rows
