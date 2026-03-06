@@ -3,7 +3,7 @@
     <h6 class="header" style="margin-bottom:2px">
       <img class="coinBoxImage" :style="{ width: (customFontSize * 25) + 'px', height: (customFontSize * 25) + 'px' }" :src="coinImageSource" @error="handleImageError">
       <b>{{ coinName.toUpperCase() }}</b>
-      <span v-if="forceShowROI || coinData.ROI >= minROI" style="font-size:0.7em">{{ coinData.ROI > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
+      <span v-if="forceShowROI || coinData.ROI >= minROI" class="roi-badge">{{ coinData.ROI > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
       <span v-if="dealDuration > 0" class="deal-timer" :title="'In Top Deals for ' + formatDuration(dealDuration)">{{ formatDuration(dealDuration) }}</span>
     </h6>
     <div v-if="isExpanded">
@@ -275,18 +275,24 @@ export default {
 .header {
   border-radius: 6px 6px 0px 0px;
   border-bottom: 1px solid var(--current-border);
-  font-size: 1.25em;
+  font-size: 1.45em; /* Increased for better visibility */
   margin: 1px auto;
   padding: 1px;
   width: auto;
   height: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.roi-badge {
+  font-size: 0.95em; /* Increased for better visibility */
+  font-weight: 700;
+  opacity: 0.95;
 }
 
 .deal-timer {
-  font-size: 0.5em;
+  font-size: 0.75em; /* Increased for better visibility */
   color: var(--text-muted, #999);
   opacity: 0.7;
   margin-left: auto;

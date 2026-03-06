@@ -49,7 +49,7 @@
                   <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
                   <div class="d-flex align-items-center gap-2">
                      <span class="fw-bold small theme-text mb-0">
-                        {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : '****' }}
+                        {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : (USDTMode ? '***,***.**$' : '***,***.**₺') }}
                      </span>
                      <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-50 hover-opacity-100">
                         <i :class="showBalance ? 'bi bi-eye' : 'bi bi-eye-slash'" style="font-size: 0.9rem;"></i>
@@ -127,7 +127,7 @@
                      <div class="d-flex align-items-center gap-2">
                         <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
                         <span class="fw-bold small theme-text">
-                           {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : '****' }}
+                           {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : (USDTMode ? '***,***.**$' : '***,***.**₺') }}
                         </span>
                      </div>
                      <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75">
@@ -311,10 +311,10 @@
     },
     filters: {
       lira (value) {
-        return `$${value.toLocaleString()}`
+        return `$${Number(value).toLocaleString('en-US')}`
       },
       ROI (value) {
-        return `$${value.toLocaleString(undefined, { minimumFractionDigits: 4 })}`
+        return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 4 })}`
       }
     },
     methods: {
@@ -453,10 +453,7 @@
             console.log(error);
         }
       },
-      formatNumber (value,fraction) {
-        let answer = Number(value).toFixed(fraction)
-        return answer
-      },
+
       incrementTopDeals() {
         if (this.topDealsCount < 50) {
           this.topDealsCount++;
