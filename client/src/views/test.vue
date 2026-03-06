@@ -373,14 +373,33 @@
          }
          return 0;
       },
-      formatNumber(value, fraction = 2) {
+      formatNumber(value, fraction = null) {
         const val = parseFloat(value);
         if (isNaN(val)) return "0.00";
-        const f = parseInt(fraction);
-        const safeF = isNaN(f) ? 2 : Math.min(Math.max(f, 0), 20);
+        
+        let minF = 0;
+        let maxF = 4; // default max 4 based on request
+        
+        if (fraction !== null) {
+           minF = parseInt(fraction);
+           maxF = minF;
+        } else {
+           const absVal = Math.abs(val);
+           if (absVal >= 1000) {
+              minF = 0; maxF = 2; // if large, don't show many decimals if not needed
+           } else if (absVal >= 1) {
+              minF = 0; maxF = 3;
+           } else {
+              minF = 0; maxF = 5; // keep high precision for small decimals
+           }
+        }
+        
+        const safeMinF = isNaN(minF) ? 0 : Math.min(Math.max(minF, 0), 20);
+        const safeMaxF = isNaN(maxF) ? 4 : Math.min(Math.max(maxF, safeMinF), 20);
+
         return val.toLocaleString('en-US', { 
-          minimumFractionDigits: safeF, 
-          maximumFractionDigits: safeF 
+          minimumFractionDigits: safeMinF, 
+          maximumFractionDigits: safeMaxF 
         });
       },
       log(event) {
