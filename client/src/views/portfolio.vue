@@ -46,29 +46,38 @@
       <div class="col-12 col-lg-4 mb-4">
         <div class="card bg-transparent border theme-box-header rounded-4 p-4 h-100 shadow-sm">
           <h5 class="fw-bold theme-text mb-4 d-flex align-items-center gap-2">
-            <i class="bi bi-plus-circle-fill text-primary"></i> Add Asset
+            <i class="bi bi-plus-circle-fill" style="color: #dc3545"></i> Add Asset
           </h5>
           
           <div class="mb-3">
              <label class="form-label small fw-bold text-uppercase text-muted">Select Coin</label>
-             <Select2 class="w-100" v-model="newAsset.coin" :options="select2Options" :settings="select2Settings" />
-             <div v-if="newAsset.coin" class="mt-2 text-end small">
-                Current price: <span class="fw-bold text-success">{{ formatNumber(getCurrentPrice(newAsset.coin), getCurrentPrice(newAsset.coin) < 1 ? 6 : 2) }} $</span>
+             <Select2 class="w-100 select2-lg" v-model="newAsset.coin" :options="coinListCache" :settings="select2Settings" />
+             <div v-if="newAsset.coin" class="mt-2 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                   <img :src="getIcon(newAsset.coin)" style="width:22px;height:22px;border-radius:50%;background:white;" />
+                   <span class="fw-bold">{{ newAsset.coin.toUpperCase() }}</span>
+                </div>
+                <span class="fw-bold text-success">{{ formatNumber(getCurrentPrice(newAsset.coin), getCurrentPrice(newAsset.coin) < 1 ? 6 : 2) }} $</span>
              </div>
           </div>
           
           <div class="mb-3">
-             <label class="form-label small fw-bold text-uppercase text-muted">Holdings Amount</label>
-             <input type="number" step="0.00000001" class="form-control form-control-lg theme-input-minimal shadow-none font-monospace" v-model="newAsset.amount" placeholder="0.00">
+             <label class="form-label small fw-bold text-uppercase text-muted"><i class="bi bi-hash me-1"></i>Holdings Amount</label>
+             <div class="input-group input-group-lg">
+                <input type="number" step="0.00000001" class="form-control theme-input-minimal shadow-none font-monospace" v-model="newAsset.amount" placeholder="0.00">
+             </div>
           </div>
           
           <div class="mb-4">
-             <label class="form-label small fw-bold text-uppercase text-muted">Average Buy Price (USDT) <span class="fw-normal opacity-50">(Optional)</span></label>
-             <input type="number" step="0.0001" class="form-control form-control-lg theme-input-minimal shadow-none font-monospace" v-model="newAsset.avgPrice" placeholder="0.00">
+             <label class="form-label small fw-bold text-uppercase text-muted"><i class="bi bi-tag me-1"></i>Avg Buy Price <span class="fw-normal opacity-50">(Optional)</span></label>
+             <div class="input-group input-group-lg">
+                <input type="number" step="0.0001" class="form-control theme-input-minimal shadow-none font-monospace" v-model="newAsset.avgPrice" placeholder="0.00">
+                <span class="input-group-text theme-input-minimal border-start-0 fw-bold" style="font-size:0.9rem;">$</span>
+             </div>
           </div>
           
-          <button @click="addAsset" :disabled="!newAsset.coin || !newAsset.amount || newAsset.amount <= 0" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow-sm mt-auto add-btn">
-            Add to Portfolio
+          <button @click="addAsset" :disabled="!newAsset.coin || !newAsset.amount || newAsset.amount <= 0" class="btn btn-lg w-100 rounded-pill fw-bold shadow-sm mt-auto add-btn">
+            <i class="bi bi-plus-lg me-2"></i>Add to Portfolio
           </button>
         </div>
       </div>
@@ -164,16 +173,10 @@ export default defineComponent({
       coinData: {},
       socket: null,
       usdtTryRate: 0,
+      coinListCache: [], // cached so websocket updates don't re-render Select2
     }
   },
   computed: {
-    select2Options() {
-       return Object.keys(this.coinData).sort().map(coin => ({
-          id: coin,
-          text: coin.toUpperCase(),
-          img: this.getIcon(coin)
-       }));
-    },
     select2Settings() {
        return {
           width: '100%',
@@ -210,6 +213,7 @@ export default defineComponent({
     this.socket.on('data_update', (data) => {
         if (data && data.btc) {
             this.coinData = data;
+            this.updateCoinListCache();
         } else {
             this.fetchData();
         }
@@ -228,9 +232,20 @@ export default defineComponent({
         try {
             const response = await axios.get('/api/allParibuData');
             this.coinData = response.data;
+            this.updateCoinListCache();
         } catch (error) {
             console.error("Failed to fetch initial market data:", error);
         }
+    },
+    updateCoinListCache() {
+      // Only update if we don't have data yet, to prevent Select2 from re-rendering
+      if (this.coinListCache.length === 0 && Object.keys(this.coinData).length > 0) {
+        this.coinListCache = Object.keys(this.coinData).sort().map(coin => ({
+           id: coin,
+           text: coin.toUpperCase(),
+           img: this.getIcon(coin)
+        }));
+      }
     },
     loadPortfolio() {
       const stored = localStorage.getItem('vuecoin_portfolio');
@@ -437,4 +452,32 @@ body.dark-mode .asset-row:hover {
   background: var(--current-border);
   border-radius: 10px;
 }
+
+/* Select2 sizing to match form-control-lg */
+.select2-lg .select2-container--default .select2-selection--single {
+  height: 48px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--current-border) !important;
+  background-color: var(--current-card-bg) !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.select2-lg .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 30px !important;
+  padding-left: 0 !important;
+  color: inherit !important;
+}
+
+.select2-lg .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 46px !important;
+}
+
+/* Input group dark mode */
+body.dark-mode .input-group-text.theme-input-minimal {
+  background-color: var(--current-card-bg) !important;
+  color: inherit !important;
+}
+
 </style>
