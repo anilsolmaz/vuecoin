@@ -3,7 +3,7 @@
     <h6 class="header" style="margin-bottom:2px">
       <img class="coinBoxImage" :style="{ width: (customFontSize * 25) + 'px', height: (customFontSize * 25) + 'px' }" :src="coinImageSource" @error="handleImageError">
       <b>{{ coinName.toUpperCase() }}</b>
-      <span v-if="forceShowROI || coinData.ROI >= minROI" style="font-size:0.7em">{{ formatNumber(coinData.ROI, 2) > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
+      <span v-if="forceShowROI || coinData.ROI >= minROI" style="font-size:0.7em">{{ coinData.ROI > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
       <span v-if="dealDuration > 0" class="deal-timer" :title="'In Top Deals for ' + formatDuration(dealDuration)">{{ formatDuration(dealDuration) }}</span>
     </h6>
     <div v-if="isExpanded">
@@ -198,9 +198,15 @@ export default {
       //   this.isExpanded = true;
       // }
     },
-    formatNumber(value, fraction) {
-      let answer = Number(value).toFixed(fraction);
-      return answer;
+    formatNumber(value, fraction = 2) {
+      const val = parseFloat(value);
+      if (isNaN(val)) return "0.00";
+      const f = parseInt(fraction);
+      const safeF = isNaN(f) ? 2 : Math.min(Math.max(f, 0), 20);
+      return val.toLocaleString('en-US', { 
+        minimumFractionDigits: safeF, 
+        maximumFractionDigits: safeF 
+      });
     },
     formatDuration(seconds) {
       if (seconds < 60) return seconds + 's';

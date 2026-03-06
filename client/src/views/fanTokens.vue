@@ -111,8 +111,14 @@ export default {
     },
 
     formatNumber (value,fraction) {
-      let answer = Number(value).toFixed(fraction)
-      return answer
+      const val = parseFloat(value);
+      if (isNaN(val)) return "0.00";
+      const f = parseInt(fraction);
+      const safeF = isNaN(f) ? 2 : Math.min(Math.max(f, 0), 20);
+      return val.toLocaleString('en-US', { 
+        minimumFractionDigits: safeF, 
+        maximumFractionDigits: safeF 
+      });
     },
     formatName (name) {
       return name.toUpperCase().split('-')[0]

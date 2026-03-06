@@ -371,9 +371,15 @@
          }
          return 0;
       },
-      formatNumber(value, fraction) {
-        if (!value) return "0.00";
-        return Number(value).toLocaleString('en-US', { minimumFractionDigits: fraction, maximumFractionDigits: fraction });
+      formatNumber(value, fraction = 2) {
+        const val = parseFloat(value);
+        if (isNaN(val)) return "0.00";
+        const f = parseInt(fraction);
+        const safeF = isNaN(f) ? 2 : Math.min(Math.max(f, 0), 20);
+        return val.toLocaleString('en-US', { 
+          minimumFractionDigits: safeF, 
+          maximumFractionDigits: safeF 
+        });
       },
       log(event) {
         console.log(event)
