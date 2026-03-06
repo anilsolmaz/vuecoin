@@ -11,20 +11,22 @@
             <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">My Portfolio</h4>
             <span class="small text-muted">Track your holdings in real-time</span>
           </div>
-          <span v-if="currentProfile" class="badge bg-success bg-opacity-75 rounded-pill px-3 py-2 d-flex align-items-center gap-1 small">
-             <i class="bi bi-cloud-check"></i> {{ currentProfile }}
-          </span>
        </div>
-       <div class="col-auto d-flex gap-2">
-          <button v-if="currentProfile" @click="deleteProfile" class="btn btn-sm btn-outline-danger rounded-pill px-3 d-flex align-items-center gap-2">
-             <i class="bi bi-trash"></i><span class="d-none d-sm-inline fw-bold small">Delete</span>
-          </button>
-          <button @click="showRetrieveModal = true" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-flex align-items-center gap-2">
-             <i class="bi bi-cloud-download"></i><span class="d-none d-sm-inline fw-bold small">Retrieve</span>
-          </button>
-          <button @click="onSaveClick" class="btn btn-sm btn-portfolio rounded-pill px-3 d-flex align-items-center gap-2">
-             <i class="bi bi-cloud-upload text-white"></i><span class="d-none d-sm-inline fw-bold small text-white">Save</span>
-          </button>
+       <div class="col-auto d-flex align-items-center gap-2">
+          <template v-if="currentProfile">
+             <span class="fw-bold small me-1"><i class="bi bi-cloud-check text-success me-1"></i>{{ currentProfile }}</span>
+             <button @click="deleteProfile" class="btn btn-sm btn-outline-danger rounded-pill px-3 d-flex align-items-center gap-1">
+                <i class="bi bi-trash"></i><span class="d-none d-sm-inline small">Delete</span>
+             </button>
+          </template>
+          <template v-else>
+             <button @click="showRetrieveModal = true" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-flex align-items-center gap-2">
+                <i class="bi bi-cloud-download"></i><span class="d-none d-sm-inline fw-bold small">Retrieve</span>
+             </button>
+             <button @click="onSaveClick" class="btn btn-sm btn-portfolio rounded-pill px-3 d-flex align-items-center gap-2">
+                <i class="bi bi-cloud-upload text-white"></i><span class="d-none d-sm-inline fw-bold small text-white">Save</span>
+             </button>
+          </template>
        </div>
     </div>
 
@@ -80,7 +82,7 @@
              </div>
              <div v-if="coinPickerOpen && filteredCoins.length > 0" class="coin-dropdown shadow-lg border" ref="coinDropdown">
                 <div
-                   v-for="(coin, idx) in filteredCoins.slice(0, 40)"
+                   v-for="(coin, idx) in filteredCoins"
                    :key="coin"
                    class="coin-dropdown-item"
                    :class="{ 'dropdown-highlighted': idx === highlightIndex }"
@@ -135,10 +137,9 @@
                   <thead>
                      <tr class="text-muted small text-uppercase" style="letter-spacing: 1px;">
                         <th class="ps-0 pb-3">Asset</th>
-                        <th class="text-end pb-3">Buy Price</th>
-                        <th class="text-end pb-3">Current Price</th>
                         <th class="text-end pb-3">Cost</th>
-                        <th class="text-end pb-3">Value</th>
+                        <th class="text-end pb-3">Current Price</th>
+                        <th class="text-end pb-3">Current Value</th>
                         <th class="text-end pb-3">PnL</th>
                         <th class="text-end pe-0 pb-3"></th>
                      </tr>
@@ -155,23 +156,23 @@
                            </div>
                         </td>
                         <td class="text-end py-3">
-                           <div v-if="item.avgPrice" class="fw-bold">{{ fmtPrice(item.avgPrice) }} $</div>
+                           <div v-if="item.avgPrice">
+                              <div class="fw-bold text-nowrap">{{ fmtPrice(item.avgPrice) }}<small class="ms-1 opacity-75">$</small></div>
+                              <div class="small text-muted text-nowrap">~{{ formatNumber(item.avgPrice * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
+                           </div>
                            <div v-else class="text-muted opacity-50">—</div>
                         </td>
                         <td class="text-end py-3">
-                           <div class="fw-bold">{{ fmtPrice(getCurrentPrice(item.coin)) }} $</div>
-                           <div class="small text-muted">~{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }} ₺</div>
+                           <div class="fw-bold text-nowrap">{{ fmtPrice(getCurrentPrice(item.coin)) }}<small class="ms-1 opacity-75">$</small></div>
+                           <div class="small text-muted text-nowrap">~{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
                         </td>
                         <td class="text-end py-3">
-                           <div v-if="item.avgPrice" class="fw-bold">{{ formatNumber(item.amount * item.avgPrice, 2) }} $</div>
-                           <div v-else class="text-muted opacity-50">—</div>
-                        </td>
-                        <td class="text-end py-3">
-                           <div class="fw-bold">{{ formatNumber(item.amount * getCurrentPrice(item.coin), 2) }} $</div>
+                           <div class="fw-bold text-nowrap">{{ formatNumber(item.amount * getCurrentPrice(item.coin), 2) }}<small class="ms-1 opacity-75">$</small></div>
+                           <div class="small text-muted text-nowrap">~{{ formatNumber(item.amount * getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
                         </td>
                         <td class="text-end py-3">
                            <div v-if="item.avgPrice" :class="getPnLClass(item)">
-                              <div class="fw-bold">{{ getPnLValue(item, true) }} $</div>
+                              <div class="fw-bold text-nowrap">{{ getPnLValue(item, true) }}<small class="ms-1 opacity-75">$</small></div>
                               <div class="small font-monospace">{{ getPnLPercentage(item) }}%</div>
                            </div>
                            <div v-else class="text-muted opacity-50">—</div>
@@ -352,6 +353,8 @@ export default defineComponent({
       this.newAsset.amount = null;
       this.newAsset.avgPrice = null;
       this.coinSearch = this.newAsset.coin.toUpperCase();
+      // Focus back to coin search
+      this.$nextTick(() => { this.$refs.coinSearchInput?.focus(); });
     },
     removeAsset(index) {
        this.portfolio.splice(index, 1);
@@ -438,7 +441,7 @@ export default defineComponent({
       }, 200);
     },
     highlightMove(dir) {
-      const max = Math.min(this.filteredCoins.length, 40) - 1;
+      const max = Math.min(this.filteredCoins.length, 200) - 1;
       this.highlightIndex = Math.max(0, Math.min(max, this.highlightIndex + dir));
       // Scroll into view
       this.$nextTick(() => {
@@ -450,7 +453,7 @@ export default defineComponent({
       });
     },
     confirmHighlighted() {
-      const visible = this.filteredCoins.slice(0, 40);
+      const visible = this.filteredCoins;
       if (visible.length > 0 && this.highlightIndex < visible.length) {
         this.selectCoin(visible[this.highlightIndex]);
       }
@@ -480,8 +483,8 @@ export default defineComponent({
           data: this.portfolio
         });
         this.currentProfile = this.profileName;
-        this.saveMsg = resp.data.message || 'Saved!';
         this.savePortfolio();
+        this.showSaveModal = false;
       } catch (e) {
         this.saveMsg = 'Error saving: ' + (e.response?.data?.error || e.message);
       }
@@ -495,7 +498,7 @@ export default defineComponent({
           this.portfolio = resp.data;
           this.currentProfile = this.retrieveName;
           this.savePortfolio();
-          this.retrieveMsg = `Portfolio "${this.retrieveName}" loaded (${resp.data.length} assets)`;
+          this.showRetrieveModal = false;
         } else {
           this.retrieveError = true;
           this.retrieveMsg = 'Invalid portfolio data format';
