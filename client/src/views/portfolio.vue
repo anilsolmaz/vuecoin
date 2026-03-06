@@ -195,7 +195,7 @@
       <div class="modal-card p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw;">
         <h5 class="fw-bold mb-3"><i class="bi bi-cloud-upload me-2" style="color:#dc3545"></i>Save Portfolio</h5>
         <p class="small text-muted">Enter a name to save your portfolio to the cloud.</p>
-        <input v-model="profileName" class="form-control form-control-lg theme-input-minimal mb-3" placeholder="my_portfolio">
+        <input ref="saveInput" v-model="profileName" class="form-control form-control-lg theme-input-minimal mb-3" placeholder="my_portfolio" @keydown.enter="profileName && saveProfile()">
         <div class="d-flex gap-2">
            <button @click="showSaveModal = false" class="btn btn-outline-secondary flex-grow-1 rounded-pill">Cancel</button>
            <button @click="saveProfile" :disabled="!profileName" class="btn add-btn flex-grow-1 rounded-pill fw-bold">Save</button>
@@ -209,7 +209,7 @@
       <div class="modal-card p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw;">
         <h5 class="fw-bold mb-3"><i class="bi bi-cloud-download me-2" style="color:#dc3545"></i>Retrieve Portfolio</h5>
         <p class="small text-muted">Enter the name you used to save your portfolio.</p>
-        <input v-model="retrieveName" class="form-control form-control-lg theme-input-minimal mb-3" placeholder="my_portfolio">
+        <input ref="retrieveInput" v-model="retrieveName" class="form-control form-control-lg theme-input-minimal mb-3" placeholder="my_portfolio" @keydown.enter="retrieveName && retrieveProfile()">
         <div class="d-flex gap-2">
            <button @click="showRetrieveModal = false" class="btn btn-outline-secondary flex-grow-1 rounded-pill">Cancel</button>
            <button @click="retrieveProfile" :disabled="!retrieveName" class="btn add-btn flex-grow-1 rounded-pill fw-bold">Retrieve</button>
@@ -273,6 +273,14 @@ export default defineComponent({
     },
     totalBalanceTry() {
       return this.totalBalanceUsdt * this.calculatedUsdtRate;
+    }
+  },
+  watch: {
+    showSaveModal(val) {
+      if (val) this.$nextTick(() => this.$refs.saveInput?.focus());
+    },
+    showRetrieveModal(val) {
+      if (val) this.$nextTick(() => this.$refs.retrieveInput?.focus());
     }
   },
   mounted() {
