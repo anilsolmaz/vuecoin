@@ -418,10 +418,18 @@ export default defineComponent({
         return require(`@/assets/coins/noimage.png`);
       }
     },
-    formatNumber(value) {
+    formatNumber(value, forceFraction = null) {
       const val = parseFloat(value);
       if (isNaN(val)) return "0";
       
+      if (forceFraction !== null && !isNaN(parseInt(forceFraction))) {
+          const f = parseInt(forceFraction);
+          return val.toLocaleString('en-US', { 
+            minimumFractionDigits: f, 
+            maximumFractionDigits: f 
+          });
+      }
+
       let maxF = 4;
       const absVal = Math.abs(val);
 
