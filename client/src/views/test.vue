@@ -46,12 +46,14 @@
 
                <!-- Balance Card -->
                <div class="d-flex align-items-center gap-2 portfolio-balance-card rounded-pill px-3 shadow-sm balance-header">
-                  <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
-                  <div class="d-flex align-items-center gap-2">
+                  <div class="d-flex align-items-center gap-2 text-decoration-none" style="cursor: pointer;" @click="$router.push('/portfolio')" title="View Portfolio">
+                     <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
                      <span class="fw-bold small theme-text mb-0">
                         {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : (USDTMode ? '***,***.**$' : '***,***.**₺') }}
                      </span>
-                     <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-50 hover-opacity-100">
+                  </div>
+                  <div class="ms-1">
+                     <button @click.stop="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-50 hover-opacity-100">
                         <i :class="showBalance ? 'bi bi-eye' : 'bi bi-eye-slash'" style="font-size: 0.9rem;"></i>
                      </button>
                   </div>
@@ -124,13 +126,13 @@
 
                   <!-- Balance Card -->
                   <div class="d-flex align-items-center justify-content-between gap-2 bg-dark-soft rounded-4 p-3 border shadow-sm">
-                     <div class="d-flex align-items-center gap-2">
+                     <div class="d-flex align-items-center gap-2 text-decoration-none" style="cursor: pointer;" @click="$router.push('/portfolio')" title="View Portfolio">
                         <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
                         <span class="fw-bold small theme-text">
                            {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : (USDTMode ? '***,***.**$' : '***,***.**₺') }}
                         </span>
                      </div>
-                     <button @click="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75">
+                     <button @click.stop="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75">
                         <i :class="showBalance ? 'bi bi-eye' : 'bi bi-eye-slash'" style="font-size: 1.1rem;"></i>
                      </button>
                   </div>
