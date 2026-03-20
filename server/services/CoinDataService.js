@@ -782,52 +782,89 @@ class CoinDataService {
     logTopOpportunities() {
         let sameExchangeOpportunities = [];
         let crossExchangeOpportunities = [];
+        let paribuOpportunities = [];
 
         Object.keys(this.coinList).forEach(key => {
             const details = this.coinList[key].arbitrageDetails;
             if (!details) return;
 
             if (details.cross) {
-                crossExchangeOpportunities.push({ coin: key, ...details.cross });
+                const isParibu = details.cross.buyExchange.includes('Paribu') || details.cross.sellExchange.includes('Paribu');
+                if (isParibu) {
+                    paribuOpportunities.push({ coin: key, ...details.cross, isSameExchange: false });
+                } else {
+                    crossExchangeOpportunities.push({ coin: key, ...details.cross });
+                }
             }
             if (details.intra) {
-                sameExchangeOpportunities.push({ coin: key, ...details.intra });
+                const isParibu = details.intra.buyExchange.includes('Paribu');
+                if (isParibu) {
+                    paribuOpportunities.push({ coin: key, ...details.intra, isSameExchange: true });
+                } else {
+                    sameExchangeOpportunities.push({ coin: key, ...details.intra });
+                }
             }
         });
 
         // --- SAME-EXCHANGE: Apply ROI and Min Profit filters ---
-        const intraMinROI = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
-        const intraMinProfit = (this.settings.intraMinProfit !== undefined) ? this.settings.intraMinProfit : 100;
+        if (this.settings.intraEnabled !== false) {
+            const intraMinROI = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
+            const intraMinProfit = (this.settings.intraMinProfit !== undefined) ? this.settings.intraMinProfit : 100;
 
-        const sameExchangeFiltered = sameExchangeOpportunities.filter(o =>
-            o.roi >= intraMinROI &&
-            o.profit >= intraMinProfit &&
-            this.getBaseExchange(o.buyExchange) !== 'Binance'
-        );
+            const sameExchangeFiltered = sameExchangeOpportunities.filter(o =>
+                o.roi >= intraMinROI &&
+                o.profit >= intraMinProfit &&
+                this.getBaseExchange(o.buyExchange) !== 'Binance'
+            );
 
-        sameExchangeFiltered.sort((a, b) => b.profit - a.profit);
-        sameExchangeFiltered.forEach((op) => {
-            this.checkAndSendTelegramAlert(op, true);
-        });
+            sameExchangeFiltered.sort((a, b) => b.profit - a.profit);
+            sameExchangeFiltered.forEach((op) => {
+                this.checkAndSendTelegramAlert(op, true);
+            });
+        }
 
         // --- CROSS-EXCHANGE: Apply ROI and Min Profit filters ---
-        const crossMinROI = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.50;
-        const crossMinProfit = (this.settings.crossMinProfit !== undefined) ? this.settings.crossMinProfit : 1000;
+        if (this.settings.crossEnabled !== false) {
+            const crossMinROI = (this.settings.crossMinROI !== undefined) ? this.settings.crossMinROI : 0.50;
+            const crossMinProfit = (this.settings.crossMinProfit !== undefined) ? this.settings.crossMinProfit : 1000;
 
-        const filteredCross = crossExchangeOpportunities.filter(o =>
-            o.roi >= crossMinROI &&
-            o.profit >= crossMinProfit
-        );
+            const filteredCross = crossExchangeOpportunities.filter(o =>
+                o.roi >= crossMinROI &&
+                o.profit >= crossMinProfit
+            );
 
-        filteredCross.sort((a, b) => b.profit - a.profit);
-        const top3 = filteredCross.slice(0, 3);
+            filteredCross.sort((a, b) => b.profit - a.profit);
+            const top3 = filteredCross.slice(0, 3);
 
-        top3.forEach((op) => {
-            this.checkAndSendTelegramAlert(op, false);
-        });
+            top3.forEach((op) => {
+                this.checkAndSendTelegramAlert(op, false);
+            });
+        }
+
+        // --- PARIBU DEALS: Apply ROI and Min Profit filters ---
+        if (this.settings.paribuEnabled !== false) {
+            const paribuMinROI = (this.settings.paribuMinROI !== undefined) ? this.settings.paribuMinROI : 0;
+            const paribuMinProfit = (this.settings.paribuMinProfit !== undefined) ? this.settings.paribuMinProfit : 50;
+
+            const filteredParibu = paribuOpportunities.filter(o =>
+                o.roi >= paribuMinROI &&
+                o.profit >= paribuMinProfit
+            );
+
+            filteredParibu.sort((a, b) => b.profit - a.profit);
+            const paribuTop3 = filteredParibu.slice(0, 3);
+
+            paribuTop3.forEach((op) => {
+                this.checkAndSendTelegramAlert(op, op.isSameExchange);
+            });
+        }
     }
 
     async checkAndSendTelegramAlert(op, isSameExchange = false) {
+        if (this.settings.blockedCoins && this.settings.blockedCoins.includes(op.coin.toLowerCase())) {
+            return; // Exit earlier if coin is blocked
+        }
+
         let now = Date.now();
 
         // Use global cooldown from settings
