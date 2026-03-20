@@ -1,5 +1,13 @@
 const db = require("../db");
 const axios = require("axios");
+
+// Add global axios timeout and User-Agent to prevent indefinite network hangs (Required for Paribu)
+axios.interceptors.request.use(config => {
+    config.timeout = 10000; 
+    config.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 VueCoinBot/1.0';
+    return config;
+});
+
 const fs = require("fs");
 const { DateTime } = require("luxon");
 const redis = require("redis");

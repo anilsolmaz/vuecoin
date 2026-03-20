@@ -35,7 +35,7 @@
           
           <!-- Sub-navigation for Scanner -->
           <div v-if="activeSection.startsWith('scanner')" class="ps-4 mt-1 d-none d-lg-block">
-            <button v-for="sub in [{id:'scanner-cross', label:'Cross-Exchange Arbitrage'}, {id:'scanner-intra', label:'Same-Exchange Arbitrage'}]"
+            <button v-for="sub in [{id:'scanner-cross', label:'Cross-Exchange Arbitrage'}, {id:'scanner-intra', label:'Same-Exchange Arbitrage'}, {id:'scanner-paribu', label:'Paribu Deals'}, {id:'scanner-blocked', label:'Blocked Coins'}]"
                     :key="sub.id"
                     @click="scrollToSection(sub.id)"
                     class="btn btn-sm w-100 text-start border-0 py-2 text-muted transition hover-danger small">
@@ -288,6 +288,78 @@
                 </div>
               </div>
             </div>
+            <!-- Paribu Deals Section -->
+            <div id="scanner-paribu" class="mb-5 sub-section-box p-4 rounded-4 shadow-sm">
+              <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div class="d-flex align-items-center">
+                  <div class="sub-icon-circle bg-danger-subtle me-3">
+                    <i class="bi bi-star-fill text-danger fs-5"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Paribu Deals</h6>
+                  </div>
+                </div>
+                <div class="form-check form-switch custom-switch">
+                  <input class="form-check-input fs-4" type="checkbox" role="switch" id="paribuEnabledSwitch" v-model="settings.paribuEnabled">
+                  <label class="form-check-label ms-2 small fw-bold text-secondary mt-1" for="paribuEnabledSwitch">
+                    {{ settings.paribuEnabled ? 'ENABLED' : 'DISABLED' }}
+                  </label>
+                </div>
+              </div>
+              <div class="row g-4 ps-md-3" :class="{'opacity-50 pointer-events-none': !settings.paribuEnabled}">
+                <div class="col-md-6">
+                  <div class="form-group custom-input-group">
+                    <label class="form-label fw-bold small text-secondary">MINIMUM ARBITRAGE ROI (%)</label>
+                    <div class="input-group border-bottom">
+                      <input type="number" step="0.1" v-model="settings.paribuMinROI" class="form-control border-0 bg-transparent theme-input" :required="settings.paribuEnabled">
+                      <span class="input-group-text text-muted border-0 bg-transparent theme-unit">%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group custom-input-group">
+                    <label class="form-label fw-bold small text-secondary">MINIMUM PROFIT YIELD</label>
+                    <div class="input-group border-bottom">
+                      <span class="input-group-text text-muted border-0 bg-transparent theme-unit">₺</span>
+                      <input type="number" step="10" v-model="settings.paribuMinProfit" class="form-control border-0 bg-transparent theme-input" :required="settings.paribuEnabled">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Blocked Coins Section -->
+            <div id="scanner-blocked" class="mb-2 sub-section-box p-4 rounded-4 shadow-sm">
+              <div class="d-flex align-items-center border-bottom pb-3 mb-4">
+                <div class="sub-icon-circle bg-danger-subtle me-3">
+                  <i class="bi bi-slash-circle text-danger fs-5"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-0 text-uppercase tracking-wider theme-text">Blocked Coins</h6>
+                  <p class="form-text mb-0 mt-1">These coins will not trigger any Telegram notifications.</p>
+                </div>
+              </div>
+              
+              <div class="row g-4 ps-md-3">
+                <div class="col-md-12">
+                   <div class="d-flex flex-wrap gap-2 mb-3">
+                     <div v-for="(coin, index) in settings.blockedCoins" :key="'block-'+index" class="badge bg-secondary d-flex align-items-center py-2 px-3 fw-medium fs-6 shadow-sm">
+                       <span class="text-uppercase">{{ coin }}</span>
+                       <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.65em" @click="removeBlockedCoin(index)"></button>
+                     </div>
+                     <div v-if="!settings.blockedCoins || settings.blockedCoins.length === 0" class="text-muted small fst-italic py-2">No coins are currently blocked.</div>
+                   </div>
+                   
+                   <div class="mt-2 d-flex gap-2" style="max-width: 400px">
+                     <div class="input-group shadow-sm rounded">
+                       <span class="input-group-text border-end-0" style="background: var(--input-bg, #fff); border-color: var(--border-color, #dee2e6)"><i class="bi bi-x-circle text-muted"></i></span>
+                       <input type="text" v-model="newBlockedCoinAdd" class="form-control theme-input border-start-0 ps-0" placeholder="Type coin symbol (e.g. eth)">
+                       <button type="button" class="btn btn-secondary fw-bold px-4" @click="addBlockedCoin">BLOCK</button>
+                     </div>
+                   </div>
+                </div>
+              </div>
+            </div>
           </div>
         </form>
 
@@ -323,9 +395,14 @@ export default {
         intraMinProfit: 100,
         intraCooldown: 5,
         topCoins: ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib'],
-        topDealsCount: 10
+        topDealsCount: 10,
+        blockedCoins: [],
+        paribuEnabled: true,
+        paribuMinROI: 0,
+        paribuMinProfit: 50
       },
       newCoinAdd: '',
+      newBlockedCoinAdd: '',
       saving: false,
       message: '',
       messageType: 'success',
@@ -377,7 +454,7 @@ export default {
       document.body.classList.toggle('dark-mode', isDark);
     },
     handleScroll(event) {
-      const sections = ['general', 'general-theme', 'general-dashboard', 'general-pinned', 'scanner', 'scanner-cross', 'scanner-intra'];
+      const sections = ['general', 'general-theme', 'general-dashboard', 'general-pinned', 'scanner', 'scanner-cross', 'scanner-intra', 'scanner-paribu', 'scanner-blocked'];
       const scrollPos = event.target.scrollTop + 200;
       
       sections.forEach(section => {
@@ -409,6 +486,23 @@ export default {
           this.saveSettings();
         }
         this.newCoinAdd = '';
+      }
+    },
+    removeBlockedCoin(index) {
+      if(this.settings.blockedCoins) {
+        this.settings.blockedCoins.splice(index, 1);
+        this.saveSettings();
+      }
+    },
+    addBlockedCoin() {
+      if (this.newBlockedCoinAdd && this.newBlockedCoinAdd.trim() !== '') {
+        const coin = this.newBlockedCoinAdd.trim().toLowerCase();
+        if (!this.settings.blockedCoins) this.settings.blockedCoins = [];
+        if (!this.settings.blockedCoins.includes(coin)) {
+          this.settings.blockedCoins.push(coin);
+          this.saveSettings();
+        }
+        this.newBlockedCoinAdd = '';
       }
     }
   },
