@@ -1,6 +1,7 @@
 const fs = require('fs');
+const path = require('path');
 
-const framesCount = 100;
+const framesCount = 200;
 const frames = [];
 
 const usdtTryBase = 35.5;
@@ -32,20 +33,30 @@ const baseCoins = {
     fet: { priceUsd: 2.1 }
 };
 
-// Generate an additional ~80 plausible crypto ticker names
-const extraTickers = ["LTC", "BCH", "UNI", "ICP", "APT", "XLM", "HBAR", "CRO", "VET", "QNT", "MKR", "AAVE", "OP", "SNX", "GRT", "RNDR", "EGLD", "STX", "THETA", "EOS", "IMX", "XTZ", "MANA", "AXS", "SAND", "CRV", "MINA", "NEO", "KAVA", "GALA", "CHZ", "IOTA", "KLAY", "FLOW", "ZIL", "CAKE", "CFX", "XEC", "GMX", "DYDX", "SUI", "SEI", "TIA", "PYTH", "RON", "AGIX", "ORDI", "1INCH", "COMP", "ROSE", "KSM", "ZRX", "BAT", "WLD", "JTO", "BEAM", "BLUR", "ONDO", "SUPER", "W", "MEME", "STRK", "MANTA", "ALT", "PIXEL", "XAI", "AEVO", "METIS", "PORTAL", "ILV", "YGG", "MAGIC", "PENDLE", "DOG", "NOT", "PEOPLE", "TRB", "UMA"];
+// Automap coins natively from assets directory
+const iconPath = path.join(__dirname, '../../client/src/assets/coins');
+let validIcons = [];
+try {
+    const allIcons = fs.readdirSync(iconPath);
+    validIcons = allIcons.map(f => f.replace(/\.png$/i, '')).filter(x => !['noimage', 'undefined', 'try'].includes(x));
+} catch(e) {
+    console.error("Could not read coin icons, fallback empty array", e);
+}
 
-extraTickers.forEach(ticker => {
-    const symbol = ticker.toLowerCase();
-    if (!baseCoins[symbol]) {
-        baseCoins[symbol] = { priceUsd: +(Math.random() * 50 + 0.05).toFixed(4) };
+// Add native icons to list until hitting ~200
+for (const icon of validIcons) {
+    if (!baseCoins[icon] && Object.keys(baseCoins).length < 200) {
+        baseCoins[icon] = { priceUsd: +(Math.random() * 50 + 0.05).toFixed(4) };
     }
-});
+}
 
-let simIndex = 1;
-while(Object.keys(baseCoins).length < 200) {
-    baseCoins[`sim${simIndex}`] = { priceUsd: +(Math.random() * 10 + 0.01).toFixed(4) };
-    simIndex++;
+// In case icons directory failed to provide 200, pad rest with popular names
+const fallback = ["LTC", "BCH", "UNI", "ICP", "APT", "XLM", "HBAR", "CRO", "VET", "QNT", "MKR", "AAVE", "OP", "SNX", "GRT", "RNDR", "EGLD", "STX", "THETA", "EOS", "IMX", "XTZ", "MANA", "AXS", "SAND", "CRV", "MINA", "NEO", "KAVA", "GALA", "CHZ", "IOTA", "KLAY", "FLOW", "ZIL", "CAKE", "CFX", "XEC", "GMX", "DYDX", "SUI", "SEI", "TIA", "PYTH", "RON", "AGIX", "ORDI", "1INCH"];
+for(const ticker of fallback) {
+    const sym = ticker.toLowerCase();
+    if (!baseCoins[sym] && Object.keys(baseCoins).length < 200) {
+        baseCoins[sym] = { priceUsd: +(Math.random() * 50 + 0.05).toFixed(4) };
+    }
 }
 
 let currentState = {};
@@ -101,7 +112,7 @@ for (let i = 0; i < framesCount; i++) {
         const bUsdtPrice = roundPrice(binanceUsdtPrice);
 
         frame[coin] = {
-            ROI: 0,
+            ROI: +(Math.random() * 2).toFixed(2), // Baseline random low ROI
             binance: {
                 usdt: { 
                     price: bUsdtPrice, 
@@ -112,19 +123,17 @@ for (let i = 0; i < framesCount; i++) {
             }
         };
 
-        // Determine which Turkish exchanges carry this coin
+        // UI natively parses 'paribu', 'binance', and 'BTCTurk' EXACTLY. (Case sensitive).
         const activeExchanges = ['paribu'];
-        if (Math.random() > 0.3) activeExchanges.push('btcturk');
-        if (Math.random() > 0.6) activeExchanges.push('chiliz');
+        if (Math.random() > 0.4) activeExchanges.push('BTCTurk');
 
-        // Always ensure some coins have full spread
-        if (['btc', 'eth', 'usdt', 'doge', 'pepe', 'sevilla', 'jup'].includes(coin)) {
-            if (!activeExchanges.includes('btcturk')) activeExchanges.push('btcturk');
-            if (!activeExchanges.includes('chiliz')) activeExchanges.push('chiliz');
+        // Always ensure some coins have full spread across both Turkish exchanges
+        if (['btc', 'eth', 'usdt', 'doge', 'pepe', 'sevilla', 'jup', 'chz'].includes(coin)) {
+            if (!activeExchanges.includes('BTCTurk')) activeExchanges.push('BTCTurk');
         }
 
+        // Generate deal attributes for the assigned exchanges
         activeExchanges.forEach(exch => {
-            // slightly vary premium per exchange to create multiple deals
             const exchPremium = currentState[coin].paribuPremium + (Math.random() - 0.5) * 0.005;
             let exchUsdtPrice = binanceUsdtPrice * (1 + exchPremium);
             let exchTryPrice = exchUsdtPrice * currentUsdtTry;
@@ -147,6 +156,12 @@ for (let i = 0; i < framesCount; i++) {
                 }
             };
         });
+
+        // The dashboard selects top deals utilizing explicit .ROI value directly out of the frame.
+        // If it's a huge premium artificially set, override the ROI explicitly so it rockets to the top.
+        if (currentState[coin].paribuPremium > 0.02) {
+             frame[coin].ROI = +(currentState[coin].paribuPremium * 100).toFixed(2);
+        }
     }
     frames.push(frame);
 }
@@ -159,7 +174,6 @@ const mockDataObj = {
     frames: frames
 };
 
-const path = require('path');
 const outPath = path.join(__dirname, '../../client/public/mockData.json');
 fs.writeFileSync(outPath, JSON.stringify(mockDataObj, null, 2));
 console.log(`Mock data generated successfully for ${Object.keys(baseCoins).length} coins at ${outPath}`);

@@ -356,6 +356,16 @@
              this.portfolio = [];
            }
         }
+        
+        if (this.portfolio.length === 0 && this.isDemoMode) {
+            this.portfolio = [
+               { coin: 'btc', amount: 0.15, avgPrice: 62000 },
+               { coin: 'eth', amount: 2.5, avgPrice: 3200 },
+               { coin: 'doge', amount: 15000, avgPrice: 0.11 }
+            ];
+            localStorage.setItem('vuecoin_portfolio', JSON.stringify(this.portfolio));
+        }
+
         this.currentProfile = localStorage.getItem('vuecoin_current_profile') || null;
       },
       exitProfile() {
