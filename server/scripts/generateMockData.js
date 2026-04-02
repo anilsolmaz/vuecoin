@@ -38,7 +38,10 @@ const iconPath = path.join(__dirname, '../../client/src/assets/coins');
 let validIcons = [];
 try {
     const allIcons = fs.readdirSync(iconPath);
-    validIcons = allIcons.map(f => f.replace(/\.png$/i, '')).filter(x => !['noimage', 'undefined', 'try'].includes(x));
+    validIcons = allIcons
+        .filter(f => f.endsWith('.png') && !f.includes('-') && f.length < 20)
+        .map(f => f.replace(/\.png$/i, ''))
+        .filter(x => !['noimage', 'undefined', 'try'].includes(x));
 } catch(e) {
     console.error("Could not read coin icons, fallback empty array", e);
 }
