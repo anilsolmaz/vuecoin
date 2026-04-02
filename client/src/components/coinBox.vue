@@ -142,23 +142,31 @@ export default {
           }
       };
 
-      // Check Paribu (TRY & USDT)
-      if (item?.paribu?.try?.ask) checkBuy(item.paribu.try.ask, 'paribu', item.paribu.try.ask, '₺');
-      if (item?.paribu?.try?.bid) checkSell(item.paribu.try.bid, 'paribu', item.paribu.try.bid, '₺');
-      if (item?.paribu?.usdt?.askInTRY) checkBuy(item.paribu.usdt.askInTRY, 'paribu', item.paribu.usdt.ask, '$');
-      if (item?.paribu?.usdt?.bidInTRY) checkSell(item.paribu.usdt.bidInTRY, 'paribu', item.paribu.usdt.bid, '$');
+      // Dynamically check all exchanges in the data node
+      Object.keys(item).forEach(exchange => {
+          if (exchange === 'ROI') return;
 
-      // Check Binance (TRY & USDT)
-      if (item?.binance?.try?.ask) checkBuy(item.binance.try.ask, 'binance', item.binance.try.ask, '₺');
-      if (item?.binance?.try?.bid) checkSell(item.binance.try.bid, 'binance', item.binance.try.bid, '₺');
-      if (item?.binance?.usdt?.askInTRY) checkBuy(item.binance.usdt.askInTRY, 'binance', item.binance.usdt.ask, '$');
-      if (item?.binance?.usdt?.bidInTRY) checkSell(item.binance.usdt.bidInTRY, 'binance', item.binance.usdt.bid, '$');
+          const exchData = item[exchange];
+          // Check TRY market
+          if (exchData?.try?.ask) checkBuy(exchData.try.ask, exchange, exchData.try.ask, '₺');
+          if (exchData?.try?.bid) checkSell(exchData.try.bid, exchange, exchData.try.bid, '₺');
+          
+          // Check USDT market
+          if (exchData?.usdt?.askInTRY) {
+              checkBuy(exchData.usdt.askInTRY, exchange, exchData.usdt.ask, '$');
+          } else if (exchData?.usdt?.ask) {
+              // Fallback for cases where USDT price is provided but not already converted to TRY in the JSON
+              const usdtTryRate = item.usdt?.paribu?.try?.price || 35.5; 
+              checkBuy(exchData.usdt.ask * usdtTryRate, exchange, exchData.usdt.ask, '$');
+          }
 
-      // Check BTCTurk (TRY & USDT)
-      if (item?.BTCTurk?.try?.ask) checkBuy(item.BTCTurk.try.ask, 'BTCTurk', item.BTCTurk.try.ask, '₺');
-      if (item?.BTCTurk?.try?.bid) checkSell(item.BTCTurk.try.bid, 'BTCTurk', item.BTCTurk.try.bid, '₺');
-      if (item?.BTCTurk?.usdt?.askInTRY) checkBuy(item.BTCTurk.usdt.askInTRY, 'BTCTurk', item.BTCTurk.usdt.ask, '$');
-      if (item?.BTCTurk?.usdt?.bidInTRY) checkSell(item.BTCTurk.usdt.bidInTRY, 'BTCTurk', item.BTCTurk.usdt.bid, '$');
+          if (exchData?.usdt?.bidInTRY) {
+              checkSell(exchData.usdt.bidInTRY, exchange, exchData.usdt.bid, '$');
+          } else if (exchData?.usdt?.bid) {
+              const usdtTryRate = item.usdt?.paribu?.try?.price || 35.5; 
+              checkSell(exchData.usdt.bid * usdtTryRate, exchange, exchData.usdt.bid, '$');
+          }
+      });
 
       // Sort
       bids.sort((a, b) => b.priceTRY - a.priceTRY);
