@@ -38,10 +38,15 @@ const extraTickers = ["LTC", "BCH", "UNI", "ICP", "APT", "XLM", "HBAR", "CRO", "
 extraTickers.forEach(ticker => {
     const symbol = ticker.toLowerCase();
     if (!baseCoins[symbol]) {
-        // Random price between 0.05 and 50
         baseCoins[symbol] = { priceUsd: +(Math.random() * 50 + 0.05).toFixed(4) };
     }
 });
+
+let simIndex = 1;
+while(Object.keys(baseCoins).length < 200) {
+    baseCoins[`sim${simIndex}`] = { priceUsd: +(Math.random() * 10 + 0.01).toFixed(4) };
+    simIndex++;
+}
 
 let currentState = {};
 for (const [coin, data] of Object.entries(baseCoins)) {
@@ -93,19 +98,10 @@ for (let i = 0; i < framesCount; i++) {
         if (i >= 10 && i <= 90 && coin === 'sevilla') currentState[coin].paribuPremium = 0.035; 
 
         const binanceUsdtPrice = currentState[coin].priceUsd;
-        let paribuUsdtPrice = binanceUsdtPrice * (1 + currentState[coin].paribuPremium);
-        let paribuTryPrice = paribuUsdtPrice * currentUsdtTry;
-        
-        // Final rounding for clean UI output
         const bUsdtPrice = roundPrice(binanceUsdtPrice);
-        const pUsdtPrice = roundPrice(paribuUsdtPrice);
-        const pTryPrice = roundPrice(paribuTryPrice);
 
-        const ROI = +(((pUsdtPrice - bUsdtPrice) / bUsdtPrice) * 100).toFixed(2);
-
-        // Add typical bid/ask synthetic spread (approx 0.1% off mid)
         frame[coin] = {
-            ROI: ROI,
+            ROI: 0,
             binance: {
                 usdt: { 
                     price: bUsdtPrice, 
@@ -113,8 +109,30 @@ for (let i = 0; i < framesCount; i++) {
                     ask: roundPrice(bUsdtPrice * 1.001),
                     volume: +(Math.random() * 1000000).toFixed(2) 
                 }
-            },
-            paribu: {
+            }
+        };
+
+        // Determine which Turkish exchanges carry this coin
+        const activeExchanges = ['paribu'];
+        if (Math.random() > 0.3) activeExchanges.push('btcturk');
+        if (Math.random() > 0.6) activeExchanges.push('chiliz');
+
+        // Always ensure some coins have full spread
+        if (['btc', 'eth', 'usdt', 'doge', 'pepe', 'sevilla', 'jup'].includes(coin)) {
+            if (!activeExchanges.includes('btcturk')) activeExchanges.push('btcturk');
+            if (!activeExchanges.includes('chiliz')) activeExchanges.push('chiliz');
+        }
+
+        activeExchanges.forEach(exch => {
+            // slightly vary premium per exchange to create multiple deals
+            const exchPremium = currentState[coin].paribuPremium + (Math.random() - 0.5) * 0.005;
+            let exchUsdtPrice = binanceUsdtPrice * (1 + exchPremium);
+            let exchTryPrice = exchUsdtPrice * currentUsdtTry;
+            
+            const pUsdtPrice = roundPrice(exchUsdtPrice);
+            const pTryPrice = roundPrice(exchTryPrice);
+            
+            frame[coin][exch] = {
                 usdt: { 
                     price: pUsdtPrice, 
                     bid: roundPrice(pUsdtPrice * 0.9985), 
@@ -127,8 +145,8 @@ for (let i = 0; i < framesCount; i++) {
                     ask: roundPrice(pTryPrice * 1.0015),
                     volume: +(Math.random() * 500000).toFixed(2) 
                 }
-            }
-        };
+            };
+        });
     }
     frames.push(frame);
 }

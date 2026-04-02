@@ -1,6 +1,13 @@
 <template>
   <div class="container-fluid flex mt-2 portfolio-page" style="padding: 0 10px; max-width: 1200px; margin: 0 auto;">
     
+    <!-- Demo Alert Banner -->
+    <div v-if="isDemoMode && demoRecordedAt" class="alert mb-3 py-2 text-center" style="background: var(--accent-light, rgba(220,53,69,0.1)); border: 1px solid var(--accent, #dc3545);">
+        <i class="bi bi-info-circle-fill me-2" style="color: var(--accent, #dc3545);"></i>
+        <span class="fw-bold" style="color: var(--accent, #dc3545);">Demo Mode:</span> 
+        <span class="theme-text">Mock data recorded on {{ demoRecordedAt }}. Live connections bypassed.</span>
+    </div>
+
     <!-- Top Action Bar -->
     <div class="row mt-1 mb-4 align-items-center justify-content-between">
        <div class="col d-flex align-items-center gap-3">
@@ -237,6 +244,11 @@ export default defineComponent({
   name: 'Portfolio',
   data() {
     return {
+      isDemoMode: true,
+      demoRecordedAt: null,
+      demoFrames: [],
+      currentFrameIndex: 0,
+      demoInterval: null,
       portfolio: [], // shape: { coin: 'btc', amount: 1.5, avgPrice: 60000 }
       newAsset: {
         coin: '',
@@ -294,30 +306,58 @@ export default defineComponent({
   mounted() {
     this.loadPortfolio();
     
-    // Connect websocket
-    this.socket = io();
-    this.socket.on('connect', () => {
-        console.log('Portfolio connected to WebSocket server');
-    });
+    if (this.isDemoMode) {
+        this.fetchMockData();
+    } else {
+        // Connect websocket
+        this.socket = io();
+        this.socket.on('connect', () => {
+            console.log('Portfolio connected to WebSocket server');
+        });
 
-    this.socket.on('data_update', (data) => {
-        if (data && data.btc) {
-            this.coinData = data;
-            this.updateCoinListCache();
-        } else {
-            this.fetchData();
-        }
-    });
+        this.socket.on('data_update', (data) => {
+            if (data && data.btc) {
+                this.coinData = data;
+                this.updateCoinListCache();
+            } else {
+                this.fetchData();
+            }
+        });
 
-    // Fallback fetch
-    this.fetchData();
+        // Fallback fetch
+        this.fetchData();
+    }
   },
   unmounted() {
      if (this.socket) {
         this.socket.disconnect();
      }
+     if (this.demoInterval) {
+        clearInterval(this.demoInterval);
+     }
   },
   methods: {
+    async fetchMockData() {
+        try {
+            const response = await axios.get('./mockData.json');
+            if (response.data && response.data.frames) {
+                this.demoRecordedAt = response.data.recordedAt || 'Unknown Date';
+                this.demoFrames = response.data.frames;
+                this.currentFrameIndex = 0;
+                this.coinData = this.demoFrames[this.currentFrameIndex];
+                this.updateCoinListCache();
+                
+                this.demoInterval = setInterval(() => {
+                    this.currentFrameIndex = (this.currentFrameIndex + 1) % this.demoFrames.length;
+                    this.coinData = this.demoFrames[this.currentFrameIndex];
+                    // update cache periodically in case new coins appear
+                    if(this.currentFrameIndex % 10 === 0) this.updateCoinListCache(); 
+                }, 2500);
+            }
+        } catch (error) {
+            console.error("Failed to load mock data:", error);
+        }
+    },
     async fetchData() {
         try {
             const response = await axios.get('/api/allParibuData');
