@@ -347,27 +347,52 @@
            this.saving = false;
         }
       },
-      loadPortfolio() {
-        const stored = localStorage.getItem('vuecoin_portfolio');
-        if (stored) {
-           try {
-             this.portfolio = JSON.parse(stored);
-           } catch (e) {
-             this.portfolio = [];
-           }
-        }
-        
-        if (this.portfolio.length === 0 && this.isDemoMode) {
-            this.portfolio = [
-               { coin: 'btc', amount: 0.15, avgPrice: 62000 },
-               { coin: 'eth', amount: 2.5, avgPrice: 3200 },
-               { coin: 'doge', amount: 15000, avgPrice: 0.11 }
-            ];
-            localStorage.setItem('vuecoin_portfolio', JSON.stringify(this.portfolio));
-        }
+        loadPortfolio() {
+            const stored = localStorage.getItem('vuecoin_portfolio');
+            if (stored) {
+                try {
+                    this.portfolio = JSON.parse(stored);
+                } catch (e) {
+                    this.portfolio = [];
+                }
+            }
 
-        this.currentProfile = localStorage.getItem('vuecoin_current_profile') || null;
-      },
+            // Always pick some assets if empty or if we want it fresh (randomized for demo)
+            // If the user hasn't explicitly added something, we refresh it for the demo
+            if (this.isDemoMode && !localStorage.getItem('vuecoin_user_manually_edited')) {
+                this.randomizeDemoAssets();
+            }
+            
+            this.currentProfile = localStorage.getItem('vuecoin_current_profile') || null;
+        },
+        randomizeDemoAssets() {
+            if (!this.coinData || Object.keys(this.coinData).length === 0) return;
+            
+            const keys = Object.keys(this.coinData);
+            const numAssets = 4 + Math.floor(Math.random() * 3);
+            const selected = [];
+            
+            // Filter out metadata keys
+            const validKeys = [...keys].filter(k => k !== 'ROI' && k !== 'recordedAt' && k !== 'frames');
+            const tempKeys = validKeys.sort(() => 0.5 - Math.random());
+            
+            for (let i = 0; i < Math.min(numAssets, tempKeys.length); i++) {
+                const coin = tempKeys[i];
+                const currentPrice = this.getCurrentPrice(coin);
+                if (currentPrice === 0) continue;
+                
+                // Realistic amount based on price (approx $1000 - $5000 investment)
+                const targetValue = 1000 + Math.random() * 4000;
+                const amount = targetValue / currentPrice;
+                
+                selected.push({
+                    coin: coin,
+                    amount: amount,
+                    avgPrice: currentPrice * (0.95 + Math.random() * 0.1)
+                });
+            }
+            this.portfolio = selected;
+        },
       exitProfile() {
         this.currentProfile = null;
         localStorage.setItem('vuecoin_current_profile', '');
@@ -544,9 +569,12 @@
                   this.demoRecordedAt = response.data.recordedAt || 'Unknown Date';
                   this.demoFrames = response.data.frames;
                   this.currentFrameIndex = 0;
+                  this.coinData = this.demoFrames[this.currentFrameIndex];
                   
-                  // Initial frame
-                  this.processData(this.demoFrames[this.currentFrameIndex]);
+                  // Seed random assets immediately if demo mode and not manually edited
+                  if (this.isDemoMode && !localStorage.getItem('vuecoin_user_manually_edited')) {
+                      this.randomizeDemoAssets();
+                  }
                   
                   // Cycle frames every 2.5 seconds
                   this.demoInterval = setInterval(() => {

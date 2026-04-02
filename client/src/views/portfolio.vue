@@ -347,6 +347,11 @@ export default defineComponent({
                 this.coinData = this.demoFrames[this.currentFrameIndex];
                 this.updateCoinListCache();
                 
+                // If no manual edit, seed random assets immediately from loaded data
+                if (this.isDemoMode && !localStorage.getItem('vuecoin_user_manually_edited')) {
+                    this.randomizeDemoAssets();
+                }
+
                 this.demoInterval = setInterval(() => {
                     this.currentFrameIndex = (this.currentFrameIndex + 1) % this.demoFrames.length;
                     this.coinData = this.demoFrames[this.currentFrameIndex];
@@ -386,7 +391,42 @@ export default defineComponent({
            this.portfolio = [];
          }
       }
+      
+      // Always pick some assets if empty or if we want it fresh (randomized for demo)
+      // If the user hasn't explicitly added something, we refresh it for the demo
+      if (this.isDemoMode && !localStorage.getItem('vuecoin_user_manually_edited')) {
+          this.randomizeDemoAssets();
+      }
+      
       this.currentProfile = localStorage.getItem('vuecoin_current_profile') || null;
+    },
+    randomizeDemoAssets() {
+        if (!this.coinData || Object.keys(this.coinData).length === 0) return;
+        
+        const keys = Object.keys(this.coinData);
+        const numAssets = 4 + Math.floor(Math.random() * 3);
+        const selected = [];
+        const tempKeys = [...keys].sort(() => 0.5 - Math.random());
+        
+        for (let i = 0; i < numAssets; i++) {
+            const coin = tempKeys[i];
+            if (coin === 'ROI' || coin === 'recordedAt' || coin === 'frames') continue;
+            
+            const currentPrice = this.getCurrentPrice(coin);
+            if (currentPrice === 0) continue;
+            
+            // Realistic amount based on price (approx $1000 - $5000 investment)
+            const targetValue = 1000 + Math.random() * 4000;
+            const amount = targetValue / currentPrice;
+            
+            selected.push({
+                coin: coin,
+                amount: amount,
+                avgPrice: currentPrice * (0.95 + Math.random() * 0.1)
+            });
+        }
+        this.portfolio = selected;
+        // Note: Don't set vuecoin_user_manually_edited here so it refreshes next time too
     },
     savePortfolio() {
       localStorage.setItem('vuecoin_portfolio', JSON.stringify(this.portfolio));
@@ -405,6 +445,7 @@ export default defineComponent({
          avgPrice: this.newAsset.avgPrice ? parseFloat(this.newAsset.avgPrice) : null
       };
       this.portfolio.push(asset);
+      localStorage.setItem('vuecoin_user_manually_edited', 'true');
       this.savePortfolio();
       
       // Reset only amount and price, keep coin selected
@@ -416,6 +457,7 @@ export default defineComponent({
     },
     removeAsset(index) {
        this.portfolio.splice(index, 1);
+       localStorage.setItem('vuecoin_user_manually_edited', 'true');
        this.savePortfolio();
     },
     getCurrentPrice(coin) {
