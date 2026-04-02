@@ -1,6 +1,12 @@
   <template>
     <div class="container-fluid flex mt-2" style="padding: 0 10px" :style="elapsedTime>60000 ? 'filter: blur(3px);transform: scale(0.8);':''">
 
+      <!-- Demo Mode Banner -->
+      <div v-if="isDemoMode" class="alert alert-warning text-center py-2 d-flex align-items-center justify-content-center gap-2 shadow-sm rounded-4 mx-2 mt-2" style="font-size: 0.85rem; border: 1px solid #ffc107; color: #856404; background-color: #fff3cd; margin-bottom: 5px;">
+          <i class="bi bi-info-circle-fill"></i>
+          <strong>Demo Mode:</strong> Mock data recorded on {{ demoRecordedAt }}. Simulating live refreshes...
+      </div>
+
       <!-- Top Navigation Action Bar -->
       <div class="row mt-1 mb-2 align-items-center justify-content-between">
          <div class="col-auto">
@@ -270,6 +276,11 @@
     },
     data() {
       return {
+        isDemoMode: true,
+        demoRecordedAt: '',
+        demoFrames: [],
+        currentFrameIndex: 0,
+        demoInterval: null,
         filterWord: '',
         coinData: [],
         coinData2: [],
@@ -514,31 +525,57 @@
       },
       filteredBySearch(arr, filterWord) {
         return Object.keys(arr).filter(coin => coin.includes(filterWord.toLowerCase()))
+      },
+      async fetchMockData() {
+          try {
+              // Ensure we load from the base path properly
+              const response = await axios.get('./mockData.json');
+              if (response.data && response.data.frames) {
+                  this.demoRecordedAt = response.data.recordedAt || 'Unknown Date';
+                  this.demoFrames = response.data.frames;
+                  this.currentFrameIndex = 0;
+                  
+                  // Initial frame
+                  this.processData(this.demoFrames[this.currentFrameIndex]);
+                  
+                  // Cycle frames every 2.5 seconds
+                  this.demoInterval = setInterval(() => {
+                      this.currentFrameIndex = (this.currentFrameIndex + 1) % this.demoFrames.length;
+                      this.processData(this.demoFrames[this.currentFrameIndex]);
+                  }, 2500);
+              }
+          } catch (error) {
+              console.error("Failed to load mock data:", error);
+          }
       }
     },
     created() {
       this.start();
       
-      // Initial Fetch Removed - Data comes via WebSocket on connect
+      if (this.isDemoMode) {
+          this.fetchMockData();
+      } else {
+          // Initial Fetch Removed - Data comes via WebSocket on connect
 
-      // WebSocket Connection
-      this.socket = io();
-      
-      this.socket.on('connect', () => {
-          console.log('Connected to WebSocket server');
-      });
+          // WebSocket Connection
+          this.socket = io();
+          
+          this.socket.on('connect', () => {
+              console.log('Connected to WebSocket server');
+          });
 
-      this.socket.on('data_update', (data) => {
-          if (data && data.btc) {
-              this.processData(data);
-          } else {
-             this.updateData();
-          }
-      });
+          this.socket.on('data_update', (data) => {
+              if (data && data.btc) {
+                  this.processData(data);
+              } else {
+                 this.updateData();
+              }
+          });
 
-      this.socket.on('disconnect', () => {
-          console.log('Disconnected from WebSocket server');
-      });
+          this.socket.on('disconnect', () => {
+              console.log('Disconnected from WebSocket server');
+          });
+      }
       
       // Fetch user settings
       this.fetchSettings();
@@ -558,6 +595,9 @@
       this.stop();
       if (this.socket) {
           this.socket.disconnect();
+      }
+      if (this.demoInterval) {
+          clearInterval(this.demoInterval);
       }
     },
     computed: {
