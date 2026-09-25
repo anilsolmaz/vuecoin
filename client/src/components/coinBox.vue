@@ -25,7 +25,7 @@
                     <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
                       <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="getMarketIcon(row.ask.exchange)">
                     </a>
-                    <span class="fw-medium font-monospace">{{ formatNumber(row.ask.rawPrice) }} {{ row.ask.symbol }}</span>
+                    <span class="fw-medium font-monospace">{{ formatNumber(row.ask.rawPrice, getExchangeFraction(row.ask.exchange, row.ask.symbol)) }} {{ row.ask.symbol }}</span>
                   </template>
                 </div>
              </div>
@@ -37,7 +37,7 @@
                     <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
                       <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="getMarketIcon(row.bid.exchange)">
                     </a>
-                    <span class="fw-medium font-monospace">{{ formatNumber(row.bid.rawPrice) }} {{ row.bid.symbol }}</span>
+                    <span class="fw-medium font-monospace">{{ formatNumber(row.bid.rawPrice, getExchangeFraction(row.bid.exchange, row.bid.symbol)) }} {{ row.bid.symbol }}</span>
                   </template>
                 </div>
              </div>
@@ -59,7 +59,7 @@
       <template v-else>
          <div class="text-center flex-grow-1 d-flex align-items-center justify-content-center price-display" :style="{ padding: '0px', fontSize: customFontSize + 'rem', letterSpacing: '0.3px', lineHeight: '1.1' }">
             <span class="fw-bold font-monospace">
-               {{ formatNumber(USDTMode ? singleDisplayPriceUSD : singleDisplayPriceTRY) }}
+               {{ formatNumber(USDTMode ? singleDisplayPriceUSD : singleDisplayPriceTRY, USDTMode ? getExchangeFraction('binance', '$') : getExchangeFraction('paribu', '₺')) }}
                {{ USDTMode ? '$' : '₺' }}
             </span>
          </div>
@@ -158,7 +158,7 @@ export default {
 
       // Dynamically check all exchanges in the data node
       Object.keys(item).forEach(exchange => {
-          if (exchange === 'ROI' || exchange === 'arbitrageDetails' || exchange === 'fraction') return;
+          if (exchange === 'ROI' || exchange === 'arbitrageDetails' || exchange === 'fraction' || exchange === 'precisions') return;
 
           const exchData = item[exchange];
           if (!exchData || typeof exchData !== 'object') return;
@@ -359,6 +359,28 @@ export default {
       } catch (e) {
         return require('@/assets/markets/noimage.png');
       }
+    },
+    getExchangeFraction(exchange, symbol) {
+      if (!this.coinData) return null;
+      const ex = exchange ? String(exchange).toLowerCase() : '';
+      const sym = (symbol === '₺' || symbol === 'TRY') ? 'try' : 'usdt';
+      
+      if (this.coinData.precisions) {
+        if (ex.includes('paribu') && this.coinData.precisions.paribu?.[sym] !== undefined) {
+          return this.coinData.precisions.paribu[sym];
+        }
+        if (ex.includes('btcturk') && this.coinData.precisions.btcturk?.[sym] !== undefined) {
+          return this.coinData.precisions.btcturk[sym];
+        }
+        if (ex.includes('binance') && this.coinData.precisions.binance?.[sym] !== undefined) {
+          return this.coinData.precisions.binance[sym];
+        }
+      }
+      
+      if (this.coinData.fraction !== undefined && this.coinData.fraction !== null) {
+        return this.coinData.fraction;
+      }
+      return null;
     }
   }
 };

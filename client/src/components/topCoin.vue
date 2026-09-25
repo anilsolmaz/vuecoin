@@ -70,10 +70,12 @@ export default {
         if (this.coinName === 'usdt') return `${paribuTRY ?? ''} ₺`;
         
         if (binanceUSDT) {
-            return `${this.formatNumber(binanceUSDT)} $`;
+            const frac = this.coinData?.precisions?.binance?.usdt ?? this.coinData?.fraction;
+            return `${this.formatNumber(binanceUSDT, frac)} $`;
         }
         if (paribuTRY) {
-             return `${this.formatNumber(paribuTRY)} ₺`;
+             const frac = this.coinData?.precisions?.paribu?.try ?? this.coinData?.fraction;
+             return `${this.formatNumber(paribuTRY, frac)} ₺`;
         }
         return '';
     },

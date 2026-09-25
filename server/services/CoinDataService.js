@@ -2,6 +2,7 @@ const f = require('../js/functions');
 const config = require('../configs/config.json');
 const { DateTime } = require("luxon");
 const TelegramService = require('./TelegramService');
+const ExchangePrecisionService = require('./ExchangePrecisionService');
 
 // Unified Redis Service
 const client = require('./RedisService');
@@ -44,9 +45,11 @@ class CoinDataService {
                 this.paribuSymbolMap[coinKey] = key;
 
                 // Common structure
+                const prec = ExchangePrecisionService.getPrecisionForCoin(coinKey);
                 let coinObj = {
                     "ROI": 0,
-                    "fraction": (JSON.parse(r).payload.markets)[key].precisions.price,
+                    "fraction": prec.fraction,
+                    "precisions": prec.precisions,
                     "paribu": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
                     "binance": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
                     "BTCTurk": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null }
@@ -87,9 +90,11 @@ class CoinDataService {
         if (clean === 'try' || clean === 'usdt' || clean === 'usdc') return;
         if (this.coinList[clean]) return;
 
+        const prec = ExchangePrecisionService.getPrecisionForCoin(clean);
         this.coinList[clean] = {
             "ROI": 0,
-            "fraction": 4,
+            "fraction": prec.fraction,
+            "precisions": prec.precisions,
             "paribu": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
             "binance": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
             "BTCTurk": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null }
@@ -119,26 +124,11 @@ class CoinDataService {
 
         coinsLeftFromBTCTurk.forEach(key => {
             if (!this.coinList[key]) {
+                const prec = ExchangePrecisionService.getPrecisionForCoin(key);
                 this.coinList[key] = {
                     "ROI": 0,
-                    "fraction": (() => {
-                        let f = 4;
-                        if (this.BTCTurkInitials && this.BTCTurkInitials.data) {
-                            let btcPair = this.BTCTurkInitials.data.find(x => x.pair === key.toUpperCase() + 'TRY');
-                            if (btcPair && btcPair.displayFormat) {
-                                let decimals = btcPair.displayFormat.split('.')[1];
-                                if (decimals) return decimals.length;
-                            }
-                        }
-                        if (this.paribuInitials) {
-                            let pKey = key + '_tl';
-                            let pPair = typeof this.paribuInitials === 'object' ? this.paribuInitials[pKey] : null;
-                            if (pPair && pPair.precisions && pPair.precisions.price !== undefined) {
-                                return pPair.precisions.price;
-                            }
-                        }
-                        return f;
-                    })(),
+                    "fraction": prec.fraction,
+                    "precisions": prec.precisions,
                     "paribu": {
                         "try": { "price": null, "inUSDT": null },
                         "usdt": { "price": null, "inTRY": null },

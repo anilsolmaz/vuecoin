@@ -19,10 +19,12 @@ const io = new Server(server, {
 const CoinDataService = require('./server/services/CoinDataService');
 const ListingMonitorService = require('./server/services/ListingMonitorService');
 const BinanceWebSocketService = require('./server/services/BinanceWebSocketService');
+const ExchangePrecisionService = require('./server/services/ExchangePrecisionService');
 
-// Initialize Real-time Services (Binance WebSocket & Listing Monitors)
+// Initialize Real-time Services (Binance WebSocket, Listing Monitors & Precision Service)
 if (process.env.NODE_ENV !== 'test') {
     BinanceWebSocketService.start();
+    ExchangePrecisionService.start(); // Hourly precision updates
 
     ListingMonitorService.init().then(() => {
         // Run Paribu check every 1 second

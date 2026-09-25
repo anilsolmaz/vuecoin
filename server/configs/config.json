@@ -246,8 +246,8 @@
       ]
     },
     "binance": {
-      "tickerUrl": "https://api.binance.com/api/v3/ticker/bookTicker",
-      "initialsUrl": "https://api.binance.com/api/v3/exchangeInfo"
+      "tickerUrl": "https://data-api.binance.vision/api/v3/ticker/bookTicker",
+      "initialsUrl": "https://data-api.binance.vision/api/v3/exchangeInfo"
     },
     "BTCTurk": {
       "tickerUrl": "https://api.btcturk.com/api/v2/ticker",

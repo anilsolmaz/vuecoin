@@ -109,7 +109,7 @@
                 </div>
              </div>
              <div v-if="newAsset.coin" class="mt-2 text-end">
-                <span class="fw-bold text-success small">{{ fmtPrice(getCurrentPrice(newAsset.coin)) }} $</span>
+                <span class="fw-bold text-success small">{{ fmtPrice(getCurrentPrice(newAsset.coin), newAsset.coin) }} $</span>
              </div>
           </div>
           
@@ -172,13 +172,13 @@
                         </td>
                         <td class="text-end py-3">
                            <div v-if="item.avgPrice">
-                              <div class="fw-bold text-nowrap">{{ fmtPrice(item.avgPrice) }}<small class="ms-1 opacity-75">$</small></div>
+                              <div class="fw-bold text-nowrap">{{ fmtPrice(item.avgPrice, item.coin) }}<small class="ms-1 opacity-75">$</small></div>
                               <div class="small text-muted text-nowrap">~{{ formatNumber(item.avgPrice * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
                            </div>
                            <div v-else class="text-muted opacity-50">—</div>
                         </td>
                         <td class="text-end py-3">
-                           <div class="fw-bold text-nowrap">{{ fmtPrice(getCurrentPrice(item.coin)) }}<small class="ms-1 opacity-75">$</small></div>
+                           <div class="fw-bold text-nowrap">{{ fmtPrice(getCurrentPrice(item.coin), item.coin) }}<small class="ms-1 opacity-75">$</small></div>
                            <div class="small text-muted text-nowrap">~{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
                         </td>
                         <td class="text-end py-3">
@@ -579,8 +579,11 @@ export default defineComponent({
         this.selectCoin(visible[this.highlightIndex]);
       }
     },
-    fmtPrice(price) {
+    fmtPrice(price, coin = null) {
       if (!price) return '0.00';
+      if (coin && this.coinData?.[coin.toLowerCase()]?.fraction !== undefined) {
+        return this.formatNumber(price, this.coinData[coin.toLowerCase()].fraction);
+      }
       if (price >= 1000) return this.formatNumber(price, 2);
       if (price >= 1) return this.formatNumber(price, 4);
       return this.formatNumber(price, 6);
