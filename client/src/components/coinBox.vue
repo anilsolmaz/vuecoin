@@ -12,7 +12,7 @@
           <!-- Header Row -->
           <div class="d-flex w-100 align-items-center mb-1 pb-1 border-bottom border-secondary border-opacity-25 position-relative">
              <div class="col-6 text-center opacity-75 fw-bold" :style="{ fontSize: (customFontSize * 0.85) + 'rem', letterSpacing: '0.5px' }">ASK</div>
-             <div class="position-absolute start-50 translate-middle-x fw-bolder" style="top: -2px; color: var(--text-muted, #777); font-size: 0.75rem; z-index:5;">&gt;</div>
+             <div class="position-absolute start-50 translate-middle-x fw-bolder" style="top: 0px; color: var(--text-muted, #888); font-size: 0.7rem; z-index:5;"><i class="bi bi-arrow-right"></i></div>
              <div class="col-6 text-center opacity-75 fw-bold" :style="{ fontSize: (customFontSize * 0.85) + 'rem', letterSpacing: '0.5px' }">BID</div>
           </div>
           
@@ -135,90 +135,125 @@ export default {
       if (prices.length === 0) return 0;
       return prices.reduce((a, b) => a + b, 0) / prices.length;
     },
+    cleanExchangeName(name) {
+      if (!name) return '';
+      const lower = String(name).toLowerCase();
+      if (lower.includes('paribu')) return 'paribu';
+      if (lower.includes('binance')) return 'binance';
+      if (lower.includes('btcturk')) return 'BTCTurk';
+      if (lower.includes('coinbase')) return 'coinbase';
+      if (lower.includes('okx')) return 'okx';
+      if (lower.includes('kucoin')) return 'kucoin';
+      if (lower.includes('gateio') || lower.includes('gate.io')) return 'gateio';
+      if (lower.includes('mexc')) return 'mexc';
+      if (lower.includes('upbit')) return 'upbit';
+      return name.replace(/\(.*?\)/g, '').trim();
+    },
     arbitrageBidsAndAsks() {
-      let bids = [];
-      let asks = [];
       const item = this.coinData;
       if (!item || typeof item !== 'object') return [];
 
-      const checkBuy = (priceTRY, exchange, rawPrice, symbol) => {
-          if (priceTRY > 0) {
-              asks.push({ priceTRY, rawPrice: rawPrice || priceTRY, exchange, symbol });
+      // 1. If backend provided official arbitrageDetails (cross or intra), use it directly!
+      const arbDetails = item.arbitrageDetails;
+      if (arbDetails) {
+        const primary = arbDetails.cross || arbDetails.intra;
+        if (primary && primary.buyExchange && primary.sellExchange) {
+          const buyEx = this.cleanExchangeName(primary.buyExchange);
+          const sellEx = this.cleanExchangeName(primary.sellExchange);
+          const buySymbol = primary.buyExchange.includes('USDT') ? '$' : '₺';
+          const sellSymbol = primary.sellExchange.includes('USDT') ? '$' : '₺';
+
+          // Strictly enforce: Buy market and Sell market MUST NOT be identical!
+          if (buyEx !== sellEx || buySymbol !== sellSymbol) {
+            return [{
+              ask: {
+                exchange: buyEx,
+                rawPrice: primary.buyPriceRaw || primary.buyPrice,
+                priceTRY: primary.effectiveBuyPriceTRY || primary.buyPrice,
+                symbol: buySymbol
+              },
+              bid: {
+                exchange: sellEx,
+                rawPrice: primary.sellPriceRaw || primary.sellPrice,
+                priceTRY: primary.effectiveSellPriceTRY || primary.sellPrice,
+                symbol: sellSymbol
+              }
+            }];
           }
-      };
+        }
+      }
 
-      const checkSell = (priceTRY, exchange, rawPrice, symbol) => {
-          if (priceTRY > 0) {
-              bids.push({ priceTRY, rawPrice: rawPrice || priceTRY, exchange, symbol });
-          }
-      };
+      // 2. Gather all buy quotes (asks) and sell quotes (bids) from all available exchange nodes
+      const usdtTryRate = item.usdt?.paribu?.try?.price || item.usdt?.binance?.try?.price || 35.5;
+      const asks = [];
+      const bids = [];
 
-      const usdtTryRate = item.usdt?.paribu?.try?.price || 35.5;
-
-      // Dynamically check all exchanges in the data node
       Object.keys(item).forEach(exchange => {
-          if (exchange === 'ROI' || exchange === 'arbitrageDetails' || exchange === 'fraction' || exchange === 'precisions') return;
+        if (['ROI', 'arbitrageDetails', 'fraction', 'precisions', 'recordedAt', 'profit'].includes(exchange)) return;
+        const exchData = item[exchange];
+        if (!exchData || typeof exchData !== 'object') return;
 
-          const exchData = item[exchange];
-          if (!exchData || typeof exchData !== 'object') return;
+        const exClean = this.cleanExchangeName(exchange);
 
-          // Check TRY market
-          if (exchData.try) {
-              const askPrice = exchData.try.ask || exchData.try.price;
-              const bidPrice = exchData.try.bid || exchData.try.price;
-              if (askPrice > 0) checkBuy(askPrice, exchange, askPrice, '₺');
-              if (bidPrice > 0) checkSell(bidPrice, exchange, bidPrice, '₺');
-          }
-          
-          // Check USDT market
-          if (exchData.usdt) {
-              const askPrice = exchData.usdt.ask || exchData.usdt.price;
-              const bidPrice = exchData.usdt.bid || exchData.usdt.price;
-              const askTRY = exchData.usdt.askInTRY || (askPrice ? askPrice * usdtTryRate : 0);
-              const bidTRY = exchData.usdt.bidInTRY || (bidPrice ? bidPrice * usdtTryRate : 0);
+        // TRY Market
+        if (exchData.try) {
+          const askPrice = exchData.try.ask || exchData.try.price;
+          const bidPrice = exchData.try.bid || exchData.try.price;
+          if (askPrice > 0) asks.push({ priceTRY: askPrice, rawPrice: askPrice, exchange: exClean, symbol: '₺' });
+          if (bidPrice > 0) bids.push({ priceTRY: bidPrice, rawPrice: bidPrice, exchange: exClean, symbol: '₺' });
+        }
 
-              if (askTRY > 0) checkBuy(askTRY, exchange, askPrice, '$');
-              if (bidTRY > 0) checkSell(bidTRY, exchange, bidPrice, '$');
-          }
+        // USDT Market
+        if (exchData.usdt) {
+          const askPrice = exchData.usdt.ask || exchData.usdt.price;
+          const bidPrice = exchData.usdt.bid || exchData.usdt.price;
+          const askTRY = exchData.usdt.askInTRY || (askPrice ? askPrice * usdtTryRate : 0);
+          const bidTRY = exchData.usdt.bidInTRY || (bidPrice ? bidPrice * usdtTryRate : 0);
+          if (askTRY > 0) asks.push({ priceTRY: askTRY, rawPrice: askPrice, exchange: exClean, symbol: '$' });
+          if (bidTRY > 0) bids.push({ priceTRY: bidTRY, rawPrice: bidPrice, exchange: exClean, symbol: '$' });
+        }
       });
 
-      // Sort
-      bids.sort((a, b) => b.priceTRY - a.priceTRY);
-      asks.sort((a, b) => a.priceTRY - b.priceTRY);
-
-      // Filter Arbitrage Range
-      let bestBid = bids.length > 0 ? bids[0].priceTRY : 0;
-      let bestAsk = asks.length > 0 ? asks[0].priceTRY : 0;
-      
-      let filteredAsks = asks;
-      let filteredBids = bids;
-
-      // Only filter if there is actual arbitrage in Top Deals
-      if (this.isTopDeal) {
-          if (bestBid > 0 && bestAsk > 0 && bestBid >= bestAsk) {
-             filteredAsks = asks.filter(a => a.priceTRY <= bestBid);
-             filteredBids = bids.filter(b => b.priceTRY >= bestAsk);
-          } else {
-             // If no real arbitrage at the moment, just show top 1 of each to avoid empty box
-             filteredAsks = asks.slice(0, 1);
-             filteredBids = bids.slice(0, 1);
+      // 3. Form ALL valid cross-market or intra-market pairs where Ask and Bid are DIFFERENT markets
+      const validPairs = [];
+      asks.forEach(a => {
+        bids.forEach(b => {
+          // Strictly forbid pairing an exchange with itself on the same currency
+          const isSameMarket = (a.exchange.toLowerCase() === b.exchange.toLowerCase() && a.symbol === b.symbol);
+          if (!isSameMarket) {
+            const spreadTRY = b.priceTRY - a.priceTRY;
+            const roi = (spreadTRY / a.priceTRY) * 100;
+            validPairs.push({
+              ask: a,
+              bid: b,
+              roi: roi,
+              spreadTRY: spreadTRY
+            });
           }
-      } else {
-          // If expanded from "All Markets" explicitly, show all available exchanges
-          filteredAsks = asks;
-          filteredBids = bids;
+        });
+      });
+
+      if (validPairs.length === 0) {
+        return [];
       }
 
-      // Convert into rows
-      let maxLen = Math.max(filteredAsks.length, filteredBids.length);
-      let rows = [];
-      for (let i = 0; i < maxLen; i++) {
-        rows.push({
-           bid: filteredBids[i] || null,
-           ask: filteredAsks[i] || null
-        });
+      // Sort by ROI descending (highest profit first)
+      validPairs.sort((p1, p2) => p2.roi - p1.roi);
+
+      // Return top profitable pair
+      if (this.isTopDeal) {
+        const profitable = validPairs.filter(p => p.roi > 0);
+        if (profitable.length > 0) {
+          return [profitable[0]];
+        }
+        if (this.coinData?.ROI > 0) {
+          return [validPairs[0]];
+        }
+        return [];
       }
-      return rows;
+
+      // If expanded in All Markets, return top distinct pairs
+      return validPairs.slice(0, 2);
     },
     potentialGainTRY() {
       if (this.coinData?.arbitrageDetails) {

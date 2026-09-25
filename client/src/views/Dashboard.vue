@@ -248,6 +248,9 @@
                 :dealDuration="topDealTimers[coinName] || 0"
                 :customFontSize="topDealsFontSize"
             />
+            <div v-if="Object.keys(topDeals).length === 0" class="p-3 text-muted small fst-italic w-100">
+              <i class="bi bi-radar me-1 text-primary"></i>Scanning markets for active cross-exchange arbitrage spreads...
+            </div>
          </div>
          
          <!-- Display Remaining Coins Alphabetically -->
@@ -562,7 +565,18 @@
                       }
                   }
 
-                  validDeals.push({ coin: coinName, roi: r, gain: gain });
+                  // Count distinct exchange markets for this coin
+                  let marketCount = 0;
+                  if (d.paribu?.try?.price > 0 || d.paribu?.usdt?.price > 0) marketCount++;
+                  if (d.binance?.usdt?.price > 0 || d.binance?.try?.price > 0) marketCount++;
+                  if (d.BTCTurk?.try?.price > 0 || d.BTCTurk?.usdt?.price > 0) marketCount++;
+
+                  // Only coins with AT LEAST 2 distinct exchanges and valid arbitrage are Top Deals
+                  const hasRealArb = (marketCount >= 2) && (r > 0 || gain > 0 || d.arbitrageDetails?.cross || d.arbitrageDetails?.intra);
+
+                  if (hasRealArb) {
+                      validDeals.push({ coin: coinName, roi: r, gain: gain });
+                  }
               }
           });
           
