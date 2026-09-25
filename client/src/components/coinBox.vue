@@ -25,7 +25,7 @@
                     <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
                       <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="getMarketIcon(row.ask.exchange)">
                     </a>
-                    <span class="fw-medium font-monospace">{{ formatNumber(row.ask.rawPrice, getExchangeFraction(row.ask.exchange, row.ask.symbol)) }} {{ row.ask.symbol }}</span>
+                    <span class="fw-medium font-monospace">{{ row.ask.symbol }} {{ formatNumber(row.ask.rawPrice, getExchangeFraction(row.ask.exchange, row.ask.symbol)) }}</span>
                   </template>
                 </div>
              </div>
@@ -37,20 +37,20 @@
                     <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
                       <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="getMarketIcon(row.bid.exchange)">
                     </a>
-                    <span class="fw-medium font-monospace">{{ formatNumber(row.bid.rawPrice, getExchangeFraction(row.bid.exchange, row.bid.symbol)) }} {{ row.bid.symbol }}</span>
+                    <span class="fw-medium font-monospace">{{ row.bid.symbol }} {{ formatNumber(row.bid.rawPrice, getExchangeFraction(row.bid.exchange, row.bid.symbol)) }}</span>
                   </template>
                 </div>
              </div>
           </div>
 
           <!-- Potential Gain Row -->
-          <div v-if="isTopDeal && potentialGain > 0" class="potential-gain-row mt-1 pt-1 border-top border-secondary border-opacity-25 d-flex align-items-center justify-content-between" :style="{ fontSize: (customFontSize * 0.85) + 'rem' }" :title="'Potential Gain: ' + (USDTMode ? '$' : '₺') + formatProfit(potentialGain)">
+          <div v-if="isTopDeal && potentialGain > 0" class="potential-gain-row mt-1 pt-1 border-top border-secondary border-opacity-25 d-flex align-items-center justify-content-between" :style="{ fontSize: (customFontSize * 0.85) + 'rem' }" :title="'Potential Gain: ' + (USDTMode ? '$ ' : '₺ ') + formatProfit(potentialGain)">
              <span class="gain-label d-flex align-items-center gap-1">
                <i class="bi bi-cash-stack text-success"></i>
                <span>Gain:</span>
              </span>
              <span class="gain-value font-monospace">
-               +{{ formatProfit(potentialGain) }}{{ USDTMode ? '$' : '₺' }}
+               +{{ USDTMode ? '$ ' : '₺ ' }}{{ formatProfit(potentialGain) }}
              </span>
           </div>
         </div>
@@ -59,8 +59,7 @@
       <template v-else>
          <div class="text-center flex-grow-1 d-flex align-items-center justify-content-center price-display" :style="{ padding: '0px', fontSize: customFontSize + 'rem', letterSpacing: '0.3px', lineHeight: '1.1' }">
             <span class="fw-bold font-monospace">
-               {{ formatNumber(USDTMode ? singleDisplayPriceUSD : singleDisplayPriceTRY, USDTMode ? getExchangeFraction('binance', '$') : getExchangeFraction('paribu', '₺')) }}
-               {{ USDTMode ? '$' : '₺' }}
+               {{ USDTMode ? '$ ' : '₺ ' }}{{ formatNumber(USDTMode ? singleDisplayPriceUSD : singleDisplayPriceTRY, USDTMode ? getExchangeFraction('binance', '$') : getExchangeFraction('paribu', '₺')) }}
             </span>
          </div>
       </template>

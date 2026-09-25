@@ -67,15 +67,15 @@ export default {
         let binanceUSDT = this.coinData.binance?.usdt?.price;
         let paribuTRY = this.coinData.paribu?.try?.price;
         
-        if (this.coinName === 'usdt') return `${paribuTRY ?? ''} ₺`;
+        if (this.coinName === 'usdt') return `₺ ${paribuTRY ?? ''}`;
         
         if (binanceUSDT) {
             const frac = this.coinData?.precisions?.binance?.usdt ?? this.coinData?.fraction;
-            return `${this.formatNumber(binanceUSDT, frac)} $`;
+            return `$ ${this.formatNumber(binanceUSDT, frac)}`;
         }
         if (paribuTRY) {
              const frac = this.coinData?.precisions?.paribu?.try ?? this.coinData?.fraction;
-             return `${this.formatNumber(paribuTRY, frac)} ₺`;
+             return `₺ ${this.formatNumber(paribuTRY, frac)}`;
         }
         return '';
     },

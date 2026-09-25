@@ -55,7 +55,7 @@
                   <div class="d-flex align-items-center gap-2 text-decoration-none" style="cursor: pointer;" @click="$router.push('/portfolio')" title="View Portfolio">
                      <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
                      <span class="fw-bold small theme-text mb-0">
-                        {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : (USDTMode ? '***,***.**$' : '***,***.**₺') }}
+                        {{ showBalance ? (USDTMode ? '$ ' + formatNumber(totalBalanceUsdt, 2) : '₺ ' + formatNumber(totalBalanceTry, 2)) : (USDTMode ? '$ ***,***.**' : '₺ ***,***.**') }}
                      </span>
                   </div>
                   <div class="ms-1">
@@ -135,7 +135,7 @@
                      <div class="d-flex align-items-center gap-2 text-decoration-none" style="cursor: pointer;" @click="$router.push('/portfolio')" title="View Portfolio">
                         <i class="bi bi-wallet2" :class="USDTMode ? 'text-primary' : 'text-success'"></i>
                         <span class="fw-bold small theme-text">
-                           {{ showBalance ? (USDTMode ? formatNumber(totalBalanceUsdt, 2) + '$' : formatNumber(totalBalanceTry, 2) + '₺') : (USDTMode ? '***,***.**$' : '***,***.**₺') }}
+                           {{ showBalance ? (USDTMode ? '$ ' + formatNumber(totalBalanceUsdt, 2) : '₺ ' + formatNumber(totalBalanceTry, 2)) : (USDTMode ? '$ ***,***.**' : '₺ ***,***.**') }}
                         </span>
                      </div>
                      <button @click.stop="showBalance = !showBalance" class="btn btn-sm p-0 border-0 theme-text-secondary opacity-75">
@@ -292,7 +292,7 @@
           <div class="p-3 border rounded-3 bg-light-soft theme-input-minimal shadow-sm">
             <div class="theme-text-secondary">
               <div class="mb-3 p-3 rounded bg-dark-soft text-center fw-bold text-success border border-success-subtle fs-4 bg-opacity-25 shadow-inner">
-                {{typeof coinData !== "undefined" ? formatNumber((coinData[selectedCoin]?.binance?.usdt?.price-buyPrice)*buyAmount,2) : '0.00'}}$
+                $ {{typeof coinData !== "undefined" ? formatNumber((coinData[selectedCoin]?.binance?.usdt?.price-buyPrice)*buyAmount,2) : '0.00'}}
               </div>
               
               <label class="form-label small fw-bold mb-1 mt-2 text-uppercase text-muted">Select Asset</label>

@@ -67,8 +67,19 @@ app.use(cors());
 app.use(express.json({ limit: '200kb' }));
 
 const path = require('path');
-app.use(express.static(path.join(__dirname, 'client/dist'), { maxAge: '1h' }));
-app.use('/vuecoin', express.static(path.join(__dirname, 'client/dist'), { maxAge: '1h' }));
+const staticOptions = {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+    }
+};
+app.use(express.static(path.join(__dirname, 'client/dist'), staticOptions));
+app.use('/vuecoin', express.static(path.join(__dirname, 'client/dist'), staticOptions));
 
 app.use('/api', apiRouter);
 
@@ -81,6 +92,9 @@ app.use((err, req, res, next) => {
 
 // Forward all other requests to the Vue app (for SPA routing)
 app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(__dirname, 'client/dist/index.html'));
 });
 

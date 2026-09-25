@@ -54,10 +54,10 @@
             <span class="fw-bold text-uppercase mb-2 text-white text-opacity-75" style="font-size: 0.85rem; letter-spacing: 2px;">Total Portfolio Value</span>
             
             <h1 class="display-3 fw-bolder mb-0 text-white value-shadow">
-              {{ formatNumber(totalBalanceUsdt, 2) }} <span class="fs-3 text-white text-opacity-75">$</span>
+              <span class="fs-3 text-white text-opacity-75 me-1">$</span>{{ formatNumber(totalBalanceUsdt, 2) }}
             </h1>
             <h4 class="fw-bold mt-2 text-white text-opacity-75">
-              ≈ {{ formatNumber(totalBalanceTry, 2) }} ₺
+              ≈ ₺ {{ formatNumber(totalBalanceTry, 2) }}
             </h4>
             
             <div class="mt-4 d-flex gap-3">
@@ -109,7 +109,7 @@
                 </div>
              </div>
              <div v-if="newAsset.coin" class="mt-2 text-end">
-                <span class="fw-bold text-success small">{{ fmtPrice(getCurrentPrice(newAsset.coin), newAsset.coin) }} $</span>
+                <span class="fw-bold text-success small">$ {{ fmtPrice(getCurrentPrice(newAsset.coin), newAsset.coin) }}</span>
              </div>
           </div>
           
@@ -172,22 +172,22 @@
                         </td>
                         <td class="text-end py-3">
                            <div v-if="item.avgPrice">
-                              <div class="fw-bold text-nowrap">{{ fmtPrice(item.avgPrice, item.coin) }}<small class="ms-1 opacity-75">$</small></div>
-                              <div class="small text-muted text-nowrap">~{{ formatNumber(item.avgPrice * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
+                              <div class="fw-bold text-nowrap"><small class="me-1 opacity-75">$</small>{{ fmtPrice(item.avgPrice, item.coin) }}</div>
+                              <div class="small text-muted text-nowrap">~<small class="me-1">₺</small>{{ formatNumber(item.avgPrice * calculatedUsdtRate, 2) }}</div>
                            </div>
                            <div v-else class="text-muted opacity-50">—</div>
                         </td>
                         <td class="text-end py-3">
-                           <div class="fw-bold text-nowrap">{{ fmtPrice(getCurrentPrice(item.coin), item.coin) }}<small class="ms-1 opacity-75">$</small></div>
-                           <div class="small text-muted text-nowrap">~{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
+                           <div class="fw-bold text-nowrap"><small class="me-1 opacity-75">$</small>{{ fmtPrice(getCurrentPrice(item.coin), item.coin) }}</div>
+                           <div class="small text-muted text-nowrap">~<small class="me-1">₺</small>{{ formatNumber(getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }}</div>
                         </td>
                         <td class="text-end py-3">
-                           <div class="fw-bold text-nowrap">{{ formatNumber(item.amount * getCurrentPrice(item.coin), 2) }}<small class="ms-1 opacity-75">$</small></div>
-                           <div class="small text-muted text-nowrap">~{{ formatNumber(item.amount * getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }}<small class="ms-1">₺</small></div>
+                           <div class="fw-bold text-nowrap"><small class="me-1 opacity-75">$</small>{{ formatNumber(item.amount * getCurrentPrice(item.coin), 2) }}</div>
+                           <div class="small text-muted text-nowrap">~<small class="me-1">₺</small>{{ formatNumber(item.amount * getCurrentPrice(item.coin) * calculatedUsdtRate, 2) }}</div>
                         </td>
                         <td class="text-end py-3">
                            <div v-if="item.avgPrice" :class="getPnLClass(item)">
-                              <div class="fw-bold text-nowrap">{{ getPnLValue(item, true) }}<small class="ms-1 opacity-75">$</small></div>
+                              <div class="fw-bold text-nowrap">{{ getPnLValue(item, true) }}</div>
                               <div class="small font-monospace">{{ getPnLPercentage(item) }}%</div>
                            </div>
                            <div v-else class="text-muted opacity-50">—</div>
@@ -473,7 +473,9 @@ export default defineComponent({
        const currentVal = item.amount * this.getCurrentPrice(item.coin);
        const initialVal = item.amount * item.avgPrice;
        const diff = currentVal - initialVal;
-       return format ? (diff > 0 ? '+' : '') + this.formatNumber(diff, 2) : diff;
+       if (!format) return diff;
+       const sign = diff > 0 ? '+' : (diff < 0 ? '-' : '');
+       return `${sign}$ ${this.formatNumber(Math.abs(diff), 2)}`;
     },
     getPnLPercentage(item) {
        if (!item.avgPrice || item.avgPrice === 0) return '0.00';
