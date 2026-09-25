@@ -238,7 +238,6 @@
 <script>
 import { defineComponent } from 'vue';
 import axios from 'axios';
-import { io } from "socket.io-client";
 
 export default defineComponent({
   name: 'VueCoinPortfolio',
@@ -296,6 +295,15 @@ export default defineComponent({
     }
   },
   watch: {
+    '$store.state.coinData': {
+      handler(newData) {
+        if (!this.isDemoMode && newData && (newData.btc || Object.keys(newData).length > 5)) {
+          this.coinData = newData;
+          this.updateCoinListCache();
+        }
+      },
+      immediate: true
+    },
     showSaveModal(val) {
       if (val) this.$nextTick(() => this.$refs.saveInput?.focus());
     },
@@ -309,29 +317,16 @@ export default defineComponent({
     if (this.isDemoMode) {
         this.fetchMockData();
     } else {
-        // Connect websocket
-        this.socket = io();
-        this.socket.on('connect', () => {
-            console.log('Portfolio connected to WebSocket server');
-        });
-
-        this.socket.on('data_update', (data) => {
-            if (data && data.btc) {
-                this.coinData = data;
-                this.updateCoinListCache();
-            } else {
-                this.fetchData();
-            }
-        });
-
-        // Fallback fetch
-        this.fetchData();
+        // Read live data from global store immediately with zero delay
+        if (this.$store.state.coinData && (this.$store.state.coinData.btc || Object.keys(this.$store.state.coinData).length > 5)) {
+            this.coinData = this.$store.state.coinData;
+            this.updateCoinListCache();
+        } else {
+            this.fetchData();
+        }
     }
   },
   unmounted() {
-     if (this.socket) {
-        this.socket.disconnect();
-     }
      if (this.demoInterval) {
         clearInterval(this.demoInterval);
      }

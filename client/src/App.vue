@@ -1,12 +1,9 @@
 <template>
-<!--
-  <div id="nav">
-    <router-link to="/coincompare">Coin Compare</router-link> |
-    <router-link to="/fanTokens">Fan Tokens</router-link>|
-    <router-link to="/">Test</router-link>
-  </div>
-  -->
-  <router-view/>
+  <router-view v-slot="{ Component }">
+    <keep-alive>
+      <component :is="Component" />
+    </keep-alive>
+  </router-view>
 </template>
 
 <script>
@@ -29,6 +26,9 @@ export default {
     }
   },
   mounted() {
+    // Start global persistent WebSocket (runs 24/7 across all page navigations)
+    this.$store.dispatch('initSocket');
+
     // Theme initialization
     const savedTheme = localStorage.getItem('vuecoin_theme');
     if (savedTheme) this.themeMode = savedTheme;

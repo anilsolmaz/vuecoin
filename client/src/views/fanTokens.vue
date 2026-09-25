@@ -62,8 +62,6 @@
 // @ is an alias to /src
 import axios from 'axios'
 import Select2 from 'vue3-select2-component';
-import { io } from "socket.io-client";
-
 
 export default {
   name: 'VueCoinFanTokens',
@@ -75,9 +73,7 @@ export default {
       coin : '',
       myValue: [],
       myOptions: [],
-      value:'',
-      socket: null
-
+      value:''
     }
   } ,
   methods: {
@@ -153,25 +149,21 @@ export default {
           console.log(error)
         })
     
-    // WebSocket Connection
-    this.socket = io();
-    
-    this.socket.on('data_update', (data) => {
-        if (data && data.btc) {
-            this.processData(data);
-        } else {
-            console.log('Fallback triggered, data missing expected keys:', data);
-            this.updateData();
+    if (this.$store.state.coinData && (this.$store.state.coinData.btc || Object.keys(this.$store.state.coinData).length > 5)) {
+        this.processData(this.$store.state.coinData);
+    } else {
+        this.updateData();
+    }
+  },
+  watch: {
+    '$store.state.coinData': {
+      handler(newData) {
+        if (newData && (newData.btc || Object.keys(newData).length > 5)) {
+          this.processData(newData);
         }
-    });
-  },
-  beforeUnmount() {
-      if (this.socket) {
-          this.socket.disconnect();
-      }
-  },
-  computed: {
-
+      },
+      immediate: true
+    }
   }
 }
 </script>

@@ -318,7 +318,6 @@
   import coinBox from '../components/coinBox';
   import topCoin from '../components/topCoin';
   import axios from 'axios';
-  import { io } from "socket.io-client";
   export default defineComponent({
     name: 'VueCoinDashboard',
     components: {
@@ -695,26 +694,12 @@
       if (this.isDemoMode) {
           this.fetchMockData();
       } else {
-          // Initial Fetch Removed - Data comes via WebSocket on connect
-
-          // WebSocket Connection
-          this.socket = io();
-          
-          this.socket.on('connect', () => {
-              console.log('Connected to WebSocket server');
-          });
-
-          this.socket.on('data_update', (data) => {
-              if (data && data.btc) {
-                  this.processData(data);
-              } else {
-                 this.updateData();
-              }
-          });
-
-          this.socket.on('disconnect', () => {
-              console.log('Disconnected from WebSocket server');
-          });
+          // Instantly render from global store if data already exists
+          if (this.$store.state.coinData && (this.$store.state.coinData.btc || Object.keys(this.$store.state.coinData).length > 5)) {
+              this.processData(this.$store.state.coinData);
+          } else {
+              this.updateData();
+          }
       }
       
       // Fetch user settings
@@ -722,6 +707,14 @@
       this.loadPortfolio();
     },
     watch: {
+      '$store.state.coinData': {
+        handler(newData) {
+          if (!this.isDemoMode && newData && (newData.btc || Object.keys(newData).length > 5)) {
+            this.processData(newData);
+          }
+        },
+        immediate: true
+      },
       USDTMode(newVal) {
         localStorage.setItem('vuecoin_usdt_mode', newVal);
       },
@@ -736,9 +729,6 @@
     },
     beforeUnmount() {
       this.stop();
-      if (this.socket) {
-          this.socket.disconnect();
-      }
       if (this.demoInterval) {
           clearInterval(this.demoInterval);
       }
