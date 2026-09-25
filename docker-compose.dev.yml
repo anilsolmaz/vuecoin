@@ -1,0 +1,47 @@
+version: '3.8'
+
+# Development Docker Compose:
+# Spins up local Redis and runs backend with nodemon + volume mounts for instant live-reload.
+# Usage: docker compose -f docker-compose.dev.yml up
+
+services:
+  backend-dev:
+    image: node:20-alpine
+    container_name: vuecoin-dev-backend
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/client/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_HOST=redis-dev
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=dev_secret
+    command: sh -c "npm install && npx nodemon server.js -w server"
+    depends_on:
+      redis-dev:
+        condition: service_healthy
+    networks:
+      - vuecoin-dev-net
+
+  redis-dev:
+    image: redis:7-alpine
+    container_name: vuecoin-dev-redis
+    command: ["redis-server", "--requirepass", "dev_secret"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "dev_secret", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - vuecoin-dev-net
+
+networks:
+  vuecoin-dev-net:
+    driver: bridge

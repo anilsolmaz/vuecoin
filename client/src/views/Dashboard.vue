@@ -10,7 +10,7 @@
       <!-- Top Navigation Action Bar -->
       <div class="row mt-1 mb-2 align-items-center justify-content-between">
          <div class="col-auto">
-            <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">Richmeme Scanner</h4>
+            <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">VueCoin Arbitrage Engine</h4>
          </div>
          
          <!-- Desktop Navigation Actions -->
@@ -163,19 +163,71 @@
       <div class="row mt-1 mb-0 theme-text pb-0">
         <topcoin
             v-for="name in topCoins"
+            :key="name"
             v-bind:coinName="name"
             v-bind:coinData="coinData[name]"
         ></topcoin>
       </div>
-      <div class="row" v-if="Object.keys(coinData).length ==0" style="margin-top: 100px">
-        <h1>Richmeme is loading</h1>
+
+      <!-- Modern Scanner Loading Screen -->
+      <div class="row justify-content-center align-items-center loading-container" v-if="Object.keys(coinData).length == 0">
+        <div class="col-12 col-md-8 col-lg-6 text-center py-5">
+          <div class="scanner-loader-wrapper mb-4">
+            <div class="scanner-radar">
+              <div class="scanner-sweep"></div>
+              <div class="scanner-circle circle-1"></div>
+              <div class="scanner-circle circle-2"></div>
+              <div class="scanner-circle circle-3"></div>
+              <div class="scanner-core">
+                <i class="bi bi-cpu-fill fs-3 text-primary"></i>
+              </div>
+            </div>
+          </div>
+          
+          <h3 class="fw-bold theme-text mb-1 scanner-title" style="letter-spacing: 2px;">
+            <span class="text-primary">RICH</span>MEME SCANNER
+          </h3>
+          <p class="text-muted small mb-4">Scanning multi-exchange order books in real-time...</p>
+          
+          <!-- Exchange Status Badges -->
+          <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+            <div class="exchange-badge d-flex align-items-center gap-2 px-3 py-1 rounded-pill border">
+              <span class="pulse-dot binance"></span>
+              <span class="small fw-bold">Binance</span>
+            </div>
+            <div class="exchange-badge d-flex align-items-center gap-2 px-3 py-1 rounded-pill border">
+              <span class="pulse-dot paribu"></span>
+              <span class="small fw-bold">Paribu</span>
+            </div>
+            <div class="exchange-badge d-flex align-items-center gap-2 px-3 py-1 rounded-pill border">
+              <span class="pulse-dot btcturk"></span>
+              <span class="small fw-bold">BtcTurk</span>
+            </div>
+          </div>
+
+          <!-- Progress Shimmer Bar -->
+          <div class="loading-progress-bar rounded-pill mx-auto">
+            <div class="loading-shimmer"></div>
+          </div>
+          <div class="mt-2 text-muted" style="font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase;">Analyzing Liquidity & Arbitrage Spreads</div>
+        </div>
       </div>
+
       <div class="row mt-0" v-if="Object.keys(coinData).length>0">
          
          <!-- Display Top Deals Based on API settings Limit -->
          <div class="d-flex align-items-center mb-1 mt-0">
             <i class="bi bi-fire text-danger me-2"></i>
             <span class="small fw-bold section-label text-uppercase" style="letter-spacing:1px; font-size: 0.75rem;">Top Deals</span>
+            <!-- Sort Toggle: Gain vs ROI -->
+            <div class="btn-group btn-group-sm ms-2" role="group">
+               <button type="button" class="btn btn-sm py-0 px-2 fw-bold" :class="topDealsSortBy === 'gain' ? 'btn-success text-white' : 'btn-outline-secondary'" @click="setTopDealsSortBy('gain')" style="font-size: 0.68rem;" title="Sort Top Deals by Potential Gain">
+                 <i class="bi bi-cash-stack me-1"></i>Gain
+               </button>
+               <button type="button" class="btn btn-sm py-0 px-2 fw-bold" :class="topDealsSortBy === 'roi' ? 'btn-primary text-white' : 'btn-outline-secondary'" @click="setTopDealsSortBy('roi')" style="font-size: 0.68rem;" title="Sort Top Deals by ROI %">
+                 <i class="bi bi-percent me-1"></i>ROI
+               </button>
+            </div>
             <hr class="flex-grow-1 ms-2 my-0 section-hr">
             <div class="d-flex align-items-center ms-2 gap-1 theme-text" style="font-size: 0.75rem;">
                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none theme-text fw-bold" @click="changeFontSize('topDeals', -1)"><i class="bi bi-dash fs-5"></i></button>
@@ -183,9 +235,8 @@
                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none theme-text fw-bold" @click="changeFontSize('topDeals', 1)"><i class="bi bi-plus fs-5"></i></button>
             </div>
          </div>
-         <div class="row mb-1">
+         <div class="d-flex flex-wrap align-items-start mb-1">
             <coinbox
-                class="coinbox"
                 v-for="coinName in Object.keys(topDeals).slice(0, topDealsCount)"
                 :key="'top_'+coinName"
                 :coinName="coinName"
@@ -209,9 +260,8 @@
                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none theme-text fw-bold" @click="changeFontSize('allMarkets', 1)"><i class="bi bi-plus fs-5"></i></button>
             </div>
          </div>
-         <div class="row pb-3">
+         <div class="d-flex flex-wrap align-items-start pb-3">
             <coinbox
-                class="coinbox"
                 v-for="coinName in sortedRemainingCoins"
                 :key="'list_'+coinName"
                 :coinName="coinName"
@@ -225,38 +275,38 @@
          </div>
          
       </div>
-    </div>
-
-    <!-- Profit Calculator Modal Backdrop Overlay -->
-    <div v-if="showCalculatorModal" class="modal-backdrop-custom d-flex justify-content-center align-items-center" @click.self="showCalculatorModal = false">
-      <div class="modal-wrapper p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw; position: relative; background-color: var(--current-card-bg, #ffffff); opacity: 1;">
-        <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-3 border-0 rounded-circle" @click="showCalculatorModal = false">
-          <i class="bi bi-x-lg"></i>
-        </button>
-        
-        <div class="text-center mb-4">
-           <i class="bi bi-calculator-fill fs-2 text-primary mb-2"></i>
-           <h5 class="fw-bold theme-text mb-0">Profit Calculator</h5>
-           <p class="small text-muted mb-0">Live estimation tool</p>
-        </div>
-        
-        <div class="p-3 border rounded-3 bg-light-soft theme-input-minimal shadow-sm">
-          <div class="theme-text-secondary">
-            <div class="mb-3 p-3 rounded bg-dark-soft text-center fw-bold text-success border border-success-subtle fs-4 bg-opacity-25 shadow-inner">
-              {{typeof coinData !== "undefined" ? formatNumber((coinData[selectedCoin]?.binance?.usdt?.price-buyPrice)*buyAmount,2) : '0.00'}}$
-            </div>
-            
-            <label class="form-label small fw-bold mb-1 mt-2 text-uppercase text-muted">Select Asset</label>
-            <Select2 v-model="selectedCoin" :options="coinList" :settings="{ placeholder: selectedCoin }" @change="myChangeEvent($event)" @select="mySelectEvent($event)" />
-            
-            <div class="mt-3 text-start">
-              <label class="form-label small fw-bold mb-1 text-uppercase text-muted">Buy Order Target (Price)</label>
-              <input type="number" class="form-control form-control-lg theme-input-minimal font-monospace" v-model="buyPrice" placeholder="0.0000">
-            </div>
-            
-            <div class="mt-3 text-start">
-              <label class="form-label small fw-bold mb-1 text-uppercase text-muted">Position Size (Amount)</label>
-              <input type="number" class="form-control form-control-lg theme-input-minimal font-monospace" v-model="buyAmount" placeholder="100.0">
+    
+      <!-- Profit Calculator Modal Backdrop Overlay -->
+      <div v-if="showCalculatorModal" class="modal-backdrop-custom d-flex justify-content-center align-items-center" @click.self="showCalculatorModal = false">
+        <div class="modal-wrapper p-4 rounded-4 shadow-lg border" style="width: 380px; max-width: 90vw; position: relative; background-color: var(--current-card-bg, #ffffff); opacity: 1;">
+          <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-3 border-0 rounded-circle" @click="showCalculatorModal = false">
+            <i class="bi bi-x-lg"></i>
+          </button>
+          
+          <div class="text-center mb-4">
+             <i class="bi bi-calculator-fill fs-2 text-primary mb-2"></i>
+             <h5 class="fw-bold theme-text mb-0">Profit Calculator</h5>
+             <p class="small text-muted mb-0">Live estimation tool</p>
+          </div>
+          
+          <div class="p-3 border rounded-3 bg-light-soft theme-input-minimal shadow-sm">
+            <div class="theme-text-secondary">
+              <div class="mb-3 p-3 rounded bg-dark-soft text-center fw-bold text-success border border-success-subtle fs-4 bg-opacity-25 shadow-inner">
+                {{typeof coinData !== "undefined" ? formatNumber((coinData[selectedCoin]?.binance?.usdt?.price-buyPrice)*buyAmount,2) : '0.00'}}$
+              </div>
+              
+              <label class="form-label small fw-bold mb-1 mt-2 text-uppercase text-muted">Select Asset</label>
+              <Select2 v-model="selectedCoin" :options="coinList" :settings="{ placeholder: selectedCoin }" @change="myChangeEvent($event)" @select="mySelectEvent($event)" />
+              
+              <div class="mt-3 text-start">
+                <label class="form-label small fw-bold mb-1 text-uppercase text-muted">Buy Order Target (Price)</label>
+                <input type="number" class="form-control form-control-lg theme-input-minimal font-monospace" v-model="buyPrice" placeholder="0.0000">
+              </div>
+              
+              <div class="mt-3 text-start">
+                <label class="form-label small fw-bold mb-1 text-uppercase text-muted">Position Size (Amount)</label>
+                <input type="number" class="form-control form-control-lg theme-input-minimal font-monospace" v-model="buyAmount" placeholder="100.0">
+              </div>
             </div>
           </div>
         </div>
@@ -270,13 +320,14 @@
   import axios from 'axios';
   import { io } from "socket.io-client";
   export default defineComponent({
+    name: 'VueCoinDashboard',
     components: {
       coinbox: coinBox,
       topcoin: topCoin,
     },
     data() {
       return {
-        isDemoMode: true,
+        isDemoMode: typeof window !== 'undefined' && (window.location.hostname.includes('github.io') || window.location.search.includes('demo=1')),
         demoRecordedAt: '',
         demoFrames: [],
         currentFrameIndex: 0,
@@ -287,6 +338,7 @@
         topDeals: [],
         topCoins: ['btc','bnb','ftt','usdt','jup','sevilla','eth','shib'],
         topDealsCount: 10,
+        topDealsSortBy: localStorage.getItem('vuecoin_topDealsSortBy') || 'gain',
         topDealTimers: {},
         topDealEntryTimes: JSON.parse(localStorage.getItem('vuecoin_topDealEntryTimes')) || {},
         crossMinROI: 0.5,
@@ -296,7 +348,7 @@
         buyPrice: null,
         buyAmount: null,
         showCalculatorModal: false,
-        USDTMode: false,
+        USDTMode: localStorage.getItem('vuecoin_usdt_mode') !== null ? localStorage.getItem('vuecoin_usdt_mode') === 'true' : true,
         dragging: false,
         elapsedTime: 0,
         timer: undefined,
@@ -467,25 +519,75 @@
           this.buyPrice = this.coinData[id].binance.usdt.price;
         }
       },
+      setTopDealsSortBy(mode) {
+        this.topDealsSortBy = mode;
+        localStorage.setItem('vuecoin_topDealsSortBy', mode);
+        if (this.coinData && Object.keys(this.coinData).length > 0) {
+          this.processData(this.coinData);
+        }
+      },
       processData(data) {
           this.coinData = data;
           this.reset();
-          const topData = {};
+          
           let coinList = [];
-          Object.keys(this.coinData).forEach(function(coinName) {
-              topData[coinName] = data[coinName].ROI;
+          const validDeals = [];
+          
+          Object.keys(data).forEach(coinName => {
               coinList.push(coinName);
+              if (coinName === 'usdt') return;
+              const d = data[coinName];
+              if (d) {
+                  const r = (typeof d.ROI === 'number' && !isNaN(d.ROI)) ? d.ROI : -999;
+                  
+                  // Calculate potential gain for sorting
+                  let gain = 0;
+                  if (d.arbitrageDetails) {
+                      const crossP = d.arbitrageDetails.cross?.profit || 0;
+                      const intraP = d.arbitrageDetails.intra?.profit || 0;
+                      gain = Math.max(crossP, intraP);
+                  }
+                  if (gain <= 0 && d.profit > 0) {
+                      gain = d.profit;
+                  }
+                  if (gain <= 0 && r > 0) {
+                      const isDemo = typeof window !== 'undefined' && (window.location.hostname.includes('github.io') || window.location.search.includes('demo=1'));
+                      if (isDemo) {
+                          const pseudoSeed = (coinName || 'btc').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+                          const mockVolume = 8000 + ((pseudoSeed * 491) % 32000);
+                          gain = (mockVolume * r) / 100;
+                      }
+                  }
+
+                  validDeals.push({ coin: coinName, roi: r, gain: gain });
+              }
           });
+          
           this.coinList = coinList;
-          let x = Object.entries(topData)
-              .sort(([,a],[,b]) => a-b)
-              .reverse()
-              .reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
-          this.topDeals = x;
+          
+          // Sort by Gain (default) or ROI based on user setting
+          if (this.topDealsSortBy === 'roi') {
+              validDeals.sort((a, b) => {
+                  if (b.roi !== a.roi) return b.roi - a.roi;
+                  return b.gain - a.gain;
+              });
+          } else {
+              // Default: Sort by Gain descending
+              validDeals.sort((a, b) => {
+                  if (b.gain !== a.gain) return b.gain - a.gain;
+                  return b.roi - a.roi;
+              });
+          }
+          
+          const sortedDeals = {};
+          validDeals.forEach(item => {
+              sortedDeals[item.coin] = item.roi;
+          });
+          this.topDeals = sortedDeals;
 
           // Track how long each coin has been in Top Deals
           const now = Date.now();
-          const activeTopDealKeys = Object.keys(x).slice(0, this.topDealsCount);
+          const activeTopDealKeys = Object.keys(sortedDeals).slice(0, this.topDealsCount);
           // Add entry time for new coins
           activeTopDealKeys.forEach(coin => {
             if (!this.topDealEntryTimes[coin]) {
@@ -620,6 +722,9 @@
       this.loadPortfolio();
     },
     watch: {
+      USDTMode(newVal) {
+        localStorage.setItem('vuecoin_usdt_mode', newVal);
+      },
       selectedCoin(newVal) {
         if (this.coinData[newVal] && this.coinData[newVal].binance?.usdt?.price) {
           this.buyPrice = this.coinData[newVal].binance.usdt.price;
@@ -1006,6 +1111,139 @@
     height: 20px;
     margin: 1px;
     border-radius: 3px;
+  }
+
+  /* Modern Scanner Loading Screen */
+  .loading-container {
+    min-height: 400px;
+    margin-top: 40px;
+  }
+
+  .scanner-loader-wrapper {
+    display: inline-block;
+    position: relative;
+    width: 140px;
+    height: 140px;
+  }
+
+  .scanner-radar {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(13, 110, 253, 0.08) 0%, rgba(13, 110, 253, 0.01) 70%, transparent 100%);
+    border: 1px solid rgba(13, 110, 253, 0.25);
+    box-shadow: 0 0 25px rgba(13, 110, 253, 0.15);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .scanner-circle {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px dashed rgba(13, 110, 253, 0.3);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .circle-1 { width: 45px; height: 45px; }
+  .circle-2 { width: 85px; height: 85px; }
+  .circle-3 { width: 125px; height: 125px; }
+
+  .scanner-sweep {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(13, 110, 253, 0.4) 360deg);
+    animation: radar-sweep 2s linear infinite;
+  }
+
+  @keyframes radar-sweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .scanner-core {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--current-card-bg, #ffffff);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--current-border, #dee2e6);
+  }
+
+  .scanner-title {
+    letter-spacing: 1.5px;
+  }
+
+  .exchange-badge {
+    background: var(--current-card-bg, #ffffff);
+    border-color: var(--current-border, #dee2e6) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .pulse-dot.binance {
+    background-color: #f3ba2f;
+    box-shadow: 0 0 8px #f3ba2f;
+    animation: pulse-glow 1.5s infinite alternate;
+  }
+
+  .pulse-dot.paribu {
+    background-color: #29b6f6;
+    box-shadow: 0 0 8px #29b6f6;
+    animation: pulse-glow 1.5s infinite alternate 0.3s;
+  }
+
+  .pulse-dot.btcturk {
+    background-color: #00c076;
+    box-shadow: 0 0 8px #00c076;
+    animation: pulse-glow 1.5s infinite alternate 0.6s;
+  }
+
+  @keyframes pulse-glow {
+    0% { opacity: 0.4; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1.2); }
+  }
+
+  .loading-progress-bar {
+    width: 220px;
+    height: 4px;
+    background: var(--current-border, rgba(0,0,0,0.1));
+    overflow: hidden;
+    position: relative;
+  }
+
+  .loading-shimmer {
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, #0d6efd, transparent);
+    animation: shimmer 1.5s infinite ease-in-out;
+  }
+
+  @keyframes shimmer {
+    0% { left: -50%; }
+    100% { left: 100%; }
   }
 
   </style>

@@ -1,4 +1,3 @@
-const db = require("../db");
 const axios = require("axios");
 
 // Add global axios timeout and User-Agent to prevent indefinite network hangs (Required for Paribu)
@@ -24,7 +23,6 @@ const client = require('../services/RedisService');
 async function fetchParibu(resolve, reject, currentTime, requestCount) {
     try {
         const response = await axios.get(config.exchangeMarkets.paribu.tickerUrl);
-        console.log(currentTime, requestCount, 'Paribu data refreshed');
         let paribuData = response.data;
         let paribuJSON = { market: "paribu" };
         Object.keys(paribuData).forEach(coin => {
@@ -51,8 +49,14 @@ async function fetchParibu(resolve, reject, currentTime, requestCount) {
 
 async function fetchBinance(resolve, reject, currentTime, requestCount) {
     try {
-        const response = await axios.get(config.exchangeMarkets.binance.tickerUrl);
-        console.log(currentTime, requestCount, 'Binance data refreshed');
+        let response;
+        try {
+            response = await axios.get(config.exchangeMarkets.binance.tickerUrl, { timeout: 5000 });
+        } catch (e) {
+            // Fallback to Binance Vision Public Data API if primary endpoint fails/blocks
+            const fallbackUrl = 'https://data-api.binance.vision/api/v3/ticker/bookTicker';
+            response = await axios.get(fallbackUrl, { timeout: 5000 });
+        }
         let binanceData = response.data;
         let binanceJSON = { market: "binance" };
         const excludedSymbols = [
@@ -83,8 +87,7 @@ async function fetchBinance(resolve, reject, currentTime, requestCount) {
 
 async function fetchBTCTurk(resolve, reject, currentTime, requestCount) {
     try {
-        const response = await axios.get(config.exchangeMarkets.BTCTurk.tickerUrl);
-        console.log(currentTime, requestCount, 'BTCTurk data refreshed');
+        const response = await axios.get(config.exchangeMarkets.BTCTurk.tickerUrl, { timeout: 5000 });
         let BTCTurkData = response.data;
         let BTCTurkJSON = { market: "BTCTurk" };
         BTCTurkData.data.forEach(coin => {
@@ -171,15 +174,6 @@ module.exports = {
             throw error;
         }
     },
-    getChilizCoinList: async function () {
-        try {
-            const response = await axios.get(config.exchangeMarkets.chiliz.tickerUrl);
-            // Chiliz ticker returns an array of { symbol, ... }
-            return response.data.map(item => item.symbol.toLowerCase());
-        } catch (error) {
-            throw error;
-        }
-    },
     getRedisCoinList: async function () {
         try {
             const currentCoins = await new Promise((resolve, reject) => {
@@ -206,24 +200,15 @@ module.exports = {
                 newParibuMarkets.push(coin.toLowerCase().split('_')[0]);
             });
 
-            let filepath = process.cwd() + "/server/configs/config.json";
-
-            // Read fresh data from disk
-            let fileData = fs.readFileSync(filepath, 'utf8');
-            let currentConfig = JSON.parse(fileData);
-            let oldParibuMarkets = currentConfig.exchangeMarkets.paribu.markets;
-
-            // Only find strictly NEW markets (present in API but not in Config)
+            let oldParibuMarkets = config.exchangeMarkets.paribu.markets || [];
             let newListings = this.differenceOfFirstArray(newParibuMarkets, oldParibuMarkets);
 
             if (newListings.length > 0) {
                 console.log('New Paribu Markets Found:', newListings);
                 newListings.forEach((data) => {
-                    currentConfig.exchangeMarkets.paribu.markets.push(data);
+                    config.exchangeMarkets.paribu.markets.push(data);
                 });
-
-                fs.writeFileSync(filepath, JSON.stringify(currentConfig, null, 2), 'utf8');
-                console.log('Config updated with new Paribu markets.');
+                console.log('In-memory config updated with new Paribu markets.');
             }
         } catch (error) {
             console.error('Paribu Markets Update Failed', error.message);
@@ -238,24 +223,15 @@ module.exports = {
                 newBTCTurkMarkets.push(coin.symbol.toLowerCase());
             });
 
-            let filepath = process.cwd() + "/server/configs/config.json";
-
-            // Read fresh data from disk
-            let fileData = fs.readFileSync(filepath, 'utf8');
-            let currentConfig = JSON.parse(fileData);
-            let oldBTCTurkMarkets = currentConfig.exchangeMarkets.BTCTurk.markets;
-
-            // Only find strictly NEW markets
+            let oldBTCTurkMarkets = config.exchangeMarkets.BTCTurk.markets || [];
             let newListings = this.differenceOfFirstArray(newBTCTurkMarkets, oldBTCTurkMarkets);
 
             if (newListings.length > 0) {
                 console.log('New BTCTurk Markets Found:', newListings);
                 newListings.forEach((data) => {
-                    currentConfig.exchangeMarkets.BTCTurk.markets.push(data);
+                    config.exchangeMarkets.BTCTurk.markets.push(data);
                 });
-
-                fs.writeFileSync(filepath, JSON.stringify(currentConfig, null, 2), 'utf8');
-                console.log('Config updated with new BTCTurk markets.');
+                console.log('In-memory config updated with new BTCTurk markets.');
             }
         } catch (error) {
             console.error('BTCTurk Markets Update Failed', error.message);
@@ -275,13 +251,17 @@ module.exports = {
     updateBinanceData: function (requestCount, force = false) {
         let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
         return new Promise((resolve, reject) => {
+            const BinanceWebSocketService = require('../services/BinanceWebSocketService');
+            if (!force && BinanceWebSocketService.isLive()) {
+                const wsData = BinanceWebSocketService.getBinanceJSON();
+                client.setex('binanceData', config.cacheDuration, JSON.stringify(wsData));
+                return resolve(wsData);
+            }
             if (!force) {
                 client.get('binanceData', (error, data) => {
                     if (error) {
-                        console.error(currentTime, requestCount, '\x1b[31mBinance cache failed', error);
                         return reject('binance cache failed');
                     } else if (data !== null) {
-                        console.log(currentTime, requestCount, 'Binance data used from cache');
                         return resolve(JSON.parse(data));
                     } else {
                         fetchBinance(resolve, reject, currentTime, requestCount);
@@ -298,10 +278,8 @@ module.exports = {
             if (!force) {
                 client.get('paribuData', (error, data) => {
                     if (error) {
-                        console.error(currentTime, requestCount, '\x1b[31mParibu cache failed', error);
                         return reject('paribu cache failed');
                     } else if (data !== null) {
-                        console.log(currentTime, requestCount, 'Paribu data used from cache');
                         return resolve(JSON.parse(data));
                     } else {
                         fetchParibu(resolve, reject, currentTime, requestCount);
@@ -319,10 +297,8 @@ module.exports = {
             if (!force) {
                 client.get('BTCTurkData', (error, data) => {
                     if (error) {
-                        console.error(currentTime, requestCount, '\x1b[31mBTCTurk cache failed', error);
                         return reject('BTCTurk cache failed');
                     } else if (data !== null) {
-                        console.log(currentTime, requestCount, 'BTCTurk data used from cache');
                         return resolve(JSON.parse(data));
                     } else {
                         fetchBTCTurk(resolve, reject, currentTime, requestCount);
@@ -331,35 +307,6 @@ module.exports = {
             } else {
                 fetchBTCTurk(resolve, reject, currentTime, requestCount);
             }
-        });
-    },
-    updateChilizData: function (requestCount) {
-        let currentTime = DateTime.local().setZone("Turkey").setLocale('tr').toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
-        return new Promise((resolve, reject) => {
-            client.get('ChilizData', async (error, data) => {
-                if (error) {
-                    console.error(currentTime, requestCount, '\x1b[31mChiliz cache failed', error);
-                    return reject('Chiliz cache failed');
-                } else if (data !== null) {
-                    console.log(currentTime, requestCount, 'Chiliz data used from cache');
-                    return resolve(JSON.parse(data));
-                } else {
-                    try {
-                        const response = await axios.get(config.exchangeMarkets.chiliz.tickerUrl);
-                        console.log(currentTime, requestCount, 'Chiliz data refreshed');
-                        let chilizData = response.data;
-                        let chilizJSON = { market: "chiliz" };
-                        chilizData.forEach(coin => {
-                            chilizJSON[coin.symbol] = (parseFloat(coin.bidPrice) + parseFloat(coin.askPrice)) / 2;
-                        });
-                        client.setex('chilizData', config.cacheDuration, JSON.stringify(chilizJSON));
-                        return resolve(chilizJSON);
-                    } catch (error) {
-                        console.error(currentTime, requestCount, '\x1b[31mChiliz refresh failed', error.message);
-                        return reject('Chiliz refresh failed');
-                    }
-                }
-            });
         });
     },
     multipleROIcalculate: function (priceList, coin) {
@@ -373,9 +320,17 @@ module.exports = {
     },
     getBinanceOrderBook: async function (symbol) {
         try {
-            // Limit 5 is enough for immediate depth check usually, or 10
-            const response = await axios.get(`${config.exchangeMarkets.binance.tickerUrl.replace('ticker/bookTicker', 'depth')}?symbol=${symbol}&limit=5`);
-            return response.data;
+            // Limit 5 is enough for immediate depth check
+            let url = `${config.exchangeMarkets.binance.tickerUrl.replace('ticker/bookTicker', 'depth')}?symbol=${symbol}&limit=5`;
+            try {
+                const response = await axios.get(url, { timeout: 3000 });
+                return response.data;
+            } catch (err) {
+                // Fallback to Binance Vision
+                const fallbackUrl = `https://data-api.binance.vision/api/v3/depth?symbol=${symbol}&limit=5`;
+                const response = await axios.get(fallbackUrl, { timeout: 3000 });
+                return response.data;
+            }
         } catch (error) {
             console.error(`Binance OrderBook Error (${symbol}):`, error.message);
             return null;
@@ -383,8 +338,7 @@ module.exports = {
     },
     getBTCTurkOrderBook: async function (pairSymbol) {
         try {
-            // endpoint: htps://api.btcturk.com/api/v2/orderbook?pairSymbol=BTCTRY
-            const response = await axios.get(`https://api.btcturk.com/api/v2/orderbook?pairSymbol=${pairSymbol}`);
+            const response = await axios.get(`https://api.btcturk.com/api/v2/orderbook?pairSymbol=${pairSymbol}`, { timeout: 3000 });
             return response.data.data;
         } catch (error) {
             console.error(`BTCTurk OrderBook Error (${pairSymbol}):`, error.message);
@@ -393,14 +347,12 @@ module.exports = {
     },
     getParibuOrderBook: async function (market) {
         try {
-            // endpoint: https://api.paribu.com/orderbook?market=btc_tl
             const response = await axios.get(`https://api.paribu.com/orderbook?market=${market}`, {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 timeout: 3000
             });
             return response.data;
         } catch (error) {
-            // Suppress 404s for coins that might not have this endpoint active or valid market names
             if (error.response && error.response.status !== 404) {
                 console.error(`Paribu OrderBook Error (${market}):`, error.message);
             }

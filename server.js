@@ -18,14 +18,21 @@ const io = new Server(server, {
 
 const CoinDataService = require('./server/services/CoinDataService');
 const ListingMonitorService = require('./server/services/ListingMonitorService');
+const BinanceWebSocketService = require('./server/services/BinanceWebSocketService');
 
-// Initialize Listing Monitor
+// Initialize Real-time Services (Binance WebSocket & Listing Monitors)
 if (process.env.NODE_ENV !== 'test') {
+    BinanceWebSocketService.start();
+
     ListingMonitorService.init().then(() => {
-        // Run check every 1 second for real-time listing detection
+        // Run Paribu check every 1 second
         setInterval(() => {
             ListingMonitorService.checkParibuListings();
         }, 1000);
+        // Run BTCTurk check every 5 seconds
+        setInterval(() => {
+            ListingMonitorService.checkBTCTurkListings();
+        }, 5000);
     });
 }
 
@@ -44,13 +51,31 @@ if (process.env.NODE_ENV !== 'test') {
     worker.start();
 }
 
+app.disable('x-powered-by');
+
+// Basic Security Headers
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    next();
+});
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '200kb' }));
 
 const path = require('path');
-app.use(express.static(path.join(__dirname, 'client/dist')));
+app.use(express.static(path.join(__dirname, 'client/dist'), { maxAge: '1h' }));
+app.use('/vuecoin', express.static(path.join(__dirname, 'client/dist'), { maxAge: '1h' }));
 
 app.use('/api', apiRouter);
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error('API Error:', err.message);
+    if (res.headersSent) return next(err);
+    res.status(err.status || 500).json({ error: 'Internal server error' });
+});
 
 // Forward all other requests to the Vue app (for SPA routing)
 app.get('*', (req, res) => {

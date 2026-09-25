@@ -40,6 +40,9 @@ function freshMonitor(axiosGetFn) {
                 paribu: {
                     initialsUrl: 'https://mock.paribu.com/initials',
                     tickerUrl: 'https://mock.paribu.com/ticker'
+                },
+                BTCTurk: {
+                    exchangeInfoURL: 'https://mock.btcturk.com/exchangeinfo'
                 }
             },
             '@noCallThru': true
@@ -182,6 +185,46 @@ async function runTests() {
         await monitor.checkParibuListings();
         // Should not crash
         assert.ok(true, 'Did not crash on API error');
+    });
+
+    // --- checkBTCTurkListings ---
+    console.log('\n--- checkBTCTurkListings ---');
+
+    await asyncTest('should detect new BTCTurk listings and alert', async () => {
+        let callCount = 0;
+        const monitor = freshMonitor(async (url) => {
+            if (url.includes('btcturk')) {
+                callCount++;
+                if (callCount <= 1) {
+                    return {
+                        data: {
+                            data: {
+                                currencies: [{ symbol: 'BTC' }, { symbol: 'ETH' }],
+                                symbols: [{ name: 'BTCTRY' }]
+                            }
+                        }
+                    };
+                }
+                return {
+                    data: {
+                        data: {
+                            currencies: [{ symbol: 'BTC' }, { symbol: 'ETH' }, { symbol: 'SOL' }],
+                            symbols: [{ name: 'BTCTRY' }, { name: 'SOLTRY' }]
+                        }
+                    }
+                };
+            }
+            return defaultPayload();
+        });
+
+        await monitor.init();
+        assert.strictEqual(broadcastMessages.length, 0);
+
+        await monitor.checkBTCTurkListings();
+        assert.ok(broadcastMessages.length > 0, 'Should send Telegram alert for BTCTurk listing');
+        const alertText = broadcastMessages.join(' ');
+        assert.ok(alertText.includes('SOL'), 'Alert should mention SOL');
+        assert.ok(alertText.includes('BTCTurk'), 'Alert should mention BTCTurk');
     });
 
     // --- Summary ---

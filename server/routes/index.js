@@ -154,48 +154,6 @@ router.get('/coinListUpdateFromBinance/', async (req, res, next) => {
     }
 });
 
-router.get('/coinListUpdateFromChiliz/', async (req, res, next) => {
-    //kullanım dışı birgün chiliz için aktif edilmek istenirse işe yarar
-    try {
-        let chilizCoins = await f.getChilizCoinList();
-        let newCoins = Object.keys(chilizCoins);
-
-        const currentCoins = await new Promise((resolve, reject) => {
-            client.lrange('ag', 0, -1, (error, coins) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(coins);
-                }
-            });
-        });
-
-        const coinsToAdd = newCoins.filter(coin => !currentCoins.includes(coin));
-
-        if (coinsToAdd.length > 0) {
-            client.lpush('ag', ...coinsToAdd);
-            console.log('New coins added:', coinsToAdd);
-        } else {
-            console.log('No new coins to add.');
-        }
-
-        const updatedCoins = await new Promise((resolve, reject) => {
-            client.lrange('ag', 0, -1, (error, coins) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(coins);
-                }
-            });
-        });
-
-        res.status(200).json(updatedCoins);
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
 router.post('/removeCoinsFromList/', async (req, res, next) => {
     try {
         const coinList = await f.getRedisCoinList();
@@ -244,12 +202,17 @@ router.post('/tester/', async (req, res, next) => {
 });
 
 // --- Telegram Routes ---
-
 router.post('/telegram', async (req, res) => {
     try {
+        const authKey = req.headers['x-admin-key'] || req.query.key;
+        const expectedKey = process.env.ADMIN_KEY || process.env.REDIS_PASSWORD;
+        if (process.env.NODE_ENV !== 'test' && (!authKey || authKey !== expectedKey)) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
         const message = req.body.message;
-        if (!message) {
-            return res.status(400).json({ status: 'error', message: 'Message body missing' });
+        if (!message || typeof message !== 'string') {
+            return res.status(400).json({ status: 'error', message: 'Message body missing or invalid' });
         }
 
         const TelegramService = require('../services/TelegramService');
@@ -264,6 +227,12 @@ router.post('/telegram', async (req, res) => {
 
 router.get('/telegram/:message', async (req, res) => {
     try {
+        const authKey = req.headers['x-admin-key'] || req.query.key;
+        const expectedKey = process.env.ADMIN_KEY || process.env.REDIS_PASSWORD;
+        if (process.env.NODE_ENV !== 'test' && (!authKey || authKey !== expectedKey)) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
         const message = req.params.message;
         const TelegramService = require('../services/TelegramService');
         await TelegramService.sendAzelert(message); // Uses specific Azelert bot
@@ -342,22 +311,31 @@ router.get('/settings', async (req, res) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
+        const defaults = {
+            crossEnabled: true,
+            intraEnabled: true,
+            paribuEnabled: true,
+            crossMinProfit: 1000,
+            crossMinROI: 0.50,
+            crossCooldown: 5,
+            intraMinROI: 0,
+            intraMinProfit: 100,
+            intraCooldown: 5,
+            paribuMinROI: 0,
+            paribuMinProfit: 50,
+            blockedCoins: [],
+            topCoins: ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib', 'btt', 'chz'],
+            topDealsCount: 10
+        };
         if (!reply) {
-            const defaults = {
-                crossEnabled: true,
-                intraEnabled: true,
-                crossMinProfit: 1000,
-                crossMinROI: 0.50,
-                crossCooldown: 5,
-                intraMinROI: 0,
-                intraMinProfit: 100,
-                intraCooldown: 5,
-                topCoins: ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib', 'btt', 'chz'],
-                topDealsCount: 10
-            };
             return res.json(defaults);
         }
-        res.json(JSON.parse(reply));
+        try {
+            const parsed = JSON.parse(reply);
+            return res.json({ ...defaults, ...parsed });
+        } catch (e) {
+            return res.json(defaults);
+        }
     });
 });
 
@@ -365,26 +343,40 @@ router.post('/settings', async (req, res) => {
     const {
         crossEnabled,
         intraEnabled,
+        paribuEnabled,
         crossCooldown,
         crossMinProfit,
         crossMinROI,
         intraCooldown,
         intraMinROI,
         intraMinProfit,
+        paribuMinROI,
+        paribuMinProfit,
+        blockedCoins,
         topCoins,
         topDealsCount
     } = req.body;
+
+    const parseNum = (v, defaultVal) => {
+        if (v === undefined || v === null || v === '') return defaultVal;
+        const n = parseFloat(String(v).replace(',', '.'));
+        return isNaN(n) ? defaultVal : n;
+    };
 
     // Validate and parse values
     const settings = {
         crossEnabled: crossEnabled !== false,
         intraEnabled: intraEnabled !== false,
-        crossCooldown: (crossCooldown !== undefined) ? parseFloat(crossCooldown) : 5,
-        crossMinProfit: (crossMinProfit !== undefined) ? parseFloat(crossMinProfit) : 1000,
-        crossMinROI: (crossMinROI !== undefined) ? parseFloat(crossMinROI) : 0.5,
-        intraCooldown: (intraCooldown !== undefined) ? parseFloat(intraCooldown) : 5,
-        intraMinROI: (intraMinROI !== undefined) ? parseFloat(intraMinROI) : 0,
-        intraMinProfit: (intraMinProfit !== undefined) ? parseFloat(intraMinProfit) : 100,
+        paribuEnabled: paribuEnabled !== false,
+        crossCooldown: parseNum(crossCooldown, 5),
+        crossMinProfit: parseNum(crossMinProfit, 1000),
+        crossMinROI: parseNum(crossMinROI, 0.5),
+        intraCooldown: parseNum(intraCooldown, 5),
+        intraMinROI: parseNum(intraMinROI, 0),
+        intraMinProfit: parseNum(intraMinProfit, 100),
+        paribuMinROI: parseNum(paribuMinROI, 0),
+        paribuMinProfit: parseNum(paribuMinProfit, 50),
+        blockedCoins: Array.isArray(blockedCoins) ? blockedCoins.map(c => String(c).toLowerCase().trim()).filter(Boolean) : [],
         topCoins: Array.isArray(topCoins) ? topCoins : ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib', 'btt', 'chz'],
         topDealsCount: (topDealsCount !== undefined) ? parseInt(topDealsCount) : 10
     };
@@ -403,22 +395,52 @@ router.post('/settings', async (req, res) => {
 // --- Portfolio Save/Retrieve ---
 router.post('/portfolio', (req, res) => {
     const { name, data } = req.body;
-    if (!name || !data) {
-        return res.status(400).json({ error: 'Name and data are required' });
+    if (!name || typeof name !== 'string') {
+        return res.status(400).json({ error: 'Valid profile name is required' });
     }
-    const key = `portfolio_${name.toLowerCase().trim()}`;
-    client.set(key, JSON.stringify(data), (err) => {
+    const cleanName = name.trim().toLowerCase();
+    if (!/^[a-z0-9_-]{1,40}$/.test(cleanName)) {
+        return res.status(400).json({ error: 'Profile name must be alphanumeric (1-40 characters, dashes/underscores allowed)' });
+    }
+    if (!Array.isArray(data) || data.length > 200) {
+        return res.status(400).json({ error: 'Portfolio data must be an array of maximum 200 items' });
+    }
+
+    // Sanitize items
+    const sanitizedData = [];
+    for (const item of data) {
+        if (!item || typeof item !== 'object') continue;
+        const coin = String(item.coin || '').toLowerCase().trim();
+        const amount = parseFloat(item.amount);
+        const avgPrice = item.avgPrice !== undefined && item.avgPrice !== null && item.avgPrice !== '' ? parseFloat(item.avgPrice) : null;
+        if (!/^[a-z0-9]{1,20}$/.test(coin) || isNaN(amount) || amount <= 0) continue;
+        sanitizedData.push({
+            coin,
+            amount,
+            avgPrice: (avgPrice !== null && !isNaN(avgPrice) && avgPrice > 0) ? avgPrice : null
+        });
+    }
+
+    const key = `portfolio_${cleanName}`;
+    client.set(key, JSON.stringify(sanitizedData), (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: `Portfolio "${name}" saved successfully` });
+        res.json({ message: `Portfolio "${cleanName}" saved successfully`, count: sanitizedData.length });
     });
 });
 
 router.get('/portfolio/:name', (req, res) => {
     const name = req.params.name;
-    const key = `portfolio_${name.toLowerCase().trim()}`;
+    if (!name || typeof name !== 'string') {
+        return res.status(400).json({ error: 'Valid profile name is required' });
+    }
+    const cleanName = name.trim().toLowerCase();
+    if (!/^[a-z0-9_-]{1,40}$/.test(cleanName)) {
+        return res.status(400).json({ error: 'Invalid profile name format' });
+    }
+    const key = `portfolio_${cleanName}`;
     client.get(key, (err, data) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!data) return res.status(404).json({ error: `Portfolio "${name}" not found` });
+        if (!data) return res.status(404).json({ error: `Portfolio "${cleanName}" not found` });
         try {
             res.json(JSON.parse(data));
         } catch (e) {
@@ -429,10 +451,17 @@ router.get('/portfolio/:name', (req, res) => {
 
 router.delete('/portfolio/:name', (req, res) => {
     const name = req.params.name;
-    const key = `portfolio_${name.toLowerCase().trim()}`;
+    if (!name || typeof name !== 'string') {
+        return res.status(400).json({ error: 'Valid profile name is required' });
+    }
+    const cleanName = name.trim().toLowerCase();
+    if (!/^[a-z0-9_-]{1,40}$/.test(cleanName)) {
+        return res.status(400).json({ error: 'Invalid profile name format' });
+    }
+    const key = `portfolio_${cleanName}`;
     client.del(key, (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: `Portfolio "${name}" deleted successfully` });
+        res.json({ message: `Portfolio "${cleanName}" deleted successfully` });
     });
 });
 

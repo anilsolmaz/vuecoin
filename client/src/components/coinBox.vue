@@ -1,53 +1,64 @@
 <template>
-  <div class="coinbox" :style="cellClass(coinName, coinData.ROI)" @click="toggleExpand">
-    <h6 class="header" style="margin-bottom:2px">
-      <img class="coinBoxImage" :style="{ width: (customFontSize * 25) + 'px', height: (customFontSize * 25) + 'px' }" :src="coinImageSource" @error="handleImageError">
+  <div class="coinbox" :class="{ 'top-deal-box': isTopDeal, 'all-market-box': !isTopDeal }" :style="cellClass(coinName, coinData.ROI)" @click="toggleExpand">
+    <h6 class="header" :style="{ fontSize: (customFontSize * 1.25) + 'rem' }">
+      <img class="coinBoxImage" :style="{ width: (customFontSize * 1.7) + 'rem', height: (customFontSize * 1.7) + 'rem', minWidth: (customFontSize * 1.7) + 'rem' }" :src="coinImageSource" @error="handleImageError">
       <b>{{ coinName.toUpperCase() }}</b>
-      <span v-if="forceShowROI || coinData.ROI >= minROI" class="roi-badge">{{ coinData.ROI > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
-      <span v-if="dealDuration > 0" class="deal-timer" :title="'In Top Deals for ' + formatDuration(dealDuration)">{{ formatDuration(dealDuration) }}</span>
+      <span v-if="forceShowROI || coinData.ROI >= minROI" class="roi-badge" :style="{ fontSize: (customFontSize * 0.95) + 'rem' }">{{ coinData.ROI > 0 ? formatNumber(coinData.ROI, 2) + '%' : '' }}</span>
+      <span v-if="dealDuration > 0" class="deal-timer" :style="{ fontSize: (customFontSize * 0.8) + 'rem' }" :title="'In Top Deals for ' + formatDuration(dealDuration)">{{ formatDuration(dealDuration) }}</span>
     </h6>
-    <div v-if="isExpanded">
-      <template v-if="isTopDeal || isExpandedAllMarkets">
-        <div class="d-flex flex-column w-100 mt-1" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.1' }">
+    <div v-if="isExpanded" class="w-100 flex-grow-1 d-flex flex-column">
+      <template v-if="(isTopDeal || isExpandedAllMarkets) && arbitrageBidsAndAsks.length > 0">
+        <div class="d-flex flex-column w-100 mt-1 flex-grow-1" :style="{ fontSize: customFontSize + 'rem', lineHeight: '1.2' }">
           <!-- Header Row -->
           <div class="d-flex w-100 align-items-center mb-1 pb-1 border-bottom border-secondary border-opacity-25 position-relative">
-             <div class="w-50 text-center opacity-75 fw-bold" style="font-size:0.65rem; letter-spacing: 0.5px;">ASK</div>
+             <div class="col-6 text-center opacity-75 fw-bold" :style="{ fontSize: (customFontSize * 0.85) + 'rem', letterSpacing: '0.5px' }">ASK</div>
              <div class="position-absolute start-50 translate-middle-x fw-bolder" style="top: -2px; color: var(--text-muted, #777); font-size: 0.75rem; z-index:5;">&gt;</div>
-             <div class="w-50 text-center opacity-75 fw-bold" style="font-size:0.65rem; letter-spacing: 0.5px;">BID</div>
+             <div class="col-6 text-center opacity-75 fw-bold" :style="{ fontSize: (customFontSize * 0.85) + 'rem', letterSpacing: '0.5px' }">BID</div>
           </div>
           
           <!-- Data Row -->
-          <div class="d-flex w-100 h-100" style="min-height: 20px;">
+          <div class="d-flex w-100 align-items-stretch flex-grow-1">
              <!-- Ask Column (You Buy) -->
-             <div class="w-50 pe-1 border-end border-secondary border-opacity-25">
-                <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
+             <div class="col-6 pe-2 border-end border-secondary border-opacity-25 d-flex flex-column justify-content-start">
+                <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1 text-nowrap gap-1" :style="{ minHeight: (customFontSize * 1.5) + 'rem' }">
                   <template v-if="row.ask">
-                    <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
-                      <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
+                    <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
+                      <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
                     </a>
-                    <span class="fw-medium text-nowrap">{{ formatNumber(row.ask.rawPrice) }} {{ row.ask.symbol }}</span>
+                    <span class="fw-medium font-monospace">{{ formatNumber(row.ask.rawPrice) }} {{ row.ask.symbol }}</span>
                   </template>
                 </div>
              </div>
              
              <!-- Bid Column (You Sell) -->
-             <div class="w-50 ps-2">
-                <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'bid_'+idx" class="d-flex align-items-center mb-1" style="height: 16px;">
+             <div class="col-6 ps-2 d-flex flex-column justify-content-start">
+                <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'bid_'+idx" class="d-flex align-items-center mb-1 text-nowrap gap-1" :style="{ minHeight: (customFontSize * 1.5) + 'rem' }">
                   <template v-if="row.bid">
-                    <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center">
-                      <img class="marketBoxImage" :style="{ width: (customFontSize * 19.4) + 'px', height: (customFontSize * 19.4) + 'px', marginRight: '4px' }" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
+                    <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
+                      <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
                     </a>
-                    <span class="fw-medium text-nowrap">{{ formatNumber(row.bid.rawPrice) }} {{ row.bid.symbol }}</span>
+                    <span class="fw-medium font-monospace">{{ formatNumber(row.bid.rawPrice) }} {{ row.bid.symbol }}</span>
                   </template>
                 </div>
              </div>
+          </div>
+
+          <!-- Potential Gain Row -->
+          <div v-if="isTopDeal && potentialGain > 0" class="potential-gain-row mt-1 pt-1 border-top border-secondary border-opacity-25 d-flex align-items-center justify-content-between" :style="{ fontSize: (customFontSize * 0.85) + 'rem' }" :title="'Potential Gain: ' + (USDTMode ? '$' : '₺') + formatProfit(potentialGain)">
+             <span class="gain-label d-flex align-items-center gap-1">
+               <i class="bi bi-cash-stack text-success"></i>
+               <span>Gain:</span>
+             </span>
+             <span class="gain-value font-monospace">
+               +{{ formatProfit(potentialGain) }}{{ USDTMode ? '$' : '₺' }}
+             </span>
           </div>
         </div>
       </template>
 
       <template v-else>
-         <div class="text-center" :style="{ padding: '4px 0', fontSize: customFontSize + 'rem', letterSpacing: '0.5px' }">
-            <span class="fw-bold">
+         <div class="text-center flex-grow-1 d-flex align-items-center justify-content-center price-display" :style="{ padding: '0px', fontSize: customFontSize + 'rem', letterSpacing: '0.3px', lineHeight: '1.1' }">
+            <span class="fw-bold font-monospace">
                {{ formatNumber(USDTMode ? singleDisplayPriceUSD : singleDisplayPriceTRY) }}
                {{ USDTMode ? '$' : '₺' }}
             </span>
@@ -128,7 +139,7 @@ export default {
       let bids = [];
       let asks = [];
       const item = this.coinData;
-      if (!item) return [];
+      if (!item || typeof item !== 'object') return [];
 
       const checkBuy = (priceTRY, exchange, rawPrice, symbol) => {
           if (priceTRY > 0) {
@@ -142,29 +153,32 @@ export default {
           }
       };
 
+      const usdtTryRate = item.usdt?.paribu?.try?.price || 35.5;
+
       // Dynamically check all exchanges in the data node
       Object.keys(item).forEach(exchange => {
-          if (exchange === 'ROI') return;
+          if (exchange === 'ROI' || exchange === 'arbitrageDetails' || exchange === 'fraction') return;
 
           const exchData = item[exchange];
+          if (!exchData || typeof exchData !== 'object') return;
+
           // Check TRY market
-          if (exchData?.try?.ask) checkBuy(exchData.try.ask, exchange, exchData.try.ask, '₺');
-          if (exchData?.try?.bid) checkSell(exchData.try.bid, exchange, exchData.try.bid, '₺');
+          if (exchData.try) {
+              const askPrice = exchData.try.ask || exchData.try.price;
+              const bidPrice = exchData.try.bid || exchData.try.price;
+              if (askPrice > 0) checkBuy(askPrice, exchange, askPrice, '₺');
+              if (bidPrice > 0) checkSell(bidPrice, exchange, bidPrice, '₺');
+          }
           
           // Check USDT market
-          if (exchData?.usdt?.askInTRY) {
-              checkBuy(exchData.usdt.askInTRY, exchange, exchData.usdt.ask, '$');
-          } else if (exchData?.usdt?.ask) {
-              // Fallback for cases where USDT price is provided but not already converted to TRY in the JSON
-              const usdtTryRate = item.usdt?.paribu?.try?.price || 35.5; 
-              checkBuy(exchData.usdt.ask * usdtTryRate, exchange, exchData.usdt.ask, '$');
-          }
+          if (exchData.usdt) {
+              const askPrice = exchData.usdt.ask || exchData.usdt.price;
+              const bidPrice = exchData.usdt.bid || exchData.usdt.price;
+              const askTRY = exchData.usdt.askInTRY || (askPrice ? askPrice * usdtTryRate : 0);
+              const bidTRY = exchData.usdt.bidInTRY || (bidPrice ? bidPrice * usdtTryRate : 0);
 
-          if (exchData?.usdt?.bidInTRY) {
-              checkSell(exchData.usdt.bidInTRY, exchange, exchData.usdt.bid, '$');
-          } else if (exchData?.usdt?.bid) {
-              const usdtTryRate = item.usdt?.paribu?.try?.price || 35.5; 
-              checkSell(exchData.usdt.bid * usdtTryRate, exchange, exchData.usdt.bid, '$');
+              if (askTRY > 0) checkBuy(askTRY, exchange, askPrice, '$');
+              if (bidTRY > 0) checkSell(bidTRY, exchange, bidPrice, '$');
           }
       });
 
@@ -179,7 +193,7 @@ export default {
       let filteredAsks = asks;
       let filteredBids = bids;
 
-      // Only filter if there is actual arbitrage, keeping only those inside the range.
+      // Only filter if there is actual arbitrage in Top Deals
       if (this.isTopDeal) {
           if (bestBid > 0 && bestAsk > 0 && bestBid >= bestAsk) {
              filteredAsks = asks.filter(a => a.priceTRY <= bestBid);
@@ -205,9 +219,36 @@ export default {
         });
       }
       return rows;
+    },
+    potentialGainTRY() {
+      if (this.coinData?.arbitrageDetails) {
+        const crossP = this.coinData.arbitrageDetails.cross?.profit || 0;
+        const intraP = this.coinData.arbitrageDetails.intra?.profit || 0;
+        if (crossP > 0 || intraP > 0) return Math.max(crossP, intraP);
+      }
+      if (this.coinData?.profit > 0) return this.coinData.profit;
+      
+      // Fallback for demo or when ROI is positive
+      if (this.coinData?.ROI > 0) {
+        const isDemo = typeof window !== 'undefined' && (window.location.hostname.includes('github.io') || window.location.search.includes('demo=1'));
+        if (isDemo) {
+          const pseudoSeed = (this.coinName || 'btc').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+          const mockVolume = 8000 + ((pseudoSeed * 491) % 32000);
+          return (mockVolume * this.coinData.ROI) / 100;
+        }
+      }
+      return 0;
+    },
+    potentialGain() {
+      const pTry = this.potentialGainTRY;
+      if (pTry <= 0) return 0;
+      if (this.USDTMode) {
+        const usdtRate = this.coinData?.usdt?.paribu?.try?.price || 35.5;
+        return pTry / usdtRate;
+      }
+      return pTry;
     }
-  }
-  ,
+  },
   data() {
     return {
       isExpanded: true,
@@ -285,6 +326,14 @@ export default {
     handleImageError(event) {
       event.target.src = require(`@/assets/coins/noimage.png`);
     },
+    formatProfit(value) {
+      const val = parseFloat(value);
+      if (isNaN(val) || val <= 0) return "0";
+      if (val >= 1000) {
+        return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
+      return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
     cellClass(coinName, coinROI) {
       let bg = 'var(--roi-neutral)';
       
@@ -303,17 +352,45 @@ export default {
 
 <style scoped>
 .coinbox {
-  width: auto !important;
-  height: auto !important;
-  margin: 3px 6px 3px 0;
-  padding: 2px 4px;
-  border-radius: 6px;
+  display: inline-flex;
+  flex-direction: column;
+  width: auto;
+  min-width: max-content;
+  box-sizing: border-box;
+  border-radius: 7px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
   font-size: 0.75em;
   text-align: left;
   color: inherit;
   border: 1px solid var(--current-border);
   background-color: var(--current-card-bg);
+  overflow: visible;
+  height: auto;
+}
+
+.top-deal-box {
+  padding: 6px 10px 8px 10px;
+  margin: 3px 6px 4px 0;
+}
+
+.all-market-box {
+  padding: 2px 6px 2px 6px;
+  margin: 2px 4px 2px 0;
+}
+
+.all-market-box .header {
+  margin: 0 0 1px 0;
+  padding: 0 0 1px 0;
+  gap: 4px;
+}
+
+.all-market-box .coinBoxImage {
+  margin: 0 1px 0 0;
+}
+
+.all-market-box .price-display {
+  padding: 0 !important;
+  margin-top: 0px;
 }
 
 .coinbox:hover {
@@ -326,18 +403,16 @@ export default {
 .header {
   border-radius: 6px 6px 0px 0px;
   border-bottom: 1px solid var(--current-border);
-  font-size: 1.45em; /* Increased for better visibility */
-  margin: 1px auto;
-  padding: 1px;
-  width: auto;
-  height: auto;
+  margin: 0 0 3px 0;
+  padding: 0 0 2px 0;
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .roi-badge {
-  font-size: 0.95em; /* Increased for better visibility */
   font-weight: 700;
   opacity: 0.95;
 }
@@ -350,6 +425,27 @@ export default {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
   white-space: nowrap;
+}
+
+.potential-gain-row {
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.gain-label {
+  font-weight: 600;
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
+.gain-value {
+  font-weight: 800;
+  color: #00c076;
+}
+
+body.light-mode .gain-value {
+  color: #0d8a55;
 }
 
 .coinBoxImage {

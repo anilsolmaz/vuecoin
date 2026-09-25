@@ -13,7 +13,8 @@ const testFiles = [
     'test-telegram-service.js',
     'test-exchange-monitor.js',
     'test-listing-monitor.js',
-    'test-coindata-service.js'
+    'test-coindata-service.js',
+    'test-binance-websocket.js'
 ];
 
 let totalPassed = 0;
@@ -30,7 +31,7 @@ for (const file of testFiles) {
     console.log('─'.repeat(50));
 
     try {
-        const output = execSync(`NODE_ENV=test node "${filePath}"`, {
+        const output = execSync(`node "${filePath}"`, {
             encoding: 'utf8',
             timeout: 30000,
             env: { ...process.env, NODE_ENV: 'test' }

@@ -7,6 +7,7 @@ const CoinDataService = require('./services/CoinDataService');
 
 let io = null;
 let isProcessing = false;
+let cycleCount = 0;
 
 function start() {
     console.log('👷 Background Worker STARTED (24/7 mode)');
@@ -21,9 +22,17 @@ function start() {
 async function runCycle() {
     if (isProcessing) return; // Prevent overlapping cycles
     isProcessing = true;
+    cycleCount++;
 
     try {
         const aggregatedData = await CoinDataService.refreshAllData();
+
+        // Print a single heartbeat every 60 cycles (approx 1 min)
+        if (cycleCount % 60 === 0) {
+            const coinCount = Object.keys(aggregatedData || {}).length;
+            const clientCount = (io && io.engine) ? io.engine.clientsCount : 0;
+            console.log(`[${new Date().toLocaleTimeString('tr-TR')}] 💓 Worker Cycle #${cycleCount} OK | Monitored Coins: ${coinCount} | Web Clients: ${clientCount}`);
+        }
 
         // Emit to connected clients if any
         if (io && io.engine && io.engine.clientsCount > 0) {

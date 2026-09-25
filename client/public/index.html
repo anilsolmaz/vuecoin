@@ -51,6 +51,13 @@
           document.body.classList.add('light-mode');
         }
       } catch (e) { }
+
+      try {
+        var path = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+        if (path && path !== 'index.html' && path !== 'vuecoin' && !window.location.hash) {
+          window.location.replace('/#/' + path + window.location.search);
+        }
+      } catch (e) { }
     })();
   </script>
 </head>

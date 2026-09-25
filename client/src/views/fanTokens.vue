@@ -46,7 +46,7 @@
       </div>
     </div>
       <div class="row satir">
-        <div class="col-lg-4 col-md-6 col-sm-12" v-for="(coin, index, key) in coinData">
+        <div class="col-lg-4 col-md-6 col-sm-12" v-for="(coin, index) in coinData" :key="index">
           <div class="row">
             <div class="col-3 coinPair"><b>{{ formatName(coin.coinPair) }}</b></div>
             <div class="col-3 hucre">{{ formatNumber(coin.average,3) }}</div>
@@ -66,7 +66,7 @@ import { io } from "socket.io-client";
 
 
 export default {
-  name: 'Coin Compare',
+  name: 'VueCoinFanTokens',
   components: {Select2},
   data()  {
     return {

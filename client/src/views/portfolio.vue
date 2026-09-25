@@ -241,10 +241,10 @@ import axios from 'axios';
 import { io } from "socket.io-client";
 
 export default defineComponent({
-  name: 'Portfolio',
+  name: 'VueCoinPortfolio',
   data() {
     return {
-      isDemoMode: true,
+      isDemoMode: typeof window !== 'undefined' && (window.location.hostname.includes('github.io') || window.location.search.includes('demo=1')),
       demoRecordedAt: null,
       demoFrames: [],
       currentFrameIndex: 0,
@@ -604,7 +604,7 @@ export default defineComponent({
     async saveProfile() {
       this.saveMsg = '';
       try {
-        const resp = await axios.post('/api/portfolio', {
+        await axios.post('/api/portfolio', {
           name: this.profileName,
           data: this.portfolio
         });

@@ -13,7 +13,6 @@ class CoinDataService {
         this.paribuUSDT = { price: 0, bid: 0, ask: 0 };
         this.btcturkUSDT = { price: 0, bid: 0, ask: 0 };
         this.binanceUSDT = { price: 0, bid: 0, ask: 0 }; // We technically get Binance TRY/USDT
-        this.paribuCHZ = 0;
         this.paribuSymbolMap = {}; // Map internal coin name to Paribu market key
         this.requestCount = 0;
         this.initialized = false;
@@ -48,11 +47,9 @@ class CoinDataService {
                 let coinObj = {
                     "ROI": 0,
                     "fraction": (JSON.parse(r).payload.markets)[key].precisions.price,
-                    "paribu": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "chz": { "price": null, "inTRY": null }, "lastUpdateTime": null },
+                    "paribu": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
                     "binance": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
-                    "BTCTurk": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
-                    "chiliz": { "chz": { "price": null, "inTRY": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
-                    "FTX": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null }
+                    "BTCTurk": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null }
                 };
 
                 this.coinList[coinKey] = coinObj;
@@ -67,9 +64,45 @@ class CoinDataService {
             // Add extra coins
             this.addExtraCoins();
 
+            // Subscribe all active coins to Binance WebSocket Service
+            try {
+                const BinanceWebSocketService = require('./BinanceWebSocketService');
+                BinanceWebSocketService.subscribeSymbols(Object.keys(this.coinList));
+            } catch (err) {
+                // Silently ignore if WS service not available
+            }
+
         } catch (e) {
             console.log('Initial verileri alınırken hata gerçekleşti', e);
         }
+    }
+
+    /**
+     * Dynamically registers a newly listed coin in memory and subscribes to Binance WS.
+     * Prevents requiring a server restart when an exchange adds a new token.
+     */
+    registerCoin(coinSymbol) {
+        if (!coinSymbol) return;
+        const clean = coinSymbol.toLowerCase().trim();
+        if (clean === 'try' || clean === 'usdt' || clean === 'usdc') return;
+        if (this.coinList[clean]) return;
+
+        this.coinList[clean] = {
+            "ROI": 0,
+            "fraction": 4,
+            "paribu": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
+            "binance": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null },
+            "BTCTurk": { "try": { "price": null, "inUSDT": null }, "usdt": { "price": null, "inTRY": null }, "lastUpdateTime": null }
+        };
+
+        try {
+            const BinanceWebSocketService = require('./BinanceWebSocketService');
+            BinanceWebSocketService.subscribeSymbols([clean]);
+        } catch (err) {
+            // Silently ignore
+        }
+
+        console.log(`[CoinDataService] 🚀 Registered & subscribed new coin: ${clean.toUpperCase()}`);
     }
 
     addExtraCoins(finalResults) {
@@ -109,7 +142,6 @@ class CoinDataService {
                     "paribu": {
                         "try": { "price": null, "inUSDT": null },
                         "usdt": { "price": null, "inTRY": null },
-                        "chz": { "price": null, "inTRY": null },
                         "lastUpdateTime": null
                     },
                     "binance": {
@@ -119,16 +151,6 @@ class CoinDataService {
                     },
                     "BTCTurk": {
                         "try": { "price": null, "inUSDT": null },
-                        "usdt": { "price": null, "inTRY": null },
-                        "lastUpdateTime": null
-                    },
-                    "FTX": {
-                        "try": { "price": null, "inUSDT": null },
-                        "usdt": { "price": null, "inTRY": null },
-                        "lastUpdateTime": null
-                    },
-                    "chiliz": {
-                        "chz": { "price": null, "inTRY": null },
                         "usdt": { "price": null, "inTRY": null },
                         "lastUpdateTime": null
                     }
@@ -222,7 +244,6 @@ class CoinDataService {
         if (!finalResults.paribu) finalResults.paribu = {};
         if (!finalResults.binance) finalResults.binance = {};
         if (!finalResults.BTCTurk) finalResults.BTCTurk = {};
-        if (!finalResults.chiliz) finalResults.chiliz = {};
 
         // Fix Bug 3: If an exchange API failed (returned null), reset its stale prices
         // to prevent false arbitrage signals from temporal mismatches.
@@ -348,11 +369,6 @@ class CoinDataService {
             };
             if (!this.binanceUSDT.bid) this.binanceUSDT.bid = this.binanceUSDT.price;
             if (!this.binanceUSDT.ask) this.binanceUSDT.ask = this.binanceUSDT.price;
-        }
-
-        this.paribuCHZ = 0;
-        if (this.coinList['chz']?.paribu?.try?.price) {
-            this.paribuCHZ = this.coinList['chz'].paribu.try.price;
         }
 
         this.btcturkUSDT = { price: 0, bid: 0, ask: 0 };
@@ -502,6 +518,28 @@ class CoinDataService {
         };
     }
 
+    /**
+     * Get live USDT/TRY rate from specific exchange, or cascade to other available live exchange rates.
+     * Returns null if no live rate is available (preventing hardcoded fallback distortion).
+     */
+    getEffectiveUSDTRate(exchange = '') {
+        const ex = String(exchange).toLowerCase();
+        let rateObj = null;
+
+        if (ex.includes('binance') && this.binanceUSDT?.price > 0) rateObj = this.binanceUSDT;
+        else if (ex.includes('btcturk') && this.btcturkUSDT?.price > 0) rateObj = this.btcturkUSDT;
+        else if (ex.includes('paribu') && this.paribuUSDT?.price > 0) rateObj = this.paribuUSDT;
+
+        if (rateObj && rateObj.price > 0) return rateObj;
+
+        // Cascade fallback to any live exchange rate
+        if (this.paribuUSDT?.price > 0) return this.paribuUSDT;
+        if (this.btcturkUSDT?.price > 0) return this.btcturkUSDT;
+        if (this.binanceUSDT?.price > 0) return this.binanceUSDT;
+
+        return null;
+    }
+
     calculateCoinMetrics(coin) {
         let item = this.coinList[coin];
         if (!item) return;
@@ -509,17 +547,22 @@ class CoinDataService {
         if (!item.paribu) item.paribu = { try: {}, usdt: {} };
         if (!item.binance) item.binance = { try: {}, usdt: {} };
         if (!item.BTCTurk) item.BTCTurk = { try: {}, usdt: {} };
-        if (!item.chiliz) item.chiliz = { chz: {}, usdt: {} };
 
         // Cross Rate Calculations: Bid/Ask aware logic
         // If converting USDT to TRY (mult): we are selling/buying USDT
         // If converting TRY to USDT (div): we are selling/buying TRY
         const convert = (obj, usdtRateObj, op) => {
-            if (!obj || !obj.price || !usdtRateObj || !usdtRateObj.price) return;
+            if (!obj || !obj.price) return;
 
-            // To be safe, fallback to general price if bid/ask missing
+            // If rate object for this exchange is missing or zero, cascade to another live exchange
+            if (!usdtRateObj || !usdtRateObj.price || usdtRateObj.price <= 0) {
+                usdtRateObj = this.getEffectiveUSDTRate('');
+            }
+            if (!usdtRateObj || !usdtRateObj.price || usdtRateObj.price <= 0) return;
+
             let rBid = usdtRateObj.bid || usdtRateObj.price;
             let rAsk = usdtRateObj.ask || usdtRateObj.price;
+            if (rBid <= 0 || rAsk <= 0) return;
 
             if (op === 'div') {
                 // TRY to USDT 
@@ -692,15 +735,11 @@ class CoinDataService {
                     let isUSDT = exchange.includes('USDT');
 
                     if (isUSDT) {
-                        let rateObj = null;
-                        if (exchange.includes('Binance')) rateObj = this.binanceUSDT;
-                        else if (exchange.includes('BTCTurk')) rateObj = this.btcturkUSDT;
-                        else if (exchange.includes('Paribu')) rateObj = this.paribuUSDT;
-
-                        if (!rateObj || !rateObj.price) return null;
+                        let rateObj = this.getEffectiveUSDTRate(exchange);
+                        if (!rateObj || !rateObj.price || rateObj.price <= 0) return null;
 
                         let rate = tType === 'asks' ? (rateObj.ask || rateObj.price) : (rateObj.bid || rateObj.price);
-                        if (!rate || rate === 0) rate = 30;
+                        if (!rate || rate <= 0) return null;
 
                         return book.map(level => [
                             parseFloat(level[0]) * rate,
@@ -760,6 +799,11 @@ class CoinDataService {
         else if (processedCross) item.ROI = processedCross.roi;
         else if (processedIntra) item.ROI = processedIntra.roi;
         else item.ROI = Math.max(highestCrossROI, highestIntraROI);
+
+        let maxProfit = 0;
+        if (processedCross && processedCross.profit > 0) maxProfit = Math.max(maxProfit, processedCross.profit);
+        if (processedIntra && processedIntra.profit > 0) maxProfit = Math.max(maxProfit, processedIntra.profit);
+        item.profit = maxProfit;
 
         if (!item.arbitrageDetails.cross && !item.arbitrageDetails.intra) {
             item.arbitrageDetails = null;
@@ -867,8 +911,10 @@ class CoinDataService {
 
         let now = Date.now();
 
-        // Use global cooldown from settings
-        const configCooldown = (this.settings.globalCooldown !== undefined) ? this.settings.globalCooldown : 5;
+        // Use specific cooldown from settings
+        const configCooldown = isSameExchange
+            ? (this.settings.intraCooldown !== undefined ? this.settings.intraCooldown : 5)
+            : (this.settings.crossCooldown !== undefined ? this.settings.crossCooldown : 5);
         let cooldown = configCooldown * 60 * 1000;
 
         // Separate cooldown tracking for same-exchange vs cross-exchange
