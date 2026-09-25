@@ -1,16 +1,24 @@
 <template>
-  <router-view v-slot="{ Component }">
-    <keep-alive>
-      <component :is="Component" />
-    </keep-alive>
-  </router-view>
+  <div class="app-root position-relative">
+    <router-view v-slot="{ Component }">
+      <keep-alive>
+        <component :is="Component" />
+      </keep-alive>
+    </router-view>
+    <div class="app-version-badge" :title="'VueCoin Platform v' + appVersion">
+      v{{ appVersion }}
+    </div>
+  </div>
 </template>
 
 <script>
+import { APP_VERSION } from './version';
+
 export default {
   name: 'App',
   data() {
     return {
+      appVersion: APP_VERSION,
       themeMode: 'system',
       systemDarkMode: false
     };
@@ -154,5 +162,29 @@ body.dark-mode .select2-container--default .select2-search--dropdown .select2-se
 body.dark-mode .select2-dropdown {
   background-color: var(--card-bg-dark) !important;
   border-color: var(--border-dark) !important;
+}
+
+.app-version-badge {
+  position: fixed;
+  bottom: 4px;
+  right: 6px;
+  font-size: 0.65rem;
+  font-family: var(--bs-font-monospace, monospace);
+  font-weight: 600;
+  color: var(--text-muted, #888);
+  opacity: 0.45;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: var(--current-card-bg, rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--current-border, rgba(128, 128, 128, 0.2));
+  z-index: 1050;
+  pointer-events: auto;
+  user-select: none;
+  letter-spacing: 0.5px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.app-version-badge:hover {
+  opacity: 1;
+  transform: scale(1.05);
 }
 </style>

@@ -9,8 +9,9 @@
 
       <!-- Top Navigation Action Bar -->
       <div class="row mt-1 mb-2 align-items-center justify-content-between">
-         <div class="col-auto">
+         <div class="col-auto d-flex align-items-center gap-2">
             <h4 class="mb-0 fw-bold theme-text" style="letter-spacing: 1px">VueCoin Arbitrage Engine</h4>
+            <span class="badge rounded-pill border theme-version-badge" title="Active Build Version">v{{ appVersion }}</span>
          </div>
          
          <!-- Desktop Navigation Actions -->
@@ -318,6 +319,8 @@
   import coinBox from '../components/coinBox';
   import topCoin from '../components/topCoin';
   import axios from 'axios';
+  import { APP_VERSION } from '@/version';
+
   export default defineComponent({
     name: 'VueCoinDashboard',
     components: {
@@ -326,6 +329,7 @@
     },
     data() {
       return {
+        appVersion: APP_VERSION,
         isDemoMode: typeof window !== 'undefined' && (window.location.hostname.includes('github.io') || window.location.search.includes('demo=1')),
         demoRecordedAt: '',
         demoFrames: [],
@@ -1234,6 +1238,18 @@
   @keyframes shimmer {
     0% { left: -50%; }
     100% { left: 100%; }
+  }
+
+  .theme-version-badge {
+    font-size: 0.65rem;
+    font-family: var(--bs-font-monospace, monospace);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    opacity: 0.75;
+    background-color: var(--badge-bg, rgba(108, 117, 125, 0.15));
+    color: var(--text-muted, #888);
+    border-color: var(--current-border, rgba(108, 117, 125, 0.25)) !important;
   }
 
   </style>
