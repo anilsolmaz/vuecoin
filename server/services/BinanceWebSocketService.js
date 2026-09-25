@@ -70,15 +70,12 @@ class BinanceWebSocketService {
             });
 
             this.ws.on('error', (err) => {
-                console.error(`[Binance WS] Error on ${this.currentUrl}:`, err.message);
-                // Toggle to backup url if legal restriction/blocked
-                if (err.message && err.message.includes('451')) {
-                    this.currentUrl = (this.currentUrl === this.wsUrl) ? this.backupWsUrl : this.wsUrl;
-                }
+                console.error(`[Binance WS] Error:`, err.message);
             });
 
-            this.ws.on('close', () => {
+            this.ws.on('close', (code, reason) => {
                 this.isConnected = false;
+                console.log(`[Binance WS] Closed (code: ${code}, reason: ${reason ? reason.toString() : 'none'})`);
                 this.scheduleReconnect();
             });
 
@@ -91,7 +88,7 @@ class BinanceWebSocketService {
     scheduleReconnect() {
         if (this.reconnectTimer) return;
         this.reconnectAttempts++;
-        const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), 15000);
+        const delay = Math.min(1500 * Math.pow(1.5, this.reconnectAttempts), 15000);
         console.log(`[Binance WS] Reconnecting in ${(delay / 1000).toFixed(1)}s (Attempt #${this.reconnectAttempts})...`);
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
@@ -132,8 +129,9 @@ class BinanceWebSocketService {
     }
 
     sendSubscription(streamList) {
-        // Binance limits subscriptions to 1024 streams per message
-        const CHUNK_SIZE = 100;
+        // Binance limits subscriptions to 1024 streams per connection and 5 messages per second
+        const CHUNK_SIZE = 300;
+        let delay = 0;
         for (let i = 0; i < streamList.length; i += CHUNK_SIZE) {
             const chunk = streamList.slice(i, i + CHUNK_SIZE);
             const subMsg = {
@@ -141,11 +139,16 @@ class BinanceWebSocketService {
                 params: chunk,
                 id: Date.now() + i
             };
-            try {
-                this.ws.send(JSON.stringify(subMsg));
-            } catch (e) {
-                console.error('[Binance WS] Error sending subscription chunk:', e.message);
-            }
+            setTimeout(() => {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    try {
+                        this.ws.send(JSON.stringify(subMsg));
+                    } catch (e) {
+                        console.error('[Binance WS] Error sending subscription chunk:', e.message);
+                    }
+                }
+            }, delay);
+            delay += 300;
         }
     }
 
