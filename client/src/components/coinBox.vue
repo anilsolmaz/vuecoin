@@ -23,7 +23,7 @@
                 <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'ask_'+idx" class="d-flex align-items-center mb-1 text-nowrap gap-1" :style="{ minHeight: (customFontSize * 1.5) + 'rem' }">
                   <template v-if="row.ask">
                     <a :href="getExchangeLink(row.ask.exchange, coinName, row.ask.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
-                      <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="require(`@/assets/markets/${row.ask.exchange}.png`)">
+                      <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="getMarketIcon(row.ask.exchange)">
                     </a>
                     <span class="fw-medium font-monospace">{{ formatNumber(row.ask.rawPrice) }} {{ row.ask.symbol }}</span>
                   </template>
@@ -35,7 +35,7 @@
                 <div v-for="(row, idx) in arbitrageBidsAndAsks" :key="'bid_'+idx" class="d-flex align-items-center mb-1 text-nowrap gap-1" :style="{ minHeight: (customFontSize * 1.5) + 'rem' }">
                   <template v-if="row.bid">
                     <a :href="getExchangeLink(row.bid.exchange, coinName, row.bid.symbol)" target="_blank" @click.stop class="d-flex align-items-center flex-shrink-0">
-                      <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="require(`@/assets/markets/${row.bid.exchange}.png`)">
+                      <img class="marketBoxImage" :style="{ width: (customFontSize * 1.25) + 'rem', height: (customFontSize * 1.25) + 'rem', minWidth: (customFontSize * 1.25) + 'rem' }" :src="getMarketIcon(row.bid.exchange)">
                     </a>
                     <span class="fw-medium font-monospace">{{ formatNumber(row.bid.rawPrice) }} {{ row.bid.symbol }}</span>
                   </template>
@@ -113,6 +113,7 @@ export default {
   },
   computed: {
     coinImageSource() {
+      if (!this.coinName) return require('@/assets/coins/noimage.png');
       try {
         return require(`@/assets/coins/${this.coinName.toLowerCase()}.png`);
       } catch (e) {
@@ -345,6 +346,19 @@ export default {
         backgroundColor: bg,
         cursor: 'pointer'
       };
+    },
+    getMarketIcon(exchange) {
+      if (!exchange) return require('@/assets/markets/noimage.png');
+      const ex = String(exchange).toLowerCase();
+      try {
+        if (ex.includes('paribu')) return require('@/assets/markets/paribu.png');
+        if (ex.includes('binance')) return require('@/assets/markets/binance.png');
+        if (ex.includes('btcturk')) return require('@/assets/markets/BTCTurk.png');
+        if (ex.includes('ftx')) return require('@/assets/markets/FTX.png');
+        return require(`@/assets/markets/${exchange}.png`);
+      } catch (e) {
+        return require('@/assets/markets/noimage.png');
+      }
     }
   }
 };

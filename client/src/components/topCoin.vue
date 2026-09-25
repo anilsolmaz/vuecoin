@@ -53,8 +53,9 @@ export default {
       return `https://www.binance.com/en/trade/${this.coinName.toUpperCase()}_${pair}?layout=pro&theme=dark&type=spot`;
     },
     coinImageUrl() {
+      if (!this.coinName) return require(`@/assets/coins/noimage.png`);
       try {
-        return require(`@/assets/coins/${this.coinName}.png`);
+        return require(`@/assets/coins/${this.coinName.toLowerCase()}.png`);
       } catch (e) {
         return require(`@/assets/coins/noimage.png`);
       }
