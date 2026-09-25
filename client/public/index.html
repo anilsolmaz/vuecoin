@@ -55,7 +55,11 @@
       try {
         var path = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
         if (path && path !== 'index.html' && path !== 'vuecoin' && !window.location.hash) {
-          window.location.replace('/#/' + path + window.location.search);
+          if (path.startsWith('vuecoin/')) {
+            window.location.replace('/vuecoin/#/' + path.replace(/^vuecoin\//, '') + window.location.search);
+          } else {
+            window.location.replace('/#/' + path + window.location.search);
+          }
         }
       } catch (e) { }
     })();
