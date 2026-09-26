@@ -433,6 +433,9 @@ export default {
         const response = await axios.post('/api/settings', this.settings);
         this.message = response.data.message || 'Settings saved successfully';
         this.messageType = 'success';
+        if (this.$store) {
+          this.$store.commit('SET_SETTINGS', response.data.settings || this.settings);
+        }
       } catch (error) {
         this.message = 'Error saving settings';
         this.messageType = 'danger';

@@ -365,7 +365,13 @@
         allMarketsFontSize: parseFloat(localStorage.getItem('vuecoin_allMarketsFontSize')) || 0.75,
         settings: {
            topDealsCount: 10,
-           crossMinROI: 0.5
+           crossMinROI: 0.5,
+           crossMinProfit: 1000,
+           crossEnabled: true,
+           intraEnabled: true,
+           intraMinROI: 0,
+           intraMinProfit: 100,
+           blockedCoins: []
         },
         portfolio: [],
         showBalance: localStorage.getItem('vuecoin_showBalance') !== 'false',
@@ -385,10 +391,16 @@
         try {
           const response = await axios.get('/api/settings');
           if (response.data) {
-            this.settings = response.data;
+            this.settings = { ...this.settings, ...response.data };
             if (response.data.topCoins) this.topCoins = response.data.topCoins;
             if (response.data.topDealsCount !== undefined) this.topDealsCount = response.data.topDealsCount;
             if (response.data.crossMinROI !== undefined) this.crossMinROI = response.data.crossMinROI;
+            if (this.$store) {
+              this.$store.commit('SET_SETTINGS', response.data);
+            }
+            if (this.coinData && Object.keys(this.coinData).length > 0) {
+              this.processData(this.coinData);
+            }
           }
         } catch (error) {
           console.error("Failed to fetch settings:", error);
@@ -538,19 +550,35 @@
           
           let coinList = [];
           const validDeals = [];
+
+          // Scanner Settings
+          const s = this.settings || {};
+          const crossEnabled = s.crossEnabled !== false;
+          const intraEnabled = s.intraEnabled !== false;
+          const crossMinROI = (s.crossMinROI !== undefined && s.crossMinROI !== null && s.crossMinROI !== '') ? parseFloat(s.crossMinROI) : 0.5;
+          const crossMinProfit = (s.crossMinProfit !== undefined && s.crossMinProfit !== null && s.crossMinProfit !== '') ? parseFloat(s.crossMinProfit) : 1000;
+          const intraMinROI = (s.intraMinROI !== undefined && s.intraMinROI !== null && s.intraMinROI !== '') ? parseFloat(s.intraMinROI) : 0;
+          const intraMinProfit = (s.intraMinProfit !== undefined && s.intraMinProfit !== null && s.intraMinProfit !== '') ? parseFloat(s.intraMinProfit) : 100;
+          const blockedCoins = Array.isArray(s.blockedCoins) ? s.blockedCoins.map(c => String(c).toLowerCase().trim()) : [];
           
           Object.keys(data).forEach(coinName => {
               coinList.push(coinName);
               if (coinName === 'usdt') return;
+              const cleanCoin = coinName.toLowerCase().trim();
+              if (blockedCoins.includes(cleanCoin)) return;
+
               const d = data[coinName];
               if (d) {
                   const r = (typeof d.ROI === 'number' && !isNaN(d.ROI)) ? d.ROI : -999;
                   
                   // Calculate potential gain for sorting
                   let gain = 0;
+                  const cross = d.arbitrageDetails?.cross;
+                  const intra = d.arbitrageDetails?.intra;
+
                   if (d.arbitrageDetails) {
-                      const crossP = d.arbitrageDetails.cross?.profit || 0;
-                      const intraP = d.arbitrageDetails.intra?.profit || 0;
+                      const crossP = cross?.profit || 0;
+                      const intraP = intra?.profit || 0;
                       gain = Math.max(crossP, intraP);
                   }
                   if (gain <= 0 && d.profit > 0) {
@@ -571,11 +599,44 @@
                   if (d.binance?.usdt?.price > 0 || d.binance?.try?.price > 0) marketCount++;
                   if (d.BTCTurk?.try?.price > 0 || d.BTCTurk?.usdt?.price > 0) marketCount++;
 
-                  // Only coins with AT LEAST 2 distinct exchanges and valid arbitrage are Top Deals
-                  const hasRealArb = (marketCount >= 2) && (r > 0 || gain > 0 || d.arbitrageDetails?.cross || d.arbitrageDetails?.intra);
+                  // Top Deals eligibility according to active Scanner Engine parameters
+                  let isDealValid = false;
+                  let dealRoi = r;
+                  let dealGain = gain;
 
-                  if (hasRealArb) {
-                      validDeals.push({ coin: coinName, roi: r, gain: gain });
+                  if (cross && crossEnabled) {
+                      const cRoi = (typeof cross.roi === 'number' && !isNaN(cross.roi)) ? cross.roi : 0;
+                      const cGain = (typeof cross.profit === 'number' && !isNaN(cross.profit)) ? cross.profit : 0;
+                      if (cRoi >= crossMinROI && cGain >= crossMinProfit) {
+                          isDealValid = true;
+                          dealRoi = cRoi;
+                          dealGain = cGain;
+                      }
+                  }
+
+                  if (intra && intraEnabled) {
+                      const iRoi = (typeof intra.roi === 'number' && !isNaN(intra.roi)) ? intra.roi : 0;
+                      const iGain = (typeof intra.profit === 'number' && !isNaN(intra.profit)) ? intra.profit : 0;
+                      if (iRoi >= intraMinROI && iGain >= intraMinProfit) {
+                          if (!isDealValid || iGain > dealGain) {
+                              isDealValid = true;
+                              dealRoi = iRoi;
+                              dealGain = iGain;
+                          }
+                      }
+                  }
+
+                  // Fallback for demo or before order-book depth matching is ready
+                  if (!cross && !intra && marketCount >= 2) {
+                      if (crossEnabled && r >= crossMinROI && gain >= crossMinProfit) {
+                          isDealValid = true;
+                          dealRoi = r;
+                          dealGain = gain;
+                      }
+                  }
+
+                  if (isDealValid) {
+                      validDeals.push({ coin: coinName, roi: dealRoi, gain: dealGain });
                   }
               }
           });
@@ -724,6 +785,14 @@
       this.fetchSettings();
       this.loadPortfolio();
     },
+    activated() {
+      // Re-fetch settings and re-process deals when returning to cached Dashboard
+      this.fetchSettings();
+      this.loadPortfolio();
+      if (this.coinData && Object.keys(this.coinData).length > 0) {
+        this.processData(this.coinData);
+      }
+    },
     watch: {
       '$store.state.coinData': {
         handler(newData) {
@@ -732,6 +801,26 @@
           }
         },
         immediate: true
+      },
+      '$store.state.settings': {
+        handler(newSettings) {
+          if (newSettings && Object.keys(newSettings).length > 0) {
+            this.settings = { ...this.settings, ...newSettings };
+            if (newSettings.topDealsCount !== undefined) {
+              this.topDealsCount = newSettings.topDealsCount;
+            }
+            if (newSettings.topCoins) {
+              this.topCoins = newSettings.topCoins;
+            }
+            if (newSettings.crossMinROI !== undefined) {
+              this.crossMinROI = newSettings.crossMinROI;
+            }
+            if (this.coinData && Object.keys(this.coinData).length > 0) {
+              this.processData(this.coinData);
+            }
+          }
+        },
+        deep: true
       },
       USDTMode(newVal) {
         localStorage.setItem('vuecoin_usdt_mode', newVal);

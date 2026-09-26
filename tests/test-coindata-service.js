@@ -455,6 +455,42 @@ test('should accept custom settings', () => {
     assert.strictEqual(svc.settings.crossMinROI, 1.0);
 });
 
+test('should zero out arbitrage details for blocked coins', () => {
+    const svc = freshService();
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.binanceUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.coinList['blockedcoin'] = {
+        paribu: { try: { price: 100, ask: 100, bid: 98, askQty: 10, bidQty: 10 } },
+        binance: { usdt: { price: 4, ask: 4.1, bid: 4.0, askQty: 10, bidQty: 10 }, try: {} },
+        BTCTurk: { try: {}, usdt: {} },
+        chiliz: { chz: {}, usdt: {} }
+    };
+    svc.settings.blockedCoins = ['blockedcoin'];
+
+    svc.calculateCoinMetrics('blockedcoin');
+    const item = svc.coinList['blockedcoin'];
+    assert.strictEqual(item.arbitrageDetails, null, 'Arbitrage details should be null for blocked coin');
+    assert.strictEqual(item.ROI, 0, 'ROI should be 0 for blocked coin');
+    assert.strictEqual(item.profit, 0, 'Profit should be 0 for blocked coin');
+});
+
+test('should skip cross-exchange arbitrage when crossEnabled is false', () => {
+    const svc = freshService();
+    svc.paribuUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.binanceUSDT = { price: 35, bid: 35, ask: 35 };
+    svc.coinList['crosscoin'] = {
+        paribu: { try: { price: 100, ask: 100, bid: 98, askQty: 10, bidQty: 10 } },
+        binance: { usdt: { price: 4, ask: 4.1, bid: 4.0, askQty: 10, bidQty: 10 }, try: {} },
+        BTCTurk: { try: {}, usdt: {} },
+        chiliz: { chz: {}, usdt: {} }
+    };
+    svc.settings.crossEnabled = false;
+
+    svc.calculateCoinMetrics('crosscoin');
+    const item = svc.coinList['crosscoin'];
+    assert.ok(!item.arbitrageDetails?.cross, 'Cross arbitrage should be skipped when crossEnabled is false');
+});
+
 
 // ==========================================
 // SECTION 7: Telegram Alert Cooldown

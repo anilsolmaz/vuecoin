@@ -15,6 +15,7 @@ const io = new Server(server, {
         methods: ["GET", "POST"]
     }
 });
+app.set('io', io);
 
 const CoinDataService = require('./server/services/CoinDataService');
 const ListingMonitorService = require('./server/services/ListingMonitorService');
@@ -45,6 +46,10 @@ io.on('connection', (socket) => {
     // Send available data immediately upon connection
     if (CoinDataService.coinList && Object.keys(CoinDataService.coinList).length > 0) {
         socket.emit('data_update', CoinDataService.coinList);
+    }
+    // Send available settings immediately upon connection
+    if (CoinDataService.settings) {
+        socket.emit('settings_update', CoinDataService.settings);
     }
 });
 

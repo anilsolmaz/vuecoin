@@ -11,11 +11,20 @@ export default createStore({
     isConnected: false,
     lastUpdateTime: null,
     settings: {
-      globalCooldown: 5,
+      crossEnabled: true,
+      intraEnabled: true,
+      paribuEnabled: true,
       crossMinProfit: 1000,
       crossMinROI: 0.50,
+      crossCooldown: 5,
       intraMinROI: 0,
-      intraMinProfit: 100
+      intraMinProfit: 100,
+      intraCooldown: 5,
+      paribuMinROI: 0,
+      paribuMinProfit: 50,
+      blockedCoins: [],
+      topCoins: ['btc', 'bnb', 'eth', 'usdt', 'fet', 'sol', 'ftt', 'xrp', 'pepe', 'shib', 'btt', 'chz'],
+      topDealsCount: 10
     },
     isInitialized: false
   },
@@ -53,6 +62,13 @@ export default createStore({
       socketInstance.on('data_update', (data) => {
         if (data && (data.btc || Object.keys(data).length > 5)) {
           commit('SET_COIN_DATA', data);
+        }
+      });
+
+      socketInstance.on('settings_update', (newSettings) => {
+        if (newSettings && typeof newSettings === 'object') {
+          console.log('⚙️ [Vuex] Live settings update received');
+          commit('SET_SETTINGS', newSettings);
         }
       });
 

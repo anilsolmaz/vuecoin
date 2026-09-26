@@ -534,6 +534,14 @@ class CoinDataService {
         let item = this.coinList[coin];
         if (!item) return;
 
+        // If coin is blocked by scanner settings, skip arbitrage calculation
+        if (this.settings.blockedCoins && this.settings.blockedCoins.includes(coin.toLowerCase())) {
+            item.arbitrageDetails = null;
+            item.ROI = 0;
+            item.profit = 0;
+            return;
+        }
+
         if (!item.paribu) item.paribu = { try: {}, usdt: {} };
         if (!item.binance) item.binance = { try: {}, usdt: {} };
         if (!item.BTCTurk) item.BTCTurk = { try: {}, usdt: {} };
@@ -775,8 +783,8 @@ class CoinDataService {
             };
         };
 
-        let processedCross = processOpportunity(bestCross, crossTrigger, 'cross');
-        let processedIntra = processOpportunity(bestIntra, intraTrigger, 'intra');
+        let processedCross = (this.settings.crossEnabled !== false) ? processOpportunity(bestCross, crossTrigger, 'cross') : null;
+        let processedIntra = (this.settings.intraEnabled !== false) ? processOpportunity(bestIntra, intraTrigger, 'intra') : null;
 
         if (!bestCross && !bestIntra && this.depthCache[coin]) {
             delete this.depthCache[coin];
@@ -788,7 +796,12 @@ class CoinDataService {
         if (processedCross && processedIntra) item.ROI = Math.max(processedCross.roi, processedIntra.roi);
         else if (processedCross) item.ROI = processedCross.roi;
         else if (processedIntra) item.ROI = processedIntra.roi;
-        else item.ROI = Math.max(highestCrossROI, highestIntraROI);
+        else {
+            let fallbackROI = -100;
+            if (this.settings.crossEnabled !== false && highestCrossROI > fallbackROI) fallbackROI = highestCrossROI;
+            if (this.settings.intraEnabled !== false && highestIntraROI > fallbackROI) fallbackROI = Math.max(fallbackROI, highestIntraROI);
+            item.ROI = fallbackROI;
+        }
 
         let maxProfit = 0;
         if (processedCross && processedCross.profit > 0) maxProfit = Math.max(maxProfit, processedCross.profit);

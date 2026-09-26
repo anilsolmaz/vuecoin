@@ -359,7 +359,7 @@ router.post('/settings', async (req, res) => {
 
     const parseNum = (v, defaultVal) => {
         if (v === undefined || v === null || v === '') return defaultVal;
-        const n = parseFloat(String(v).replace(',', '.'));
+        const n = parseFloat(String(v).replace(/,/g, '.'));
         return isNaN(n) ? defaultVal : n;
     };
 
@@ -388,6 +388,12 @@ router.post('/settings', async (req, res) => {
 
         // Trigger immediate refresh in the arbitrage service
         await CoinDataService.loadSettings();
+
+        // Broadcast settings update to all connected WebSocket clients
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('settings_update', settings);
+        }
 
         res.json({ message: 'Settings saved successfully', settings });
     });
