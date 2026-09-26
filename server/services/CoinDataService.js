@@ -21,6 +21,7 @@ class CoinDataService {
         this.depthTimestamps = {};
         this.lastAlertTimes = {}; // For Telegram cooldown
         this.lastAlertProfits = {}; // To detect profit increases
+        this.lastAlertROIs = {}; // To detect ROI jumps
         this.settings = {
             globalCooldown: 5,
             crossMinProfit: 1000,
@@ -829,31 +830,29 @@ class CoinDataService {
     logTopOpportunities() {
         let sameExchangeOpportunities = [];
         let crossExchangeOpportunities = [];
-        let paribuOpportunities = [];
+        let paribuIntraOpportunities = [];
 
         Object.keys(this.coinList).forEach(key => {
             const details = this.coinList[key].arbitrageDetails;
             if (!details) return;
 
+            // Cross-Exchange: ALWAYS governed by Cross-Exchange settings regardless of exchanges involved
             if (details.cross) {
-                const isParibu = details.cross.buyExchange.includes('Paribu') || details.cross.sellExchange.includes('Paribu');
-                if (isParibu) {
-                    paribuOpportunities.push({ coin: key, ...details.cross, isSameExchange: false });
-                } else {
-                    crossExchangeOpportunities.push({ coin: key, ...details.cross });
-                }
+                crossExchangeOpportunities.push({ coin: key, ...details.cross });
             }
+
+            // Same-Exchange (Intra):
             if (details.intra) {
                 const isParibu = details.intra.buyExchange.includes('Paribu');
                 if (isParibu) {
-                    paribuOpportunities.push({ coin: key, ...details.intra, isSameExchange: true });
+                    paribuIntraOpportunities.push({ coin: key, ...details.intra, isSameExchange: true });
                 } else {
                     sameExchangeOpportunities.push({ coin: key, ...details.intra });
                 }
             }
         });
 
-        // --- SAME-EXCHANGE: Apply ROI and Min Profit filters ---
+        // --- SAME-EXCHANGE (BTCTurk / Other): Apply ROI and Min Profit filters ---
         if (this.settings.intraEnabled !== false) {
             const intraMinROI = (this.settings.intraMinROI !== undefined) ? this.settings.intraMinROI : 0;
             const intraMinProfit = (this.settings.intraMinProfit !== undefined) ? this.settings.intraMinProfit : 100;
@@ -888,12 +887,12 @@ class CoinDataService {
             });
         }
 
-        // --- PARIBU DEALS: Apply ROI and Min Profit filters ---
+        // --- PARIBU INTRA DEALS: Apply Paribu ROI and Min Profit filters ---
         if (this.settings.paribuEnabled !== false) {
             const paribuMinROI = (this.settings.paribuMinROI !== undefined) ? this.settings.paribuMinROI : 0;
             const paribuMinProfit = (this.settings.paribuMinProfit !== undefined) ? this.settings.paribuMinProfit : 50;
 
-            const filteredParibu = paribuOpportunities.filter(o =>
+            const filteredParibu = paribuIntraOpportunities.filter(o =>
                 o.roi >= paribuMinROI &&
                 o.profit >= paribuMinProfit
             );
@@ -902,7 +901,7 @@ class CoinDataService {
             const paribuTop3 = filteredParibu.slice(0, 3);
 
             paribuTop3.forEach((op) => {
-                this.checkAndSendTelegramAlert(op, op.isSameExchange);
+                this.checkAndSendTelegramAlert(op, true);
             });
         }
     }
@@ -923,16 +922,24 @@ class CoinDataService {
         // Separate cooldown tracking for same-exchange vs cross-exchange
         const cooldownKey = isSameExchange ? `intra_${op.coin}` : op.coin;
 
+        let lastTime = this.lastAlertTimes[cooldownKey] || 0;
         let lastProfit = this.lastAlertProfits[cooldownKey] || 0;
-        let isProfitIncreased = op.profit > lastProfit;
+        let lastROI = this.lastAlertROIs[cooldownKey] || 0;
 
-        // Condition: Send if cooldown passed OR profit increased (better deal)
-        if (this.lastAlertTimes[cooldownKey] && (now - this.lastAlertTimes[cooldownKey] < cooldown) && !isProfitIncreased) {
+        const isInCooldown = (now - lastTime) < cooldown;
+
+        // Break cooldown ONLY if it's a substantially better deal:
+        // at least 20% higher profit OR a noticeable jump of +0.5% in ROI.
+        // Prevents minor order book depth tick noise (+10 TL / +2%) from spamming alerts.
+        const isSignificantlyBetter = (op.profit >= lastProfit * 1.20) || (op.roi >= lastROI + 0.5);
+
+        if (isInCooldown && !isSignificantlyBetter) {
             return;
         }
 
         this.lastAlertTimes[cooldownKey] = now;
         this.lastAlertProfits[cooldownKey] = op.profit;
+        this.lastAlertROIs[cooldownKey] = op.roi;
 
         // Format helper: 1234.56 -> "1,234.56" (only left of dot)
         const formatParts = (n, d) => {
