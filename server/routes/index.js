@@ -398,6 +398,28 @@ router.post('/settings', async (req, res) => {
         res.json({ message: 'Settings saved successfully', settings });
     });
 });
+
+// --- Muted Coins API ---
+const MuteService = require('../services/MuteService');
+
+router.get('/muted-coins', (req, res) => {
+    res.json(MuteService.getMutedCoins());
+});
+
+router.post('/muted-coins', (req, res) => {
+    const { coin, duration } = req.body;
+    if (!coin) {
+        return res.status(400).json({ error: 'Coin name is required' });
+    }
+    const muteInfo = MuteService.muteCoin(coin, duration || '1d');
+    res.json({ message: `${coin.toUpperCase()} muted successfully`, muteInfo });
+});
+
+router.delete('/muted-coins/:coin', (req, res) => {
+    const coin = req.params.coin;
+    const unmuted = MuteService.unmuteCoin(coin);
+    res.json({ message: `${coin.toUpperCase()} unmuted`, unmuted });
+});
 // --- Portfolio Save/Retrieve ---
 router.post('/portfolio', (req, res) => {
     const { name, data } = req.body;

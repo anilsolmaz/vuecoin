@@ -3,6 +3,7 @@ const config = require('../configs/config.json');
 const { DateTime } = require("luxon");
 const TelegramService = require('./TelegramService');
 const ExchangePrecisionService = require('./ExchangePrecisionService');
+const MuteService = require('./MuteService');
 
 // Unified Redis Service
 const client = require('./RedisService');
@@ -911,6 +912,11 @@ class CoinDataService {
             return; // Exit earlier if coin is blocked
         }
 
+        // Check if coin is temporarily muted via Telegram
+        if (MuteService.isMuted(op.coin)) {
+            return;
+        }
+
         let now = Date.now();
 
         // Use specific cooldown from settings
@@ -955,8 +961,6 @@ class CoinDataService {
             return formatParts(n, 8);                       // $0.00007123
         };
 
-        // Removing Sanity Check entirely as requested.
-
         // Header line only for intra-exchange deals, with the exchange name
         let msg = '';
         if (isSameExchange) {
@@ -976,8 +980,17 @@ class CoinDataService {
             `🤝 <b>Sell:</b> ${op.sellExchange} (@ ${sellCurrency}${fmtPrice(sellDisplay)})\n` +
             `📊 <b>Trade Capacity:</b> ₺${fmt0(op.tradeAmountTRY)}`;
 
+        const replyMarkup = {
+            inline_keyboard: [
+                [
+                    { text: `🔇 ${op.coin.toUpperCase()} Sustur`, callback_data: `mute_select:${op.coin.toLowerCase()}` }
+                ]
+            ]
+        };
+
         try {
-            await TelegramService.broadcast(msg);
+            await TelegramService.broadcast(msg, replyMarkup);
+            MuteService.addRecentAlert(op.coin);
         } catch (e) {
             console.error('Telegram alert failed:', e.message);
         }

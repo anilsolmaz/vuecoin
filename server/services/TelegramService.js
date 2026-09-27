@@ -86,36 +86,76 @@ const TelegramService = {
 
     /**
      * Broadcast a message to all configured channels
+     * @param {string} message - HTML formatted message
+     * @param {object} replyMarkup - Optional Telegram reply_markup (inline_keyboard)
      */
-    async broadcast(message) {
-        const targets = Object.values(chatIds);
-        // We need to handle multi-bot scenario if the chats are exclusive to bots.
-        // Let's iterate tokens and try to send to their respective "default" chats if mapped, 
-        // OR just try sending to the target chat with the available token.
-
-        // Strategy: 
-        // 1. Send to General Chat using Bot 1
-
-        const p1 = this.sendToBot(process.env.TELEGRAM_BOT_TOKEN_1, chatIds.general, message);
-
+    async broadcast(message, replyMarkup = null) {
+        const p1 = this.sendToBot(process.env.TELEGRAM_BOT_TOKEN_1, chatIds.general, message, replyMarkup);
         await Promise.all([p1]);
     },
 
-    async sendToBot(token, chatId, message) {
-        if (!token || !chatId) return;
-        // console.log(`[Telegram] Sending to ${chatId}: ${message}`); 
+    async sendToBot(token, chatId, message, replyMarkup = null) {
+        if (!token || !chatId) return null;
         try {
-            await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+            const payload = {
                 chat_id: chatId,
                 text: message,
                 parse_mode: "HTML",
                 disable_web_page_preview: true
-            });
+            };
+            if (replyMarkup) {
+                payload.reply_markup = replyMarkup;
+            }
+            const res = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, payload);
+            return res.data;
         } catch (error) {
             console.error(`Failed to send to ${chatId} via bot ending in ...${token.slice(-5)}:`, error.message);
             if (error.response && error.response.data) {
                 console.error('Telegram API Error Data:', JSON.stringify(error.response.data));
             }
+            return null;
+        }
+    },
+
+    /**
+     * Edit an existing message in a chat
+     */
+    async editMessage(token, chatId, messageId, text, replyMarkup = null) {
+        if (!token || !chatId || !messageId) return null;
+        try {
+            const payload = {
+                chat_id: chatId,
+                message_id: messageId,
+                text: text,
+                parse_mode: "HTML",
+                disable_web_page_preview: true
+            };
+            if (replyMarkup) {
+                payload.reply_markup = replyMarkup;
+            }
+            const res = await axios.post(`https://api.telegram.org/bot${token}/editMessageText`, payload);
+            return res.data;
+        } catch (error) {
+            // If message is not modified, ignore error
+            if (error.response?.data?.description?.includes('message is not modified')) {
+                return null;
+            }
+            console.error(`Failed to edit message in ${chatId}:`, error.message);
+            return null;
+        }
+    },
+
+    /**
+     * Answer a callback query to stop the loading spinner
+     */
+    async answerCallbackQuery(token, callbackQueryId, text = null) {
+        if (!token || !callbackQueryId) return;
+        try {
+            const payload = { callback_query_id: callbackQueryId };
+            if (text) payload.text = text;
+            await axios.post(`https://api.telegram.org/bot${token}/answerCallbackQuery`, payload);
+        } catch (error) {
+            // Ignore callback query expired errors
         }
     },
 
