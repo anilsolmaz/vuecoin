@@ -339,9 +339,8 @@
         currentFrameIndex: 0,
         demoInterval: null,
         filterWord: '',
-        coinData: [],
+        coinData: {},
         coinData2: [],
-        topDeals: [],
         topCoins: ['btc','bnb','ftt','usdt','jup','sevilla','eth','shib'],
         topDealsCount: 10,
         topDealsSortBy: localStorage.getItem('vuecoin_topDealsSortBy') || 'gain',
@@ -545,119 +544,15 @@
         }
       },
       processData(data) {
+          if (!data || typeof data !== 'object') return;
           this.coinData = data;
           this.reset();
           
           let coinList = [];
-          const validDeals = [];
-
-          // Scanner Settings
-          const s = this.settings || {};
-          const crossEnabled = s.crossEnabled !== false;
-          const intraEnabled = s.intraEnabled !== false;
-          const crossMinROI = (s.crossMinROI !== undefined && s.crossMinROI !== null && s.crossMinROI !== '') ? parseFloat(s.crossMinROI) : 0.5;
-          const crossMinProfit = (s.crossMinProfit !== undefined && s.crossMinProfit !== null && s.crossMinProfit !== '') ? parseFloat(s.crossMinProfit) : 1000;
-          const intraMinROI = (s.intraMinROI !== undefined && s.intraMinROI !== null && s.intraMinROI !== '') ? parseFloat(s.intraMinROI) : 0;
-          const intraMinProfit = (s.intraMinProfit !== undefined && s.intraMinProfit !== null && s.intraMinProfit !== '') ? parseFloat(s.intraMinProfit) : 100;
-          const blockedCoins = Array.isArray(s.blockedCoins) ? s.blockedCoins.map(c => String(c).toLowerCase().trim()) : [];
-          
           Object.keys(data).forEach(coinName => {
               coinList.push(coinName);
-              if (coinName === 'usdt') return;
-              const cleanCoin = coinName.toLowerCase().trim();
-              if (blockedCoins.includes(cleanCoin)) return;
-
-              const d = data[coinName];
-              if (d) {
-                  const r = (typeof d.ROI === 'number' && !isNaN(d.ROI)) ? d.ROI : -999;
-                  
-                  // Calculate potential gain for sorting
-                  let gain = 0;
-                  const cross = d.arbitrageDetails?.cross;
-                  const intra = d.arbitrageDetails?.intra;
-
-                  if (d.arbitrageDetails) {
-                      const crossP = cross?.profit || 0;
-                      const intraP = intra?.profit || 0;
-                      gain = Math.max(crossP, intraP);
-                  }
-                  if (gain <= 0 && d.profit > 0) {
-                      gain = d.profit;
-                  }
-                  if (gain <= 0 && r > 0) {
-                      const isDemo = typeof window !== 'undefined' && (window.location.hostname.includes('github.io') || window.location.search.includes('demo=1'));
-                      if (isDemo) {
-                          const pseudoSeed = (coinName || 'btc').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-                          const mockVolume = 8000 + ((pseudoSeed * 491) % 32000);
-                          gain = (mockVolume * r) / 100;
-                      }
-                  }
-
-                  // Count distinct exchange markets for this coin
-                  let marketCount = 0;
-                  if (d.paribu?.try?.price > 0 || d.paribu?.usdt?.price > 0) marketCount++;
-                  if (d.binance?.usdt?.price > 0 || d.binance?.try?.price > 0) marketCount++;
-                  if (d.BTCTurk?.try?.price > 0 || d.BTCTurk?.usdt?.price > 0) marketCount++;
-
-                  // Top Deals eligibility: valid multi-market arbitrage with positive ROI or gain
-                  const hasCross = cross && crossEnabled && (cross.roi > 0 || cross.profit > 0);
-                  const hasIntra = intra && intraEnabled && (intra.roi > 0 || intra.profit > 0);
-                  const hasGenericArb = (crossEnabled || intraEnabled) && (marketCount >= 2) && (r > 0 || gain > 0);
-
-                  if (hasCross || hasIntra || hasGenericArb) {
-                      const bestRoi = Math.max(r, cross?.roi || -999, intra?.roi || -999);
-                      validDeals.push({ coin: coinName, roi: bestRoi > -900 ? bestRoi : r, gain: gain });
-                  }
-              }
           });
-          
           this.coinList = coinList;
-          
-          // Sort by Gain (default) or ROI based on user setting
-          if (this.topDealsSortBy === 'roi') {
-              validDeals.sort((a, b) => {
-                  if (b.roi !== a.roi) return b.roi - a.roi;
-                  return b.gain - a.gain;
-              });
-          } else {
-              // Default: Sort by Gain descending
-              validDeals.sort((a, b) => {
-                  if (b.gain !== a.gain) return b.gain - a.gain;
-                  return b.roi - a.roi;
-              });
-          }
-          
-          const sortedDeals = {};
-          validDeals.forEach(item => {
-              sortedDeals[item.coin] = item.roi;
-          });
-          this.topDeals = sortedDeals;
-
-          // Track how long each coin has been in Top Deals
-          const now = Date.now();
-          const activeTopDealKeys = Object.keys(sortedDeals).slice(0, this.topDealsCount);
-          // Add entry time for new coins
-          activeTopDealKeys.forEach(coin => {
-            if (!this.topDealEntryTimes[coin]) {
-              this.topDealEntryTimes[coin] = now;
-            }
-          });
-          // Remove entry times for coins no longer in top deals
-          Object.keys(this.topDealEntryTimes).forEach(coin => {
-            if (!activeTopDealKeys.includes(coin)) {
-              delete this.topDealEntryTimes[coin];
-            }
-          });
-          
-          // Save to localStorage so timers persist across reloads
-          localStorage.setItem('vuecoin_topDealEntryTimes', JSON.stringify(this.topDealEntryTimes));
-          
-          // Compute elapsed seconds
-          const timers = {};
-          activeTopDealKeys.forEach(coin => {
-            timers[coin] = Math.round((now - this.topDealEntryTimes[coin]) / 1000);
-          });
-          this.topDealTimers = timers;
       },
       async updateData() {
         try {
