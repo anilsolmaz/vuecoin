@@ -250,7 +250,6 @@
             />
             <div v-if="topDealsList.length === 0" class="p-3 text-muted small fst-italic w-100">
               <i class="bi bi-radar me-1 text-primary"></i>Scanning markets for active cross-exchange arbitrage spreads...
-              <span class="ms-2 badge bg-secondary">coins: {{ Object.keys(coinData).length }} | deals: {{ topDealsList.length }}</span>
             </div>
          </div>
          
@@ -817,8 +816,6 @@
         }
 
         const count = parseInt(this.topDealsCount) || 10;
-        console.log('[DEBUG topDealsList] coinData keys:', Object.keys(this.coinData).length, '| validDeals:', validDeals.length, '| showing:', Math.min(validDeals.length, count), '| sortBy:', this.topDealsSortBy);
-        if (validDeals.length > 0) console.log('[DEBUG topDealsList] top3:', validDeals.slice(0,3).map(d => d.coin + ':' + d.roi.toFixed(2)));
         return validDeals.slice(0, count);
       },
       topDeals() {

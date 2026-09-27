@@ -135,20 +135,6 @@ export default {
       if (prices.length === 0) return 0;
       return prices.reduce((a, b) => a + b, 0) / prices.length;
     },
-    cleanExchangeName(name) {
-      if (!name) return '';
-      const lower = String(name).toLowerCase();
-      if (lower.includes('paribu')) return 'paribu';
-      if (lower.includes('binance')) return 'binance';
-      if (lower.includes('btcturk')) return 'BTCTurk';
-      if (lower.includes('coinbase')) return 'coinbase';
-      if (lower.includes('okx')) return 'okx';
-      if (lower.includes('kucoin')) return 'kucoin';
-      if (lower.includes('gateio') || lower.includes('gate.io')) return 'gateio';
-      if (lower.includes('mexc')) return 'mexc';
-      if (lower.includes('upbit')) return 'upbit';
-      return name.replace(/\(.*?\)/g, '').trim();
-    },
     arbitrageBidsAndAsks() {
       const item = this.coinData;
       if (!item || typeof item !== 'object') return [];
@@ -295,6 +281,20 @@ export default {
   watch: {
   },
   methods: {
+    cleanExchangeName(name) {
+      if (!name) return '';
+      const lower = String(name).toLowerCase();
+      if (lower.includes('paribu')) return 'paribu';
+      if (lower.includes('binance')) return 'binance';
+      if (lower.includes('btcturk')) return 'BTCTurk';
+      if (lower.includes('coinbase')) return 'coinbase';
+      if (lower.includes('okx')) return 'okx';
+      if (lower.includes('kucoin')) return 'kucoin';
+      if (lower.includes('gateio') || lower.includes('gate.io')) return 'gateio';
+      if (lower.includes('mexc')) return 'mexc';
+      if (lower.includes('upbit')) return 'upbit';
+      return name.replace(/\(.*?\)/g, '').trim();
+    },
     toggleExpand() {
       if (!this.isTopDeal) {
           this.isExpandedAllMarkets = !this.isExpandedAllMarkets;
