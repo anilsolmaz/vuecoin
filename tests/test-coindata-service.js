@@ -521,7 +521,7 @@ test('should respect cooldown period', async () => {
     assert.strictEqual(svc.lastAlertTimes['test'], firstTime, 'Should not update time during cooldown');
 });
 
-test('should send alert when profit increases significantly despite cooldown', async () => {
+test('should send alert when profit increases despite cooldown', async () => {
     const svc = freshService();
     svc.settings.globalCooldown = 60;
 
@@ -530,15 +530,15 @@ test('should send alert when profit increases significantly despite cooldown', a
 
     const firstTime = svc.lastAlertTimes['x'];
 
-    // Minor noise (+5%) should be BLOCKED during cooldown
-    const opMinor = { ...op1, profit: 1050 };
-    await svc.checkAndSendTelegramAlert(opMinor);
-    assert.strictEqual(svc.lastAlertTimes['x'], firstTime, 'Minor noise should not update alert time during cooldown');
+    // Equal or lower profit during cooldown should be BLOCKED
+    const opLower = { ...op1, profit: 950 };
+    await svc.checkAndSendTelegramAlert(opLower);
+    assert.strictEqual(svc.lastAlertTimes['x'], firstTime, 'Lower profit should not update alert time during cooldown');
 
-    // Substantially higher profit (+100%) → should bypass cooldown
-    const op2 = { ...op1, profit: 2000 };
+    // Higher profit (even by 0.01) → sends alert
+    const op2 = { ...op1, profit: 1000.01 };
     await svc.checkAndSendTelegramAlert(op2);
-    assert.strictEqual(svc.lastAlertProfits['x'], 2000, 'Should update profit to 2000');
+    assert.strictEqual(svc.lastAlertProfits['x'], 1000.01, 'Should update profit to 1000.01');
 });
 
 

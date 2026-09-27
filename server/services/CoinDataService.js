@@ -924,22 +924,17 @@ class CoinDataService {
 
         let lastTime = this.lastAlertTimes[cooldownKey] || 0;
         let lastProfit = this.lastAlertProfits[cooldownKey] || 0;
-        let lastROI = this.lastAlertROIs[cooldownKey] || 0;
 
         const isInCooldown = (now - lastTime) < cooldown;
+        const isBetter = op.profit > lastProfit;
 
-        // Break cooldown ONLY if it's a substantially better deal:
-        // at least 20% higher profit OR a noticeable jump of +0.5% in ROI.
-        // Prevents minor order book depth tick noise (+10 TL / +2%) from spamming alerts.
-        const isSignificantlyBetter = (op.profit >= lastProfit * 1.20) || (op.roi >= lastROI + 0.5);
-
-        if (isInCooldown && !isSignificantlyBetter) {
+        // Block alert ONLY if still in 5-min cooldown AND profit has not increased (even by 0.01)
+        if (isInCooldown && !isBetter) {
             return;
         }
 
         this.lastAlertTimes[cooldownKey] = now;
         this.lastAlertProfits[cooldownKey] = op.profit;
-        this.lastAlertROIs[cooldownKey] = op.roi;
 
         // Format helper: 1234.56 -> "1,234.56" (only left of dot)
         const formatParts = (n, d) => {

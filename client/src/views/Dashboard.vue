@@ -599,44 +599,14 @@
                   if (d.binance?.usdt?.price > 0 || d.binance?.try?.price > 0) marketCount++;
                   if (d.BTCTurk?.try?.price > 0 || d.BTCTurk?.usdt?.price > 0) marketCount++;
 
-                  // Top Deals eligibility according to active Scanner Engine parameters
-                  let isDealValid = false;
-                  let dealRoi = r;
-                  let dealGain = gain;
+                  // Top Deals eligibility: valid multi-market arbitrage with positive ROI or gain
+                  const hasCross = cross && crossEnabled && (cross.roi > 0 || cross.profit > 0);
+                  const hasIntra = intra && intraEnabled && (intra.roi > 0 || intra.profit > 0);
+                  const hasGenericArb = (crossEnabled || intraEnabled) && (marketCount >= 2) && (r > 0 || gain > 0);
 
-                  if (cross && crossEnabled) {
-                      const cRoi = (typeof cross.roi === 'number' && !isNaN(cross.roi)) ? cross.roi : 0;
-                      const cGain = (typeof cross.profit === 'number' && !isNaN(cross.profit)) ? cross.profit : 0;
-                      if (cRoi >= crossMinROI && cGain >= crossMinProfit) {
-                          isDealValid = true;
-                          dealRoi = cRoi;
-                          dealGain = cGain;
-                      }
-                  }
-
-                  if (intra && intraEnabled) {
-                      const iRoi = (typeof intra.roi === 'number' && !isNaN(intra.roi)) ? intra.roi : 0;
-                      const iGain = (typeof intra.profit === 'number' && !isNaN(intra.profit)) ? intra.profit : 0;
-                      if (iRoi >= intraMinROI && iGain >= intraMinProfit) {
-                          if (!isDealValid || iGain > dealGain) {
-                              isDealValid = true;
-                              dealRoi = iRoi;
-                              dealGain = iGain;
-                          }
-                      }
-                  }
-
-                  // Fallback for demo or before order-book depth matching is ready
-                  if (!cross && !intra && marketCount >= 2) {
-                      if (crossEnabled && r >= crossMinROI && gain >= crossMinProfit) {
-                          isDealValid = true;
-                          dealRoi = r;
-                          dealGain = gain;
-                      }
-                  }
-
-                  if (isDealValid) {
-                      validDeals.push({ coin: coinName, roi: dealRoi, gain: dealGain });
+                  if (hasCross || hasIntra || hasGenericArb) {
+                      const bestRoi = Math.max(r, cross?.roi || -999, intra?.roi || -999);
+                      validDeals.push({ coin: coinName, roi: bestRoi > -900 ? bestRoi : r, gain: gain });
                   }
               }
           });
