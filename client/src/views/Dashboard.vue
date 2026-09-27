@@ -238,17 +238,17 @@
          </div>
          <div class="d-flex flex-wrap align-items-start mb-1">
             <coinbox
-                v-for="coinName in Object.keys(topDeals).slice(0, topDealsCount)"
-                :key="'top_'+coinName"
-                :coinName="coinName"
-                :coinData="coinData[coinName]"
+                v-for="deal in topDealsList"
+                :key="'top_'+deal.coin"
+                :coinName="deal.coin"
+                :coinData="coinData[deal.coin]"
                 :USDTMode="USDTMode"
                 :forceShowROI="true"
                 :isTopDeal="true"
-                :dealDuration="topDealTimers[coinName] || 0"
+                :dealDuration="topDealTimers[deal.coin] || 0"
                 :customFontSize="topDealsFontSize"
             />
-            <div v-if="Object.keys(topDeals).length === 0" class="p-3 text-muted small fst-italic w-100">
+            <div v-if="topDealsList.length === 0" class="p-3 text-muted small fst-italic w-100">
               <i class="bi bi-radar me-1 text-primary"></i>Scanning markets for active cross-exchange arbitrage spreads...
             </div>
          </div>
@@ -770,6 +770,35 @@
             this.processData(newData);
           }
         },
+        deep: true,
+        immediate: true
+      },
+      topDealsList: {
+        handler(newDeals) {
+          if (!newDeals) return;
+          const now = Date.now();
+          const activeKeys = newDeals.map(d => d.coin);
+          activeKeys.forEach(coin => {
+            if (!this.topDealEntryTimes[coin]) {
+              this.topDealEntryTimes[coin] = now;
+            }
+          });
+          Object.keys(this.topDealEntryTimes).forEach(coin => {
+            if (!activeKeys.includes(coin)) {
+              delete this.topDealEntryTimes[coin];
+            }
+          });
+          try {
+            localStorage.setItem('vuecoin_topDealEntryTimes', JSON.stringify(this.topDealEntryTimes));
+          } catch (e) {}
+
+          const timers = {};
+          activeKeys.forEach(coin => {
+            timers[coin] = Math.round((now - (this.topDealEntryTimes[coin] || now)) / 1000);
+          });
+          this.topDealTimers = timers;
+        },
+        deep: true,
         immediate: true
       },
       '$store.state.settings': {
@@ -837,6 +866,69 @@
              }
          }
          return 36.5; // Fallback
+      },
+      topDealsList() {
+        if (!this.coinData || typeof this.coinData !== 'object' || Object.keys(this.coinData).length === 0) return [];
+        const s = this.settings || {};
+        const blockedCoins = Array.isArray(s.blockedCoins) ? s.blockedCoins.map(c => String(c).toLowerCase().trim()) : [];
+        const validDeals = [];
+
+        Object.keys(this.coinData).forEach(coinName => {
+          if (coinName === 'usdt' || coinName === 'ROI' || coinName === 'recordedAt' || coinName === 'frames') return;
+          const cleanCoin = coinName.toLowerCase().trim();
+          if (blockedCoins.includes(cleanCoin)) return;
+
+          const d = this.coinData[coinName];
+          if (!d || typeof d !== 'object') return;
+
+          const r = (typeof d.ROI === 'number' && !isNaN(d.ROI)) ? d.ROI : -999;
+          let gain = 0;
+          if (d.arbitrageDetails) {
+            const crossP = d.arbitrageDetails.cross?.profit || 0;
+            const intraP = d.arbitrageDetails.intra?.profit || 0;
+            gain = Math.max(crossP, intraP);
+          }
+          if (gain <= 0 && d.profit > 0) gain = d.profit;
+          if (gain <= 0 && r > 0 && this.isDemoMode) {
+            const pseudoSeed = (coinName || 'btc').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+            const mockVolume = 8000 + ((pseudoSeed * 491) % 32000);
+            gain = (mockVolume * r) / 100;
+          }
+
+          let marketCount = 0;
+          if (d.paribu?.try?.price > 0 || d.paribu?.usdt?.price > 0) marketCount++;
+          if (d.binance?.usdt?.price > 0 || d.binance?.try?.price > 0) marketCount++;
+          if (d.BTCTurk?.try?.price > 0 || d.BTCTurk?.usdt?.price > 0) marketCount++;
+
+          const hasCross = d.arbitrageDetails?.cross && (d.arbitrageDetails.cross.roi > 0 || d.arbitrageDetails.cross.profit > 0);
+          const hasIntra = d.arbitrageDetails?.intra && (d.arbitrageDetails.intra.roi > 0 || d.arbitrageDetails.intra.profit > 0);
+          const hasGenericArb = (marketCount >= 2 && r > 0) || (marketCount >= 2 && gain > 0);
+
+          if (hasCross || hasIntra || hasGenericArb || (r > 0 && (d.arbitrageDetails?.cross || d.arbitrageDetails?.intra))) {
+            const bestRoi = Math.max(r, d.arbitrageDetails?.cross?.roi || -999, d.arbitrageDetails?.intra?.roi || -999);
+            validDeals.push({
+              coin: coinName,
+              roi: bestRoi > -900 ? bestRoi : (r > 0 ? r : 0),
+              gain: gain
+            });
+          }
+        });
+
+        if (this.topDealsSortBy === 'roi') {
+          validDeals.sort((a, b) => b.roi !== a.roi ? b.roi - a.roi : b.gain - a.gain);
+        } else {
+          validDeals.sort((a, b) => b.gain !== a.gain ? b.gain - a.gain : b.roi - a.roi);
+        }
+
+        const count = parseInt(this.topDealsCount) || 10;
+        return validDeals.slice(0, count);
+      },
+      topDeals() {
+        const map = {};
+        this.topDealsList.forEach(d => {
+          map[d.coin] = d.roi;
+        });
+        return map;
       },
       sortedRemainingCoins() {
          // Show ALL coins (including top deals) sorted alphabetically
