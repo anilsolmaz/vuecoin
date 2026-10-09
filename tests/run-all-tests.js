@@ -16,7 +16,8 @@ const testFiles = [
     'test-coindata-service.js',
     'test-binance-websocket.js',
     'test-precision-service.js',
-    'test-mute-service.js'
+    'test-mute-service.js',
+    'test-portfolio-report.js'
 ];
 
 let totalPassed = 0;

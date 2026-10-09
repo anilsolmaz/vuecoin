@@ -420,6 +420,18 @@ router.delete('/muted-coins/:coin', (req, res) => {
     const unmuted = MuteService.unmuteCoin(coin);
     res.json({ message: `${coin.toUpperCase()} unmuted`, unmuted });
 });
+
+// --- Portfolio Report API ---
+const PortfolioReportService = require('../services/PortfolioReportService');
+
+router.get('/portfolio-report/jito', async (req, res) => {
+    try {
+        const data = await PortfolioReportService.generateReportData();
+        res.json({ success: true, data });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // --- Portfolio Save/Retrieve ---
 router.post('/portfolio', (req, res) => {
     const { name, data } = req.body;

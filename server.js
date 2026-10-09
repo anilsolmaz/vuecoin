@@ -24,6 +24,7 @@ const ExchangePrecisionService = require('./server/services/ExchangePrecisionSer
 
 const TelegramBotService = require('./server/services/TelegramBotService');
 const MuteService = require('./server/services/MuteService');
+const PortfolioReportService = require('./server/services/PortfolioReportService');
 
 // Initialize Real-time Services (Binance WebSocket, Listing Monitors & Precision Service)
 if (process.env.NODE_ENV !== 'test') {
@@ -31,6 +32,7 @@ if (process.env.NODE_ENV !== 'test') {
     ExchangePrecisionService.start(); // Hourly precision updates
     MuteService.init();
     TelegramBotService.start(); // Interactive Telegram bot control center
+    PortfolioReportService.start(); // Daily portfolio report scheduler (21:00 Pacific)
 
     ListingMonitorService.init().then(() => {
         // Run Paribu check every 1 second

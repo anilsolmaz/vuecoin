@@ -147,6 +147,12 @@ class TelegramBotService {
             case '/ayarlar':
                 await this.sendSettingsMenu(chatId);
                 break;
+
+            case '/jito':
+            case '/rapor':
+            case '/report':
+                await this.sendJitoReport(chatId);
+                break;
         }
     }
 
@@ -174,6 +180,8 @@ class TelegramBotService {
             await this.editToStatusMenu(chatId, messageId);
         } else if (data === 'menu:settings') {
             await this.editToSettingsMenu(chatId, messageId);
+        } else if (data === 'menu:jito') {
+            await this.editToJitoReport(chatId, messageId);
         } else if (data === 'menu:cancel') {
             await TelegramService.editMessage(this.token, chatId, messageId, '❌ <i>Menü kapatıldı.</i>');
         } else if (data.startsWith('mute_select:')) {
@@ -199,6 +207,7 @@ class TelegramBotService {
     getMainMenuContent() {
         const text = `⚡ <b>VueCoin Kontrol Merkezi</b>\n\n` +
             `Aşağıdaki menüden dilediğin işlemi seçebilirsin:\n\n` +
+            `• <b>Jito Raporu:</b> 21:00 Pacific günlük/haftalık/aylık portföy raporu\n` +
             `• <b>Coin Susturma:</b> Belirli coinlerin bildirimlerini geçici olarak kapat\n` +
             `• <b>Susturulanlar:</b> Aktif susturulan coinleri ve kalan süreleri gör\n` +
             `• <b>Bot Durumu:</b> Sunucu & piyasa tarama durumu\n` +
@@ -207,11 +216,14 @@ class TelegramBotService {
         const replyMarkup = {
             inline_keyboard: [
                 [
+                    { text: '📊 Jito Portföy Raporu', callback_data: 'menu:jito' }
+                ],
+                [
                     { text: '🔇 Coin Sustur', callback_data: 'menu:mute' },
                     { text: '📋 Susturulanlar', callback_data: 'menu:muted' }
                 ],
                 [
-                    { text: '📊 Bot Durumu', callback_data: 'menu:status' },
+                    { text: '🤖 Bot Durumu', callback_data: 'menu:status' },
                     { text: '⚙️ Ayarlar Özeti', callback_data: 'menu:settings' }
                 ],
                 [
@@ -523,6 +535,36 @@ class TelegramBotService {
         };
 
         await TelegramService.sendToBot(this.token, chatId, text, replyMarkup);
+    }
+
+    async sendJitoReport(chatId) {
+        const PortfolioReportService = require('./PortfolioReportService');
+        const data = await PortfolioReportService.generateReportData();
+        const text = PortfolioReportService.buildReportMessage(data);
+        const replyMarkup = {
+            inline_keyboard: [
+                [
+                    { text: '🔄 Raporu Yenile', callback_data: 'menu:jito' },
+                    { text: '⬅️ Ana Menü', callback_data: 'menu:main' }
+                ]
+            ]
+        };
+        await TelegramService.sendToBot(this.token, chatId, text, replyMarkup);
+    }
+
+    async editToJitoReport(chatId, messageId) {
+        const PortfolioReportService = require('./PortfolioReportService');
+        const data = await PortfolioReportService.generateReportData();
+        const text = PortfolioReportService.buildReportMessage(data);
+        const replyMarkup = {
+            inline_keyboard: [
+                [
+                    { text: '🔄 Raporu Yenile', callback_data: 'menu:jito' },
+                    { text: '⬅️ Ana Menü', callback_data: 'menu:main' }
+                ]
+            ]
+        };
+        await TelegramService.editMessage(this.token, chatId, messageId, text, replyMarkup);
     }
 }
 
